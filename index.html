@@ -3629,92 +3629,247 @@ function seeded(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 10
  *   mode keeps working with no internet at all.
  * ===================================================================== */
 const PEER_CDNS = ['https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js', 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js'];
+const MQTT_CDNS = ['https://cdn.jsdelivr.net/npm/mqtt@5.16.1/dist/mqtt.min.js', 'https://unpkg.com/mqtt@5.16.1/dist/mqtt.min.js'];
+/* Fallback relay: free public MQTT-over-WebSocket brokers (no account). Used only when a
+ * direct (WebRTC) link can't be made, e.g. phones on cellular / carrier-grade NAT. */
+const RELAY_BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://mqtt.eclipseprojects.io:443/mqtt'];
+/* Optional dedicated TURN relay (e.g. a free ExpressTurn / Metered / Cloudflare account):
+ * paste { urls: 'turn:host:3478', username: '...', credential: '...' } entries here. */
+const EXTRA_TURN = [];
+const NET_Q = new URLSearchParams(location.search);   // debug: ?ice=relay  ?relay=0|wss://..  ?p2p=0  ?turn=url|user|pass
 const ROOM_PREFIX = 'familykombat-v2-';
+const RELAY_ROOT = 'familykombat-v3/';
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 /** On your own device either key set (WASD+F/G or arrows+K/L) controls you. */
 const KEYS_LOCAL = (() => { const o = {}; for (const k in CONFIG.KEYS.p1) o[k] = [...CONFIG.KEYS.p1[k], ...CONFIG.KEYS.p2[k]]; return o; })();
 const RemotePad = { held: {}, pressed: [] };
+function loadScriptChain(urls, test) {
+  if (test()) return Promise.resolve();
+  if (navigator.onLine === false) return Promise.reject(new Error('offline'));
+  const tryUrl = (i) => new Promise((res, rej) => {
+    if (i >= urls.length) { rej(new Error('cdn')); return; }
+    const s = document.createElement('script'); s.src = urls[i]; s.async = true;
+    const to = setTimeout(() => { s.remove(); tryUrl(i + 1).then(res, rej); }, 9000);
+    s.onload = () => { clearTimeout(to); test() ? res() : tryUrl(i + 1).then(res, rej); };
+    s.onerror = () => { clearTimeout(to); s.remove(); tryUrl(i + 1).then(res, rej); };
+    document.head.appendChild(s);
+  });
+  return tryUrl(0);
+}
 
+/* A "link" is whatever carries game messages: { kind: 'direct'|'relay', open, send(m), close() }. */
 const Net = {
   role: null, peer: null, conn: null, code: '', status: '', error: '', lastSnapAt: 0, snapGap: 33,
   sfx: [], voice: [], localInput: new PlayerInput(KEYS_LOCAL), lastHeld: '', joinTimer: null,
+  gen: 0, logs: [], diag: {}, relays: [], pending: [], lastRx: 0, lastRole: null, timers: [],
   online() { return !!(this.role && this.conn && this.conn.open); },
-  loadLib() {
-    if (window.Peer) return Promise.resolve();
-    if (navigator.onLine === false) return Promise.reject(new Error('offline'));
-    const tryUrl = (i) => new Promise((res, rej) => {
-      if (i >= PEER_CDNS.length) { rej(new Error('cdn')); return; }
-      const s = document.createElement('script'); s.src = PEER_CDNS[i]; s.async = true;
-      const to = setTimeout(() => { s.remove(); tryUrl(i + 1).then(res, rej); }, 9000);
-      s.onload = () => { clearTimeout(to); window.Peer ? res() : tryUrl(i + 1).then(res, rej); };
-      s.onerror = () => { clearTimeout(to); s.remove(); tryUrl(i + 1).then(res, rej); };
-      document.head.appendChild(s);
-    });
-    return tryUrl(0);
+  log(msg) { const line = ((performance.now() / 1000) | 0) + 's ' + msg; this.logs.push(line); if (this.logs.length > 40) this.logs.shift(); try { console.info('[FK net]', line); } catch (e) { /* ignore */ } },
+  loadLib() { return loadScriptChain(PEER_CDNS, () => !!window.Peer); },
+  loadMqtt() { return loadScriptChain(MQTT_CDNS, () => !!(window.mqtt && window.mqtt.connect)); },
+  later(fn, ms) { const g = this.gen; const t = setTimeout(() => { if (g === this.gen) fn(); }, ms); this.timers.push(t); return t; },
+  async iceConfig() {
+    const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+    try {   // Open Relay (Metered) public static-auth TURN: time-limited user + HMAC-SHA1 of the published shared secret
+      const user = (Math.floor(Date.now() / 1000) + 86400) + ':familykombat', enc = new TextEncoder();
+      const key = await crypto.subtle.importKey('raw', enc.encode('openrelayprojectsecret'), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+      const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(user)));
+      servers.push({ urls: ['turn:staticauth.openrelay.metered.ca:80', 'turn:staticauth.openrelay.metered.ca:443', 'turn:staticauth.openrelay.metered.ca:443?transport=tcp', 'turns:staticauth.openrelay.metered.ca:443?transport=tcp'], username: user, credential: btoa(String.fromCharCode(...sig)) });
+    } catch (e) { this.log('no static TURN creds: ' + e.message); }
+    servers.push(...EXTRA_TURN);
+    const t = NET_Q.get('turn'); if (t) { const [urls, username, credential] = t.split('|'); servers.push({ urls, username, credential }); }
+    servers.push({ urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' });
+    return { iceServers: servers, iceTransportPolicy: NET_Q.get('ice') === 'relay' ? 'relay' : 'all' };
   },
+  async newPeer(id) {
+    const config = await this.iceConfig();
+    const opts = { config, debug: 1 };
+    return id ? new window.Peer(id, opts) : new window.Peer(opts);
+  },
+  /** Watch ICE / data-channel state on a PeerJS DataConnection for the status line + logs. */
+  watchIce(conn) {
+    const hook = () => {
+      const pc = conn.peerConnection; if (!pc || pc.__fkHooked) return !!pc; pc.__fkHooked = true;
+      pc.addEventListener('iceconnectionstatechange', () => { this.diag.ice = pc.iceConnectionState; this.log('ice ' + pc.iceConnectionState); if (pc.iceConnectionState === 'failed') this.directFailed('ICE failed'); });
+      pc.addEventListener('icegatheringstatechange', () => this.log('gathering ' + pc.iceGatheringState));
+      pc.addEventListener('icecandidate', (e) => { if (e.candidate && e.candidate.candidate) { const typ = (/ typ (\w+)/.exec(e.candidate.candidate) || [])[1]; this.diag.cands = (this.diag.cands || '') + (typ ? typ[0] : '?'); } });
+      pc.addEventListener('icecandidateerror', (e) => this.log('candidate error ' + e.errorCode + ' ' + (e.url || '')));
+      pc.addEventListener('connectionstatechange', () => { this.diag.pc = pc.connectionState; this.log('pc ' + pc.connectionState); });
+      return true;
+    };
+    if (!hook()) { let n = 0; const iv = setInterval(() => { if (hook() || ++n > 40) clearInterval(iv); }, 100); }
+  },
+  directLink(conn) {
+    return { kind: 'direct', conn, get open() { return conn.open; }, send(m) { conn.send(m); }, close() { try { conn.close(); } catch (e) { /* ignore */ } } };
+  },
+  /* ---------- relay (MQTT over WebSocket) ---------- */
+  async startRelays(onMsg, subTopic) {
+    if (NET_Q.get('relay') === '0') return;
+    try { await this.loadMqtt(); } catch (e) { this.log('relay lib failed: ' + e.message); this.diag.relay = 'no-lib'; return; }
+    const gen = this.gen, list = NET_Q.get('relay') ? [NET_Q.get('relay')] : RELAY_BROKERS;
+    this.diag.relay = 'connecting';
+    for (const url of list) {
+      if (gen !== this.gen) return;
+      const c = window.mqtt.connect(url, { clientId: 'fk' + Math.random().toString(36).slice(2, 12), clean: true, keepalive: 20, connectTimeout: 8000, reconnectPeriod: 2000, resubscribe: true });
+      const r = { url, c, up: false };
+      this.relays.push(r);
+      c.on('connect', () => { r.up = true; this.diag.relay = 'ready'; this.log('relay up ' + url); c.subscribe(subTopic, { qos: 0 }); if (this.onRelayUp) this.onRelayUp(r); });
+      c.on('offline', () => { r.up = false; this.log('relay offline ' + url); });
+      c.on('error', (e) => this.log('relay error ' + url + ' ' + (e && e.message)));
+      c.on('message', (topic, buf) => { let m; try { m = JSON.parse(buf.toString()); } catch (e) { return; } if (gen === this.gen) onMsg(r, m); });
+    }
+  },
+  relayLink(r, topic, wrap) {
+    const self = this;
+    return { kind: 'relay', r, open: true, send(m) { if (r.up) r.c.publish(topic, JSON.stringify(wrap ? { g: wrap, m } : m), { qos: 0 }); }, close() { this.open = false; } };
+  },
+  closeRelays(keep) { for (const r of this.relays) if (r !== keep) { try { r.c.end(true); } catch (e) { /* ignore */ } } this.relays = keep ? [keep] : []; },
   fail(kind, detail) {
     const msgs = {
       offline: "You're offline. Online play needs Wi-Fi or data on BOTH devices.",
       cdn: "Couldn't download the online-play add-on. Check the internet connection.",
-      'peer-unavailable': 'No game found with that code. Check the code and that the host is still waiting.',
+      'peer-unavailable': 'No game found with that code. Check the code, and make sure the host still has the code showing on screen.',
       network: "Couldn't reach the matchmaking server. Check the internet connection.",
-      'server-error': 'The free matchmaking server is busy or down right now.',
+      'server-error': 'The free matchmaking server is busy or down right now. Try again in a minute.',
       'socket-error': "Couldn't reach the matchmaking server. Check the internet connection.",
       'browser-incompatible': "This browser doesn't support online play (WebRTC).",
-      timeout: "Couldn't connect in time. The two devices may be on networks that block direct connections.",
-      lost: 'Connection lost. The other player left or the internet dropped.',
+      timeout: "Couldn't connect in time. Tip: the HOST must keep the game open on screen (don't switch apps). Then try again.",
+      lost: 'Connection lost. The other player left, the screen locked, or the internet dropped.',
     };
     this.error = msgs[kind] || ('Connection problem: ' + (detail || kind));
+    const d = this.diag; this.diagLine = 'DIRECT: ' + (d.pc || d.ice || 'no answer') + (d.cands ? ' [' + d.cands.slice(0, 12) + ']' : '') + '   RELAY: ' + (d.relay || 'off') + '   (' + kind + ')';
+    this.log('FAIL ' + kind + ' ' + (detail || '') + ' | ' + this.diagLine);
     this.cleanup();
     hideJoinBox();
-    game.lobby = { view: 'error', sel: 0 };
+    game.lobby = { view: 'error', sel: 1 };
     setState('lobby'); Sound.play('ko');
   },
   cleanup() {
-    clearTimeout(this.joinTimer);
+    this.gen++;
+    clearTimeout(this.joinTimer); for (const t of this.timers) clearTimeout(t); this.timers = [];
     try { if (this.conn) this.conn.close(); } catch (e) { /* ignore */ }
+    for (const c of this.pending) { try { c.close(); } catch (e) { /* ignore */ } }
     try { if (this.peer) this.peer.destroy(); } catch (e) { /* ignore */ }
-    this.conn = null; this.peer = null; this.role = null; this.status = '';
+    this.closeRelays(null);
+    this.conn = null; this.peer = null; this.role = null; this.status = ''; this.pending = []; this.onRelayUp = null;
     game.inputs[1].touch = null; game.inputs[0].map = CONFIG.KEYS.p1;
   },
   leave() { if (this.conn && this.conn.open) { try { this.conn.send({ t: 'bye' }); } catch (e) { /* ignore */ } } this.cleanup(); openModeSelect(); },
+  retry() { if (this.lastRole === 'guest' && this.code) this.join(this.code); else this.host(); },
+  /** Both sides: a link opened. First one wins; extra links are dropped. */
+  accept(link) {
+    if (this.conn && this.conn.open) { if (this.conn !== link) link.close(); return false; }
+    this.conn = link; this.lastRx = performance.now(); this.diag.link = link.kind;
+    this.log('LINKED via ' + link.kind + (link.r ? ' ' + link.r.url : ''));
+    clearTimeout(this.joinTimer);
+    if (link.kind === 'direct') { this.closeRelays(null); for (const c of this.pending) if (c !== link.conn) { try { c.close(); } catch (e) { /* ignore */ } } }
+    else { this.closeRelays(link.r); for (const c of this.pending) { try { c.close(); } catch (e) { /* ignore */ } } this.pending = []; }
+    this.status = 'connected';
+    const gen = this.gen, wd = () => { if (gen !== this.gen || !this.online()) return; if (!document.hidden && performance.now() - this.lastRx > 12000) { this.fail('lost', 'no data 12s'); return; } this.later(wd, 1000); };
+    this.later(wd, 1000);
+    return true;
+  },
+  rx(m) { this.lastRx = performance.now(); if (this.role === 'host') this.onHostData(m); else this.onGuestData(m); },
+  directFailed(why) {
+    this.log('direct failed: ' + why);
+    if (this.role === 'guest' && !this.online() && !this.relays.length && this.diag.relay !== 'connecting') { this.fail(why); return; }
+    if (this.role === 'guest' && !this.online() && this.sayHello) this.sayHello();
+  },
   async host(attempt = 0) {
-    this.cleanup(); this.error = ''; this.status = 'Starting...';
+    this.cleanup(); this.error = ''; this.status = 'Starting...'; this.diag = {}; this.lastRole = 'host';
     game.lobby = { view: 'host', sel: 0 };
-    try { await this.loadLib(); } catch (e) { this.fail(e.message); return; }
+    const gen = this.gen;
     this.code = Array.from({ length: 4 }, () => CODE_CHARS[(Math.random() * CODE_CHARS.length) | 0]).join('');
     this.role = 'host';
-    const peer = (this.peer = new window.Peer(ROOM_PREFIX + this.code));
-    peer.on('open', () => { this.status = 'waiting'; });
+    this.log('hosting ' + this.code);
+    // relay side: guests say hello on <code>/h; we answer on <code>/g/<guestId>
+    let relayGuest = null;
+    this.startRelays((r, w) => {
+      if (!w || !w.g) return;
+      if (w.m && w.m.t === 'hello') {
+        if (this.online() && relayGuest !== w.g) return;
+        if (!this.online()) {
+          relayGuest = w.g;
+          const link = this.relayLink(r, RELAY_ROOT + this.code + '/g/' + w.g, null);
+          link.send({ t: 'welcome' });
+          if (this.accept(link)) this.startOnline();
+        } else this.conn.send({ t: 'welcome' });
+      } else if (w.g === relayGuest && this.conn && this.conn.kind === 'relay') this.rx(w.m);
+    }, RELAY_ROOT + this.code + '/h');
+    this.onRelayUp = () => { if (NET_Q.get('p2p') === '0' || (this.diag.signal && this.diag.signal !== 'ok')) this.status = 'waiting'; };
+    if (NET_Q.get('p2p') === '0') return;
+    try { await this.loadLib(); } catch (e) { if (gen === this.gen) { if (this.relays.length) { this.status = 'waiting'; this.diag.signal = 'no-lib'; } else this.fail(e.message); } return; }
+    if (gen !== this.gen) return;
+    const peer = (this.peer = await this.newPeer(ROOM_PREFIX + this.code));
+    if (gen !== this.gen) { peer.destroy(); return; }
+    peer.on('open', () => { this.status = 'waiting'; this.diag.signal = 'ok'; this.log('signaling open'); });
+    peer.on('disconnected', () => { this.diag.signal = 'lost'; this.log('signaling disconnected'); });
     peer.on('error', (err) => {
+      this.log('peer error ' + err.type + ' ' + err.message);
+      if (this.peer !== peer) return;
       if (err.type === 'unavailable-id' && attempt < 3) { this.host(attempt + 1); return; }
-      if (this.peer === peer) this.fail(err.type, err.message);
+      if (['network', 'server-error', 'socket-error', 'socket-closed', 'disconnected'].includes(err.type) && this.relays.length) { this.diag.signal = err.type; this.status = 'waiting'; return; }
+      if (!this.online()) this.fail(err.type, err.message);
     });
     peer.on('connection', (conn) => {
-      if (this.conn) { conn.on('open', () => conn.close()); return; }
-      this.conn = conn;
-      conn.on('open', () => { this.status = 'connected'; this.startOnline(); });
-      conn.on('data', (m) => this.onHostData(m));
-      conn.on('close', () => { if (this.conn === conn) this.fail('lost'); });
-      conn.on('error', () => { if (this.conn === conn) this.fail('lost'); });
+      this.log('incoming direct link'); this.pending.push(conn); this.watchIce(conn);
+      conn.on('open', () => { if (this.accept(this.directLink(conn))) this.startOnline(); });
+      conn.on('data', (m) => { if (this.conn && this.conn.conn === conn) this.rx(m); });
+      conn.on('close', () => { if (this.conn && this.conn.conn === conn) this.fail('lost'); });
+      conn.on('error', (e) => { this.log('conn error ' + (e && e.message)); if (this.conn && this.conn.conn === conn) this.fail('lost'); });
     });
+    // relay-only hosts still need a status even if signaling is slow
+    this.later(() => { if (this.status !== 'waiting' && this.relays.some((r) => r.up)) this.status = 'waiting'; }, 4000);
   },
   async join(code) {
-    this.cleanup(); this.error = ''; this.status = 'Connecting...';
+    this.cleanup(); this.error = ''; this.status = 'Connecting...'; this.diag = {}; this.lastRole = 'guest';
     game.lobby = { view: 'joining', sel: 0 };
     this.code = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
-    try { await this.loadLib(); } catch (e) { this.fail(e.message); return; }
     this.role = 'guest';
-    const peer = (this.peer = new window.Peer());
-    this.joinTimer = setTimeout(() => { if (!this.online()) this.fail('timeout'); }, 15000);
-    peer.on('error', (err) => { if (this.peer === peer) this.fail(err.type, err.message); });
-    peer.on('open', () => {
-      const conn = (this.conn = peer.connect(ROOM_PREFIX + this.code, { reliable: true, serialization: 'json' }));
-      conn.on('open', () => { clearTimeout(this.joinTimer); this.status = 'connected'; game.inputs[0].map = KEYS_LOCAL; setState('netwait'); });
-      conn.on('data', (m) => this.onGuestData(m));
-      conn.on('close', () => { if (this.conn === conn) this.fail('lost'); });
-      conn.on('error', () => { if (this.conn === conn) this.fail('lost'); });
+    const gen = this.gen, gid = Math.random().toString(36).slice(2, 10);
+    this.log('joining ' + this.code);
+    this.joinTimer = this.later(() => { if (!this.online()) this.fail('timeout'); }, 35000);
+    // relay: subscribe to our own topic now, say hello once direct looks stuck
+    let helloOn = false;
+    const hello = (r) => { if (r.up && !this.online()) { this.log('relay hello via ' + r.url); r.c.publish(RELAY_ROOT + this.code + '/h', JSON.stringify({ g: gid, m: { t: 'hello' } })); } };
+    this.sayHello = () => { if (helloOn || gen !== this.gen) return; helloOn = true; this.status = 'Trying relay...'; for (const r of this.relays) hello(r); this.later(() => { helloOn = false; if (!this.online()) this.sayHello(); }, 4000); };
+    this.onRelayUp = (r) => { if (helloOn) hello(r); };
+    this.startRelays((r, m) => {
+      if (m.t === 'welcome') {
+        if (!this.online()) { const link = this.relayLink(r, RELAY_ROOT + this.code + '/h', gid); if (this.accept(link)) { game.inputs[0].map = KEYS_LOCAL; setState('netwait'); } }
+        return;
+      }
+      if (this.conn && this.conn.kind === 'relay' && this.conn.r === r) this.rx(m);
+    }, RELAY_ROOT + this.code + '/g/' + gid);
+    const directWait = NET_Q.get('p2p') === '0' ? 0 : 9000;
+    this.later(() => { if (!this.online()) this.sayHello(); }, directWait);
+    if (NET_Q.get('p2p') === '0') return;
+    try { await this.loadLib(); } catch (e) { this.directFailed(e.message); return; }
+    if (gen !== this.gen) return;
+    const peer = (this.peer = await this.newPeer());
+    if (gen !== this.gen) { peer.destroy(); return; }
+    peer.on('error', (err) => {
+      this.log('peer error ' + err.type + ' ' + err.message);
+      if (this.peer !== peer || this.online()) return;
+      if (err.type === 'browser-incompatible') { this.directFailed(err.type); return; }
+      this.diag.signal = err.type; this.directFailed(err.type);   // e.g. peer-unavailable: host's phone may have dropped signaling; the relay can still reach it
     });
+    peer.on('open', () => {
+      this.status = 'Connecting directly...'; this.diag.signal = 'ok'; this.log('signaling open, dialing host');
+      const conn = peer.connect(ROOM_PREFIX + this.code, { reliable: true, serialization: 'json' });
+      this.pending.push(conn); this.watchIce(conn);
+      conn.on('open', () => { if (this.accept(this.directLink(conn))) { game.inputs[0].map = KEYS_LOCAL; setState('netwait'); } });
+      conn.on('data', (m) => { if (this.conn && this.conn.conn === conn) this.rx(m); });
+      conn.on('close', () => { if (this.conn && this.conn.conn === conn) this.fail('lost'); });
+      conn.on('error', (e) => { this.log('conn error ' + (e && e.message)); if (this.conn && this.conn.conn === conn) this.fail('lost'); else this.directFailed('conn error'); });
+    });
+  },
+  /** iOS Safari kills sockets when the page is in the background (e.g. while texting the code). */
+  onVisible() {
+    if (document.hidden || !this.role) return;
+    this.log('page visible again');
+    if (this.peer && this.peer.disconnected && !this.peer.destroyed) { try { this.peer.reconnect(); this.log('signaling reconnect'); } catch (e) { /* ignore */ } }
+    for (const r of this.relays) if (!r.up) { try { r.c.reconnect(); } catch (e) { /* ignore */ } }
+    this.lastRx = performance.now();
   },
   /* ---------- host side ---------- */
   startOnline() {
@@ -3733,7 +3888,9 @@ const Net = {
   },
   sendSnap() {
     if (!this.online()) return;
-    try { this.conn.send(encodeSnapshot()); } catch (e) { /* ignore */ }
+    const relay = this.conn.kind === 'relay';
+    if (relay && game.frame % 4 !== 0) return;   // relay: ~15 updates/s and fewer particles to stay light
+    try { const s = encodeSnapshot(); if (relay && s.particles && s.particles.length > 40) s.particles = s.particles.slice(-40); this.conn.send(s); } catch (e) { /* ignore */ }
     this.sfx.length = 0; this.voice.length = 0;
   },
   /* ---------- guest side ---------- */
@@ -3755,6 +3912,8 @@ const Net = {
     }
   },
 };
+document.addEventListener('visibilitychange', () => Net.onVisible());
+window.addEventListener('pageshow', () => Net.onVisible());
 
 /* ---------- state snapshots ---------- */
 const SNAP_SKIP_F = new Set(['ch', 'brain', 'dims', 'aiHeld', 'queued', 'move']);
@@ -3874,7 +4033,7 @@ function lobbyAction(id) {
   else if (id === 'join') showJoinBox();
   else if (id === 'back' || id === 'cancel') { Net.cleanup(); hideJoinBox(); if (id === 'cancel') game.lobby = { view: 'menu', sel: 0 }; else openModeSelect(); }
   else if (id === 'shared') chooseMode('shared');
-  else if (id === 'retry') { game.lobby = { view: 'menu', sel: 0 }; }
+  else if (id === 'retry') Net.retry();
 }
 function hitBtn(list, p) { return list.find((b) => p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h); }
 /** Menu-state update; returns true if it handled this frame. */
@@ -3948,16 +4107,21 @@ function drawLobby(g) {
       txt(g, 'YOUR ROOM CODE', 480, 140, 24, '#fff', 'center', 3);
       txt(g, Net.code, 480, 230, 110, '#7dff7a', 'center', 6);
       txt(g, 'ON THE OTHER DEVICE: OWN DEVICES > JOIN > TYPE THIS CODE', 480, 320, 16, '#fff', 'center', 3);
-      txt(g, 'WAITING FOR PLAYER 2' + '...'.slice(0, (game.frame >> 4) % 4), 480, 360, 20, '#ffd23f', 'center', 3);
+      txt(g, 'WAITING FOR PLAYER 2' + '...'.slice(0, (game.frame >> 4) % 4), 480, 356, 20, '#ffd23f', 'center', 3);
+      txt(g, 'KEEP THIS SCREEN OPEN. IF YOU LEAVE TO TEXT THE CODE, COME RIGHT BACK.', 480, 390, 14, '#ff8a8a', 'center', 0);
+      const d = Net.diag; txt(g, 'DIRECT: ' + (d.signal === 'ok' ? 'READY' : (d.signal || 'STARTING').toUpperCase()) + '    RELAY: ' + (d.relay || 'OFF').toUpperCase(), 480, 414, 13, '#9ab', 'center', 0);
     } else txt(g, 'CONNECTING TO MATCHMAKING SERVER' + '...'.slice(0, (game.frame >> 4) % 4), 480, 220, 20, '#fff', 'center', 3);
   } else if (L.view === 'joining') {
     txt(g, 'JOINING ROOM ' + Net.code + '...'.slice(0, (game.frame >> 4) % 4), 480, 220, 28, '#fff', 'center', 4);
+    txt(g, (Net.status || '').toUpperCase(), 480, 270, 18, '#ffd23f', 'center', 3);
+    txt(g, 'THIS CAN TAKE UP TO 30 SECONDS ON CELLULAR', 480, 300, 14, '#bbb', 'center', 0);
   } else if (L.view === 'error') {
     txt(g, "COULDN'T CONNECT", 480, 140, 40, '#ff5252', 'center', 5);
     const words = Net.error.toUpperCase().split(' '); let line = '', y = 205;
     for (const w of words) { if ((line + ' ' + w).length > 52) { txt(g, line, 480, y, 17, '#fff', 'center', 3); y += 24; line = w; } else line = line ? line + ' ' + w : w; }
     if (line) txt(g, line, 480, y, 17, '#fff', 'center', 3);
-    txt(g, 'PLAY ON ONE COMPUTER INSTEAD?', 480, 312, 18, '#ffd23f', 'center', 3);
+    txt(g, 'TRY AGAIN, OR PLAY ON ONE COMPUTER INSTEAD', 480, 302, 18, '#ffd23f', 'center', 3);
+    if (Net.diagLine) txt(g, Net.diagLine.toUpperCase(), 480, 326, 11, '#9ab', 'center', 0, 900);
   }
   if (L.view !== 'code') btns.forEach((b, i) => drawButton(g, b, (L.sel || 0) === i));
 }
