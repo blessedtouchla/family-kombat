@@ -1686,6 +1686,7 @@ const game = {
 game.inputs[0].touch = TouchPad;   // touch controls drive player 1
 
 function setState(s) { game.state = s; game.stateT = 0; }
+function afterWinner() { if (Arcade.active()) Arcade.afterMatch(); else openSelect(); }
 function isFightState() { return ['intro', 'fight', 'ko', 'finish', 'fatality'].includes(game.state); }
 function togglePause() {
   if (!isFightState() || game.mode === 'online') return;
@@ -1695,6 +1696,7 @@ function togglePause() {
 
 /* ---------------- Character select ---------------- */
 function openSelect() {
+  if (Arcade.active()) { game.arcade = null; CONFIG.CPU_LEVEL = BASE_CPU_LEVEL; }   // quitting out of an arcade run
   setState('select');
   game.sel = { p1: game.sel ? game.sel.p1 : 0, p2: game.sel ? game.sel.p2 : 1, p1Done: false, p2Done: false, startT: 0 };
   game.paused = false; game.fighters = [];
@@ -1730,13 +1732,13 @@ function selectStep() {
   i1.presses.length = 0; i2.presses.length = 0;
 }
 function toggleMode() {
-  const s = game.sel; if (s.p1Done || s.p2Done || game.mode === 'online') return;
+  const s = game.sel; if (s.p1Done || s.p2Done || game.mode === 'online' || game.arcade) return;
   game.mode = game.mode === 'cpu' ? '2p' : 'cpu'; Sound.play('select');
 }
 function selectConfirm(who) {
   const s = game.sel;
   if (who === 1) {
-    if (!s.p1Done) { s.p1Done = true; Sound.play('confirm'); announce(CHARACTERS[s.p1].name.toLowerCase()); }
+    if (!s.p1Done) { s.p1Done = true; Sound.play('confirm'); announce(CHARACTERS[s.p1].name.toLowerCase()); if (game.arcade && !game.arcade.started) { s.p2Done = true; Arcade.begin(s.p1); return; } }
     else if (game.mode === 'cpu' && !s.p2Done) { s.p2Done = true; Sound.play('confirm'); announce(CHARACTERS[s.p2].name.toLowerCase()); }
   } else if (!s.p2Done) { s.p2Done = true; Sound.play('confirm'); announce(CHARACTERS[s.p2].name.toLowerCase()); }
   if (s.p1Done && s.p2Done) s.startT = 50;
@@ -1817,7 +1819,7 @@ function step() {
 }
 function syncMusic() {
   const s = game.state;
-  const want = s === 'title' || s === 'mode' || s === 'lobby' || s === 'netwait' ? 'title' : s === 'select' || s === 'controls' ? 'select'
+  const want = s === 'title' || s === 'mode' || s === 'lobby' || s === 'netwait' || s === 'arcadeEnd' ? 'title' : s === 'select' || s === 'controls' || s === 'ladder' || s === 'continue' ? 'select'
     : s === 'winner' ? null : STAGES[game.stageIdx].song;
   if (want !== Music.name || (want && !Music.timer && Music.enabled && Sound.ctx)) Music.play(want);
   const duck = game.paused || (s === 'select' && game.showHelp);
@@ -1832,7 +1834,7 @@ function stepCore(codes) {
 
   // global keys
   if (game.mode === 'online' && isFightState() && codes.includes('Escape')) { Net.leave(); return; }
-  if (['mode', 'lobby', 'controls', 'netwait'].includes(game.state)) { menuStep(codes, has); return; }
+  if (['mode', 'lobby', 'controls', 'netwait', 'ladder', 'continue', 'arcadeEnd'].includes(game.state)) { menuStep(codes, has); return; }
   if (has(CONFIG.PAUSE_KEYS) && game.state === 'select' && game.mode === 'online' && !game.showHelp) { Net.leave(); return; }
   if (has(CONFIG.PAUSE_KEYS)) {
     if (isFightState()) togglePause();
@@ -1866,7 +1868,7 @@ function stepCore(codes) {
     case 'winner':
       game.stateT++;
       worldStep();
-      if (game.stateT > 70 && (has(CONFIG.CONFIRM_KEYS) || game.inputs[0].anyPress() || game.inputs[1].anyPress())) openSelect();
+      if (game.stateT > 70 && (has(CONFIG.CONFIRM_KEYS) || game.inputs[0].anyPress() || game.inputs[1].anyPress())) afterWinner();
       return;
     default:
       worldStep();
@@ -1989,7 +1991,7 @@ function handleTap(p) {
   if (Net.role === 'guest' && Net.online()) { guestTap(p); return; }
   if (menuTap(p)) return;
   if (game.state === 'title') { Sound.play('confirm'); openModeSelect(); return; }
-  if (game.state === 'winner') { if (game.stateT > 70) openSelect(); return; }
+  if (game.state === 'winner') { if (game.stateT > 70) afterWinner(); return; }
   if (game.state === 'select') {
     if (game.showHelp) { game.showHelp = false; return; }
     const s = game.sel;
@@ -2645,8 +2647,14 @@ function drawFighter(g, f) {
   const o = { spinX: f.spinX, rot: f.rot * f.facing, alpha: f.alpha * (f.invuln > 0 && f.t % 4 < 2 && f.ghost <= 0 ? 0.6 : 1), flash: f.flash > 0,
               hurt, headless: f.headless, skeleton: f.skeleton, xrayView: f.xrayView, charred: f.charred,
               anim: fighterAnim(f), animT: f.move ? f.move.frame : f.t, mult: f.shrink || 1 };
+  if (f.boss) {   // final boss: bigger, recoloured, with a red aura
+    const k = f.ch.scale / CHARACTERS[f.chIdx].scale;
+    g.save(); g.translate(f.x, f.y); g.scale(k, k); g.translate(-f.x, -f.y);
+    g.filter = BOSS.filter; g.shadowColor = '#ff1a1a'; g.shadowBlur = 18 + Math.sin(game.frame * 0.15) * 8;
+  }
   if (f.ghost > 0) for (const k of [-1, 1]) drawCharacter(g, f.chIdx, f.x + k * 50 * (f.ghost / 34), f.y, facing, pose, { ...o, alpha: 0.25 });
   drawCharacter(g, f.chIdx, f.x, f.y, facing, pose, o);
+  if (f.boss) g.restore();
   const S = f.ch.scale, top = f.y - 190 * S;
   // status effects
   if (f.trapped > 0) {
@@ -3058,7 +3066,7 @@ function drawSelect(g) {
   txt(g, 'CHOOSE YOUR FIGHTER', 480, 36, 42, '#ffd23f', 'center', 5);
   // mode toggle
   for (const bx of [170, 490]) { g.fillStyle = '#000'; g.fillRect(bx - 2, 62, 304, 38); g.fillStyle = '#2a1a44'; g.fillRect(bx, 64, 300, 34); g.fillStyle = '#ffd23f'; g.fillRect(bx, 64, 300, 2); g.fillRect(bx, 96, 300, 2); }
-  txt(g, (game.mode === 'online' ? '' : '\u25C0 ') + 'MODE: ' + (game.mode === 'cpu' ? '1P VS CPU' : game.mode === 'online' ? 'ONLINE 1V1' : '2 PLAYERS') + (game.mode === 'online' ? '' : ' \u25B6'), 320, 82, 18, '#fff', 'center', 3);
+  txt(g, (game.mode === 'online' ? '' : '\u25C0 ') + 'MODE: ' + (game.arcade ? 'ARCADE' : game.mode === 'cpu' ? '1P VS CPU' : game.mode === 'online' ? 'ONLINE 1V1' : '2 PLAYERS') + (game.mode === 'online' ? '' : ' \u25B6'), 320, 82, 18, '#fff', 'center', 3);
   txt(g, '\u25C0 STAGE: ' + (game.stageChoice < 0 ? 'RANDOM' : STAGES[game.stageChoice].name) + ' \u25B6', 640, 82, 18, '#fff', 'center', 3, 290);
   txt(g, '\u25C0 BACK', 20, 30, 15, '#aaa', 'left', 3);
   for (let i = 0; i < 4; i++) {
@@ -4010,10 +4018,141 @@ function submitJoin() {
   hideJoinBox(); Sound.play('confirm'); Net.join(v);
 }
 
+/* =====================================================================
+ * 22. ARCADE  -  classic 1-player ladder: pick a fighter, beat the other
+ *     three CPU fighters (each one tougher), then the final BOSS.
+ *     Lose a fight and you can CONTINUE (retry the same opponent).
+ * ===================================================================== */
+const ARCADE_LEVELS = [0.32, 0.55, 0.78];
+const BOSS = { name: 'SHADOW KING', hp: 1.75, power: 1.35, scale: 1.3, walk: 1.1, level: 0.95, filter: 'hue-rotate(165deg) saturate(1.7) contrast(1.2) brightness(0.85)' };
+const BASE_CPU_LEVEL = CONFIG.CPU_LEVEL;
+const Arcade = {
+  /** Mode menu > ARCADE: go to character select (P1 picks only). */
+  open() { game.arcade = { started: false, idx: 0, ladder: [], continues: 0, p1: 0, won: false, cd: 0 }; game.mode = 'cpu'; openSelect(); },
+  active() { return !!(game.arcade && game.arcade.started); },
+  begin(p1) {
+    const others = [0, 1, 2, 3].filter((i) => i !== p1);
+    for (let i = others.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [others[i], others[j]] = [others[j], others[i]]; }
+    const A = game.arcade;
+    A.started = true; A.p1 = p1; A.idx = 0; A.continues = 0; A.won = false;
+    A.ladder = others.map((ch, i) => ({ ch, level: ARCADE_LEVELS[i], boss: false })).concat([{ ch: p1, level: BOSS.level, boss: true }]);
+    Arcade.showLadder();
+  },
+  current() { const A = game.arcade; return A.ladder[A.idx]; },
+  showLadder() { setState('ladder'); game.fighters = []; const r = Arcade.current(); Sound.play(r.boss ? 'gong' : 'confirm'); if (r.boss) { announce('Final boss'); Sound.play('st_finish'); } },
+  fight() {
+    const A = game.arcade, r = Arcade.current();
+    CONFIG.CPU_LEVEL = r.level;
+    game.stageIdx = r.boss ? STAGES.length - 1 : (Math.random() * STAGES.length) | 0;
+    startMatch(A.p1, r.ch, 'cpu');
+    if (r.boss) {
+      const f = game.fighters[1], base = CHARACTERS[r.ch];
+      f.ch = Object.assign(Object.create(base), { name: BOSS.name, maxHp: Math.round(base.maxHp * BOSS.hp), power: base.power * BOSS.power, scale: base.scale * BOSS.scale, walk: base.walk * BOSS.walk });
+      f.boss = true; f.dims = dimsFor(f.ch); f.reset();
+      addText('FINAL BOSS', { x: 480, y: 150, size: 54, color: '#ff2a2a', dur: 110, kind: 'announce' });
+      game.shake = Math.max(game.shake, 14); Sound.play('boom');
+    }
+  },
+  /** Called when the winner screen is dismissed during arcade. */
+  afterMatch() {
+    const A = game.arcade;
+    if (game.winner && game.winner.side === 0) {
+      A.idx++;
+      if (A.idx >= A.ladder.length) { A.won = true; Arcade.end(); }
+      else Arcade.showLadder();
+    } else { setState('continue'); A.cd = 10 * 60; game.fighters = []; Sound.play('ko'); }
+  },
+  retry() { const A = game.arcade; A.continues++; Sound.play('confirm'); Arcade.showLadder(); },
+  end() {
+    setState('arcadeEnd'); game.fighters = [];
+    if (game.arcade.won) { Sound.play('st_win'); announce('You win'); } else { announce('Game over'); Sound.play('ko'); }
+  },
+  quit() { game.arcade = null; CONFIG.CPU_LEVEL = BASE_CPU_LEVEL; openModeSelect(); },
+  step(ok, back) {
+    const A = game.arcade; game.stateT++;
+    if (game.state === 'ladder') { if ((ok && game.stateT > 20) || game.stateT > 240) Arcade.fight(); else if (back) Arcade.quit(); }
+    else if (game.state === 'continue') { if (ok && game.stateT > 20) Arcade.retry(); else if (back || --A.cd <= 0) Arcade.end(); }
+    else if (game.state === 'arcadeEnd') {
+      if (A.won && game.frame % 4 === 0) spawnParticle({ x: rand(0, 960), y: -10, vx: rand(-1, 1), vy: rand(2, 4), life: 160, size: rand(5, 10), color: pick(['#ffd23f', '#ff5252', '#7dff7a', '#6aa8ff', '#ff8af0']), type: 'spark' });
+      for (const p of game.particles) { p.x += p.vx || 0; p.y += p.vy || 0; p.life--; }
+      game.particles = game.particles.filter((p) => p.life > 0);
+      if ((ok || back) && game.stateT > 60) Arcade.quit();
+    }
+  },
+  tap() {
+    if (game.state === 'ladder' && game.stateT > 20) Arcade.fight();
+    else if (game.state === 'continue' && game.stateT > 20) Arcade.retry();
+    else if (game.state === 'arcadeEnd' && game.stateT > 60) Arcade.quit();
+  },
+};
+function drawBossPortrait(g, chIdx, x, y, mult) {
+  g.save(); g.filter = BOSS.filter;
+  g.shadowColor = '#ff1a1a'; g.shadowBlur = 24;
+  drawCharacter(g, chIdx, x, y, -1, P({ drop: 4 }), { mult });
+  g.restore();
+}
+function drawLadder(g) {
+  const A = game.arcade, t = game.frame, r = Arcade.current();
+  drawMenuBg(g);
+  txt(g, 'ARCADE', 480, 40, 40, '#ffd23f', 'center', 5);
+  txt(g, 'FIGHT ' + (A.idx + 1) + ' OF ' + A.ladder.length + (A.continues ? '   \u2022   CONTINUES USED: ' + A.continues : ''), 480, 76, 16, '#fff', 'center', 3);
+  // the tower: first opponent at the bottom, boss on top
+  const n = A.ladder.length, tx = 560, tw = 330, rh = 84, top = 100;
+  for (let i = 0; i < n; i++) {
+    const rung = A.ladder[i], y = top + (n - 1 - i) * (rh + 2), done = i < A.idx, cur = i === A.idx;
+    g.fillStyle = '#000'; g.fillRect(tx - 3, y - 3, tw + 6, rh + 6);
+    g.fillStyle = cur ? (rung.boss ? '#4a0a0a' : '#5a2a10') : done ? '#1a2a1a' : '#241638'; g.fillRect(tx, y, tw, rh);
+    if (cur) { g.fillStyle = rung.boss ? '#ff2a2a' : '#ffd23f'; g.fillRect(tx, y, tw, 4); g.fillRect(tx, y + rh - 4, tw, 4); }
+    g.save(); g.beginPath(); g.rect(tx, y, 110, rh); g.clip();
+    if (rung.boss) drawBossPortrait(g, rung.ch, tx + 55, y + 235, 1.25);
+    else drawCharacter(g, rung.ch, tx + 55, y + 200, -1, P({ drop: 4 }), { mult: 1.05 });
+    g.restore();
+    txt(g, rung.boss ? BOSS.name : CHARACTERS[rung.ch].name, tx + 220, y + 34, 22, rung.boss ? '#ff5252' : '#fff', 'center', 3, 200);
+    txt(g, done ? 'DEFEATED \u2714' : rung.boss ? 'FINAL BOSS' : ['EASY', 'MEDIUM', 'HARD'][i] || '', tx + 220, y + 62, 14, done ? '#7dff7a' : rung.boss ? '#ff8a8a' : '#bbb', 'center', 0);
+    if (cur && (t >> 4) % 2 === 0) txt(g, '\u25B6', tx - 22, y + rh / 2, 28, '#ffd23f', 'center', 3);
+  }
+  // you vs them
+  drawShadow(g, 170, 40);
+  drawCharacter(g, A.p1, 170, CONFIG.GROUND_Y, 1, P({ drop: 4 + Math.sin(t * 0.08) * 1.5 }), { mult: 1 });
+  txt(g, CHARACTERS[A.p1].name, 170, 486, 18, '#7ff', 'center', 3);
+  txt(g, 'VS', 340, 300, 54, '#ff5252', 'center', 5);
+  if (r.boss) {
+    if ((t >> 3) % 2 === 0) txt(g, 'WARNING!', 340, 200, 40, '#ff2a2a', 'center', 5);
+    txt(g, 'A NEW CHALLENGER: ' + BOSS.name, 340, 240, 15, '#ffd23f', 'center', 3, 380);
+  }
+  txt(g, game.touch ? 'TAP TO FIGHT!' : 'PRESS ENTER OR PUNCH TO FIGHT!', 480, 526, 18, (t >> 4) % 2 ? '#fff' : '#ffd23f', 'center', 3);
+}
+function drawContinue(g) {
+  const A = game.arcade, r = Arcade.current();
+  drawMenuBg(g);
+  txt(g, 'CONTINUE?', 480, 150, 70, '#ff5252', 'center', 6);
+  txt(g, String(Math.max(0, Math.ceil(A.cd / 60))), 480, 270, 110, '#ffd23f', 'center', 6);
+  txt(g, 'REMATCH VS ' + (r.boss ? BOSS.name : CHARACTERS[r.ch].name), 480, 360, 20, '#fff', 'center', 3);
+  txt(g, game.touch ? 'TAP TO CONTINUE' : 'PRESS ENTER OR PUNCH TO CONTINUE   \u2022   ESC TO QUIT', 480, 420, 18, '#7ff', 'center', 3);
+}
+function drawArcadeEnd(g) {
+  const A = game.arcade, t = game.frame;
+  drawMenuBg(g);
+  drawParticles(g);
+  if (A.won) {
+    txt(g, 'YOU WIN!', 480, 90, 80, '#ffd23f', 'center', 6);
+    txt(g, CHARACTERS[A.p1].name + ' DEFEATED THE ' + BOSS.name + '!', 480, 150, 22, '#fff', 'center', 3);
+    txt(g, 'FAMILY KOMBAT CHAMPION', 480, 186, 26, '#ff5252', 'center', 4);
+    drawShadow(g, 480, 50);
+    drawCharacter(g, A.p1, 480, CONFIG.GROUND_Y + Math.sin(t * 0.1) * 3, 1, POSES.victory || P({}), { mult: 1.25 });
+    txt(g, A.continues ? 'CONTINUES USED: ' + A.continues : 'NO CONTINUES  -  PERFECT RUN!', 480, 500, 16, '#7dff7a', 'center', 3);
+  } else {
+    txt(g, 'GAME OVER', 480, 200, 90, '#ff2a2a', 'center', 6);
+    txt(g, 'YOU MADE IT TO FIGHT ' + (A.idx + 1) + ' OF ' + A.ladder.length, 480, 290, 22, '#fff', 'center', 3);
+  }
+  if (game.stateT > 60) txt(g, game.touch ? 'TAP TO PLAY AGAIN' : 'PRESS ENTER', 480, 530, 16, '#fff', 'center', 3);
+}
+
 /* ---------- mode select / lobby / controls screens ---------- */
 const MODE_BTNS = [
-  { id: 'online', x: 200, y: 196, w: 560, h: 92, label: 'OWN DEVICES', sub: 'Each player on their own phone, tablet or PC (online)' },
-  { id: 'shared', x: 200, y: 312, w: 560, h: 92, label: 'SHARED KEYBOARD', sub: 'Two players on one computer (works offline)' },
+  { id: 'arcade', x: 200, y: 186, w: 560, h: 82, label: 'ARCADE', sub: '1 player: beat all 3 fighters, then the BOSS' },
+  { id: 'online', x: 200, y: 282, w: 560, h: 82, label: 'OWN DEVICES', sub: 'Each player on their own phone, tablet or PC (online)' },
+  { id: 'shared', x: 200, y: 378, w: 560, h: 82, label: 'SHARED KEYBOARD', sub: 'Two players on one computer (works offline)' },
 ];
 function lobbyButtons() {
   const v = game.lobby ? game.lobby.view : 'menu';
@@ -4021,10 +4160,11 @@ function lobbyButtons() {
   if (v === 'error') return [{ id: 'shared', x: 80, y: 340, w: 390, h: 70, label: 'SHARED KEYBOARD' }, { id: 'retry', x: 490, y: 340, w: 390, h: 70, label: 'TRY AGAIN' }, { id: 'back', x: 380, y: 440, w: 200, h: 50, label: 'BACK' }];
   return [{ id: 'cancel', x: 380, y: 440, w: 200, h: 50, label: 'CANCEL' }];
 }
-function openModeSelect() { hideJoinBox(); setState('mode'); game.modeSel = game.modeSel || 0; game.fighters = []; game.mode = 'cpu'; game.paused = false; }
+function openModeSelect() { game.arcade = null; CONFIG.CPU_LEVEL = BASE_CPU_LEVEL; hideJoinBox(); setState('mode'); game.modeSel = game.modeSel || 0; game.fighters = []; game.mode = 'cpu'; game.paused = false; }
 function chooseMode(id) {
   Sound.play('confirm');
-  if (id === 'online') { game.lobby = { view: 'menu', sel: 0 }; setState('lobby'); }
+  if (id === 'arcade') { Net.cleanup(); Arcade.open(); }
+  else if (id === 'online') { game.lobby = { view: 'menu', sel: 0 }; setState('lobby'); }
   else { Net.cleanup(); game.mode = '2p'; openSelect(); }
 }
 function lobbyAction(id) {
@@ -4043,7 +4183,8 @@ function menuStep(codes, has) {
   const ok = has(CONFIG.CONFIRM_KEYS) || i1.takePress('LP') || i1.takePress('HP') || i2.takePress('LP') || i2.takePress('HP');
   const back = codes.includes('Escape') || has(CONFIG.BACK_KEYS);
   if (game.state === 'mode') {
-    if (dir('up') || dir('down')) { game.modeSel = 1 - game.modeSel; Sound.play('select'); }
+    if (dir('up')) { game.modeSel = (game.modeSel + MODE_BTNS.length - 1) % MODE_BTNS.length; Sound.play('select'); }
+    if (dir('down')) { game.modeSel = (game.modeSel + 1) % MODE_BTNS.length; Sound.play('select'); }
     if (ok) chooseMode(MODE_BTNS[game.modeSel].id);
     else if (back) { setState('title'); }
   } else if (game.state === 'lobby') {
@@ -4060,6 +4201,8 @@ function menuStep(codes, has) {
     else if (back) { openSelect(); }
   } else if (game.state === 'netwait') {
     if (back) Net.leave();
+  } else if (['ladder', 'continue', 'arcadeEnd'].includes(game.state)) {
+    Arcade.step(ok, back);
   } else return false;
   i1.presses.length = 0; i2.presses.length = 0;
   return true;
@@ -4070,6 +4213,7 @@ function menuTap(p) {
   if (game.state === 'lobby') { const b = hitBtn(lobbyButtons(), p); if (b) lobbyAction(b.id); return true; }
   if (game.state === 'controls') { if (game.stateT > 12) beginPendingMatch(); return true; }
   if (game.state === 'netwait') return true;
+  if (['ladder', 'continue', 'arcadeEnd'].includes(game.state)) { Arcade.tap(); return true; }
   return false;
 }
 function drawMenuBg(g) {
@@ -4090,8 +4234,8 @@ function drawModeSelect(g) {
   drawLogo(g, 480, 84, 'small');
   txt(g, 'HOW ARE YOU PLAYING?', 480, 168, 22, '#ff8a8a', 'center', 3);
   MODE_BTNS.forEach((b, i) => drawButton(g, b, game.modeSel === i));
-  txt(g, game.touch ? 'TAP A MODE' : 'W/S OR \u2191/\u2193 TO CHOOSE, ENTER TO PICK', 480, 440, 16, '#fff', 'center', 3);
-  txt(g, 'N = MUSIC ON/OFF', 480, 520, 13, '#9ab', 'center', 0);
+  txt(g, game.touch ? 'TAP A MODE' : 'W/S OR \u2191/\u2193 TO CHOOSE, ENTER TO PICK', 480, 488, 16, '#fff', 'center', 3);
+  txt(g, 'N = MUSIC ON/OFF', 480, 524, 13, '#9ab', 'center', 0);
 }
 function drawLobby(g) {
   drawMenuBg(g);
@@ -4171,6 +4315,9 @@ function render() {
     case 'mode': drawModeSelect(g); break;
     case 'lobby': drawLobby(g); break;
     case 'netwait': drawNetWait(g); break;
+    case 'ladder': drawLadder(g); break;
+    case 'continue': drawContinue(g); break;
+    case 'arcadeEnd': drawArcadeEnd(g); break;
     case 'controls': drawControls(g); break;
     case 'select': if (game.sel) drawSelect(g); else drawNetWait(g); break;
     default: if (game.fighters.length === 2) drawFight(g); else drawNetWait(g);
@@ -4198,7 +4345,7 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 /* Small hook for automated tests / tinkering in the browser console. */
-window.FK = { game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS };
+window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS };
 </script>
 </body>
 </html>
