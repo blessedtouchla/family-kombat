@@ -3037,18 +3037,84 @@ function drawFinishPrompt(g) {
   g.fillStyle = '#ff2a2a'; g.fillRect(180, Y + BH, 600 * Math.max(0, left), 6);
 }
 /** On-screen joystick + buttons for phones and tablets. */
+/* ---------------- Coloured on-screen joystick directions ----------------
+ * Colours follow the PHYSICAL direction on screen (up/down/left/right), the same colours are used for the
+ * arrows in the MOVES panel / pause screen / select preview. Drawing only: input (stick anywhere on the left,
+ * same dead zone) is unchanged. */
+const DPAD = {
+  up:    { col: '#3ce05a', glyph: '\u2191', ax: 0, ay: -1 },   // green
+  down:  { col: '#ff4fd8', glyph: '\u2193', ax: 0, ay: 1 },    // magenta
+  left:  { col: '#4d9dff', glyph: '\u2190', ax: -1, ay: 0 },   // blue
+  right: { col: '#ff3b3b', glyph: '\u2192', ax: 1, ay: 0 },    // red
+};
+const DPAD_PAD = { off: 50, r: 24 };
+const ARROW_COL = { '\u2191': DPAD.up.col, '\u2193': DPAD.down.col, '\u2190': DPAD.left.col, '\u2192': DPAD.right.col };
+const DPAD_PAL_EXTRA = [];   // exact palette entries so the colours survive the pixel-palette snap
+for (const k in DPAD) { const c = DPAD[k].col; DPAD_PAL_EXTRA.push(c, shade(c, -0.4), shade(c, 0.35)); }
+/** Pad centre in game units for a stick origin (used by drawing and tests). */
+function dpadPadPos(k, bx, by) { const d = DPAD[k]; return { x: bx + d.ax * DPAD_PAD.off, y: by + d.ay * DPAD_PAD.off }; }
+function drawDpadPads(g, bx, by) {
+  const r = DPAD_PAD.r;
+  for (const k in DPAD) {
+    const d = DPAD[k], on = !!TouchPad.held[k], { x, y } = dpadPadPos(k, bx, by);
+    if (on) {   // pressed: glow halo + full-colour pad with a white rim
+      g.globalAlpha = 0.6; circle(g, x, y, r + 11, shade(d.col, 0.35), null);
+      g.globalAlpha = 1; circle(g, x, y, r + 2, d.col, '#ffffff', 4);
+    } else {    // idle: dark tinted pad with a bright coloured rim (readable on any stage)
+      g.globalAlpha = 0.9; circle(g, x, y, r, shade(d.col, -0.4), d.col, 4);
+    }
+    g.globalAlpha = 1; drawBoldArrow(g, x, y, d.ax, d.ay, on ? 1.15 : 1);
+  }
+}
+function drawBoldArrow(g, x, y, ax, ay, s) {
+  g.save(); g.translate(x, y); g.rotate(Math.atan2(ay, ax)); g.scale(s, s);   // shape drawn pointing +x
+  g.beginPath(); g.moveTo(14, 0); g.lineTo(1, -12); g.lineTo(1, -5); g.lineTo(-12, -5); g.lineTo(-12, 5); g.lineTo(1, 5); g.lineTo(1, 12); g.closePath();
+  g.lineJoin = 'miter'; g.lineWidth = 4; g.strokeStyle = '#000'; g.stroke(); g.fillStyle = '#fff'; g.fill();
+  g.restore();
+}
+/** Pixel text made of [string, colour] segments, aligned like txt(). Logged to TXT_LOG as one string. */
+function txtSeg(g, segs, x, y, size, align = 'left', outline = 0, maxW = 940) {
+  segs = segs.filter((q) => q[0] !== '');
+  if (TXT_LOG) TXT_LOG.push(segs.map((q) => q[0]).join('').toUpperCase());
+  const bms = segs.map((q) => textBitmap(String(q[0]).toUpperCase(), q[1], outline ? 1 : 0));
+  const gap = outline ? 0 : 1, wAt = (p) => bms.reduce((a, b) => a + b.width * p * 2, 0) + (bms.length - 1) * gap * p * 2;
+  let px = fontPx(size);
+  while (px > 1 && wAt(px) > maxW) px--;
+  const w = wAt(px);
+  let dx = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
+  g.save(); g.imageSmoothingEnabled = false;
+  for (const bm of bms) {
+    const bw = bm.width * px * 2, bh = bm.height * px * 2;
+    g.drawImage(bm, Math.round(dx / 2) * 2, Math.round((y - bh / 2) / 2) * 2, bw, bh);
+    dx += bw + gap * px * 2;
+  }
+  g.restore();
+  return w;
+}
+/** Like txt(), but every arrow glyph is drawn in its direction colour. */
+function txtC(g, s, x, y, size, color, align = 'left', outline = 0, maxW = 940) {
+  s = String(s);
+  if (!/[\u2190-\u2193]/.test(s)) return txt(g, s, x, y, size, color, align, outline, maxW);
+  return txtSeg(g, s.split(/([\u2190-\u2193])/).map((p) => [p, ARROW_COL[p] || color]), x, y, size, align, outline, maxW);
+}
+/** Facing-aware keyboard spelling of a move as coloured segments (direction keys use the physical colour). */
+function keySegs(s, keys, facing, base) {
+  const phys = (d) => d === 'F' ? (facing === 1 ? 'R' : 'L') : d === 'B' ? (facing === 1 ? 'L' : 'R') : d;
+  const DN = { U: 'up', D: 'down', L: 'left', R: 'right' }, out = [];
+  if (s.air) out.push([keys.U, DPAD.up.col], [', ', base]);
+  s.motion.forEach((d, i) => { const p = phys(d); if (i) out.push([' ', base]); out.push([keys[p], DPAD[DN[p]].col]); });
+  out.push([' + ' + keys[s.btn], base]);
+  return out;
+}
+
 function drawTouchControls(g) {
   g.save();
   const s = TouchPad.stick, bx = s ? s.ox : TOUCH_UI.stickBase.x, by = s ? s.oy : TOUCH_UI.stickBase.y;
-  g.globalAlpha = 0.35; circle(g, bx, by, TOUCH_UI.stickR, '#ffffff', '#fff', 3);
+  g.globalAlpha = 0.45; circle(g, bx, by, TOUCH_UI.stickR, '#111111', '#fff', 3);   // darker base = more contrast for the coloured pads
   let kx = bx, ky = by;
   if (s) { const dx = s.x - s.ox, dy = s.y - s.oy, dd = Math.hypot(dx, dy) || 1, m = Math.min(dd, TOUCH_UI.stickR); kx = bx + dx / dd * m; ky = by + dy / dd * m; }
-  g.globalAlpha = 0.6; circle(g, kx, ky, 30, '#ddd', '#fff', 3);
-  g.globalAlpha = 0.5;
-  for (const [ax, ay, rot] of [[0, -1, 0], [0, 1, Math.PI], [-1, 0, -Math.PI / 2], [1, 0, Math.PI / 2]]) {
-    g.save(); g.translate(bx + ax * 52, by + ay * 52); g.rotate(rot); g.fillStyle = '#fff';
-    g.beginPath(); g.moveTo(0, -8); g.lineTo(7, 4); g.lineTo(-7, 4); g.fill(); g.restore();
-  }
+  g.globalAlpha = 0.5; circle(g, kx, ky, 30, '#ddd', '#fff', 3);
+  g.globalAlpha = 1; drawDpadPads(g, bx, by);   // pads on top of the knob so a pressed one is never hidden
   for (const b of TOUCH_UI.buttons) {
     const on = TouchPad.held[b.btn];
     const me = game.fighters[Net.role === 'guest' ? 1 : 0];
@@ -3138,7 +3204,7 @@ function drawMovesPanel(g) {
   TXT_LOG = [];
   g.fillStyle = 'rgba(5,5,15,0.92)'; g.fillRect(0, 0, 960, 540);
   txt(g, 'MOVES', 480, 22, 34, '#ffd23f', 'center', 4);
-  txt(g, '\u2192 = TOWARD OPPONENT   \u2190 = AWAY   \u2191 = JUMP   \u2193 = CROUCH', 480, 46, 15, '#7ff', 'center', 0);
+  txtC(g, '\u2192 = TOWARD OPPONENT   \u2190 = AWAY   \u2191 = JUMP   \u2193 = CROUCH', 480, 46, 15, '#7ff', 'center', 0);
   for (let s = 0; s < 2; s++) drawMoveColumn(g, s, 10 + s * 474, 58, 466, 414);
   g.fillStyle = '#000'; g.fillRect(368, 476, 224, 40); g.fillStyle = '#1f9e3a'; g.fillRect(370, 478, 220, 36);
   txt(g, online ? 'CLOSE' : 'RESUME', 480, 496, 22, '#fff', 'center', 3);
@@ -3154,24 +3220,24 @@ function drawMoveColumn(g, side, x, y, w, h) {
   txt(g, info.who, X, y + 15, 15, '#fff', 'left', 3);
   txt(g, ch.name, KX, y + 15, 24, ch.colors.accent, 'right', 3, w - 170);
   let yy = y + 43;
-  const head = (s, right) => { txt(g, s, X, yy, 15, '#ffd23f', 'left', 2); if (right) txt(g, right, KX, yy, 15, '#9ab', 'right', 0); yy += 17; };
+  const head = (s, right) => { txt(g, s, X, yy, 15, '#ffd23f', 'left', 2); if (right) txtC(g, right, KX, yy, 15, '#9ab', 'right', 0); yy += 17; };
   if (info.touch) { txt(g, 'PHONE: STICK + LP HP LK HK BUTTONS', X, yy, 15, '#9ab', 'left', 0, w - 20); yy += 15; }
-  if (k) { txt(g, `KEYS: ${k.U}${k.L}${k.D}${k.R}  ${k.LP}=LP ${k.HP}=HP ${k.LK}=LK ${k.HK}=HK ${k.ULT}=ULT`, X, yy, 15, '#9ab', 'left', 0, w - 20); yy += 15; }
+  if (k) { txtSeg(g, [['KEYS: ', '#9ab'], [k.U, DPAD.up.col], [k.L, DPAD.left.col], [k.D, DPAD.down.col], [k.R, DPAD.right.col], [`  ${k.LP}=LP ${k.HP}=HP ${k.LK}=LK ${k.HK}=HK ${k.ULT}=ULT`, '#9ab']], X, yy, 15, 'left', 0, w - 20); yy += 15; }
   if (!info.touch && !k) { txt(g, f.isCpu ? 'CONTROLLED BY THE COMPUTER' : 'YOUR OPPONENT', X, yy, 15, '#9ab', 'left', 0, w - 20); yy += 15; }
   yy += 3; head('BASIC ATTACKS', 'P = PUNCH   K = KICK');
   const cx = x + 44, cw = (w - 54) / 3;
-  L.basics.forEach((b, c) => txt(g, b.label, cx + c * cw, yy, 15, '#7ff', 'left', 0, cw - 4)); yy += 15;
+  L.basics.forEach((b, c) => txtC(g, b.label, cx + c * cw, yy, 15, '#7ff', 'left', 0, cw - 4)); yy += 15;
   for (const btn of BASIC_BTNS) {
     txt(g, btn, X, yy, 15, '#7ff', 'left', 0, 32);
     L.basics.forEach((b, c) => txt(g, b.list.find((m) => m.btn === btn).name, cx + c * cw, yy, 15, '#fff', 'left', 0, cw - 4));
     yy += 15;
   }
-  txt(g, 'BLOCK: HOLD \u2190 (AWAY)    LOW: HOLD \u2193\u2190', X, yy, 15, '#fff', 'left', 0, w - 20); yy += 19;
-  head('SPECIAL MOVES');
+  txtC(g, 'BLOCK: HOLD \u2190 (AWAY)    LOW: HOLD \u2193\u2190', X, yy, 15, '#fff', 'left', 0, w - 20); yy += 19;
+  head('SPECIAL MOVES', 'NOW FACING ' + (f.facing === 1 ? '\u2192' : '\u2190'));
   for (const s of L.specials) {
-    txt(g, specialInput(s, true), X, yy, 15, '#7ff', 'left', 0, 132);
+    txtC(g, specialInput(s, true), X, yy, 15, '#7ff', 'left', 0, 132);
     txt(g, s.name + (s.air ? ' (IN AIR)' : ''), NX, yy, 15, '#fff', 'left', 0, k ? 200 : w - 162);
-    if (k) txt(g, keyInput(s, k, f.facing), KX, yy, 15, '#9ab', 'right', 0, 100);
+    if (k) txtSeg(g, keySegs(s, k, f.facing, '#9ab'), KX, yy, 15, 'right', 0, 100);
     yy += 17;
   }
   yy += 2; head('ULTIMATE  (FULL METER)');
@@ -3179,9 +3245,9 @@ function drawMoveColumn(g, side, x, y, w, h) {
   if (k) txt(g, k.ULT, KX, yy, 15, '#9ab', 'right', 0, 30);
   yy += 19; head('FINISH THEM!  (LAST ROUND)');
   for (const fin of L.finishers) {
-    txt(g, motionText(fin.motion, fin.btn), X, yy, 15, '#ff8a8a', 'left', 0, 132);
+    txtC(g, motionText(fin.motion, fin.btn), X, yy, 15, '#ff8a8a', 'left', 0, 132);
     txt(g, fin.name + (fin.label === 'ANYONE' ? ' (ANYONE)' : ''), NX, yy, 15, '#fff', 'left', 0, k ? 200 : w - 162);
-    if (k) txt(g, keyInput(fin, k, f.facing), KX, yy, 15, '#9ab', 'right', 0, 100);
+    if (k) txtSeg(g, keySegs(fin, k, f.facing, '#9ab'), KX, yy, 15, 'right', 0, 100);
     yy += 17;
   }
 }
@@ -3197,8 +3263,8 @@ function drawHelp(g, title, showButtons) {
     ['BASICS', 'HOLD AWAY TO BLOCK (+DOWN = LOW). \u2193 = LOW ATTACKS, JUMP = AIR ATTACKS.'],
   ];
   let y = 62;
-  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txt(g, b, 160, y, 15, '#fff', 'left', 0, 780); y += 22; }
-  txt(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 158, 20, '#ffd23f', 'center', 3);
+  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txtC(g, b, 160, y, 15, '#fff', 'left', 0, 780); y += 22; }
+  txtC(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 158, 20, '#ffd23f', 'center', 3);
   for (let i = 0; i < 4; i++) {
     const L = moveListFor(i), ch = L.ch, x = 20 + i * 232, inMatch = game.fighters.some((f) => f.chIdx === i);
     g.fillStyle = inMatch ? 'rgba(255,210,63,0.12)' : 'rgba(255,255,255,0.05)'; g.fillRect(x, 172, 222, 280);
@@ -3206,7 +3272,7 @@ function drawHelp(g, title, showButtons) {
     txt(g, ch.name, x + 111, 190, 22, ch.colors.accent, 'center', 3);
     let yy = 212;
     const row = (a, b, ca) => {
-      txt(g, a, x + 10, yy, 15, ca, 'left', 0, 205);
+      txtC(g, a, x + 10, yy, 15, ca, 'left', 0, 205);
       let b2 = '';   // long names (e.g. FULL-SYSTEM OVERLOAD) wrap onto a second line instead of spilling into the next column
       if (textWidth(b, 15) > 205) { const cut = Math.max(b.lastIndexOf(' ', 16), b.lastIndexOf('-', 16) + 1); if (cut > 0) { b2 = b.slice(cut).trim(); b = b.slice(0, cut).trim(); } }
       txt(g, b, x + 10, yy + 16, 15, '#fff', 'left', 0, 205);
@@ -3217,7 +3283,7 @@ function drawHelp(g, title, showButtons) {
     row('ULT (full meter)', L.ult.name, '#ffd23f');
     for (const fin of L.finishers.filter((q) => q.label !== 'ANYONE')) row(fin.label + ': ' + motionText(fin.motion, fin.btn), fin.name, '#ff5252');
   }
-  txt(g, 'FINISH THEM!:  ' + motionText(CONFIG.FINISHERS.fatality.motion, CONFIG.FINISHERS.fatality.btn) + ' = Fatality     ' + motionText(CONFIG.FINISHERS.headChop.motion, CONFIG.FINISHERS.headChop.btn) + ' = Head Chop (anyone)', 480, 462, 17, '#ff5252', 'center', 3);
+  txtC(g, 'FINISH THEM!:  ' + motionText(CONFIG.FINISHERS.fatality.motion, CONFIG.FINISHERS.fatality.btn) + ' = Fatality     ' + motionText(CONFIG.FINISHERS.headChop.motion, CONFIG.FINISHERS.headChop.btn) + ' = Head Chop (anyone)', 480, 462, 17, '#ff5252', 'center', 3);
   if (showButtons) {
     g.fillStyle = '#1f9e3a'; g.fillRect(300, 472, 170, 44); g.fillStyle = '#c0392b'; g.fillRect(490, 472, 170, 44);
     txt(g, 'RESUME', 385, 495, 22, '#fff', 'center', 3); txt(g, 'QUIT', 575, 495, 22, '#fff', 'center', 3);
@@ -3302,10 +3368,10 @@ function drawSelect(g) {
   g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(40, 424, 880, 56);
   txt(g, ch.name + ':', 52, 440, 16, ch.colors.accent, 'left', 0);
   const mv = (q) => specialInput(q, true) + ' ' + q.name, grd = ML.specials.filter((q) => !q.air);
-  txt(g, grd.slice(0, 3).map(mv).join('  '), 190, 440, 15, '#fff', 'left', 0, 720);
+  txtC(g, grd.slice(0, 3).map(mv).join('  '), 190, 440, 15, '#fff', 'left', 0, 720);
   let l2 = [...grd.slice(3), ...ML.specials.filter((q) => q.air)].map(mv).concat(['ULT: ' + ML.ult.name]).join('   ');
   if (textWidth(l2 + '    FATALITY: ' + ML.finishers[0].name, 15) <= 720) l2 += '    FATALITY: ' + ML.finishers[0].name;
-  txt(g, l2, 190, 464, 15, '#ffd23f', 'left', 0, 720);
+  txtC(g, l2, 190, 464, 15, '#ffd23f', 'left', 0, 720);
   // instructions
   let hint;
   const meDone = Net.role === 'guest' ? s.p2Done : s.p1Done;
@@ -3627,6 +3693,7 @@ const CHAR_PAL = [];
 function buildPalettes() {
   const all = BASE_COLORS.slice();
   for (const ch of CHARACTERS) { const l = charPaletteList(ch); CHAR_PAL.push(makePaletteWithShading(l)); all.push(...l); }
+  all.push(...DPAD_PAL_EXTRA);
   WORLD_PAL = makePalette(all);
 }
 function makePaletteWithShading(list) {
@@ -4554,7 +4621,7 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 /* Small hook for automated tests / tinkering in the browser console. */
-window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect };
+window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad };
 </script>
 </body>
 </html>
