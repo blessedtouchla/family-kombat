@@ -703,6 +703,8 @@ function onTouchStart(e) {
   if (!game.touch) { game.touch = true; document.body.classList.add('touch'); }
   for (const t of e.changedTouches) {
     const p = toGame(t.clientX, t.clientY);
+    if (game.movesOpen) { movesTap(p); continue; }
+    if (movesAvailable() && !game.paused && hitMovesBtn(p)) { openMoves(); continue; }
     // pause button (only meaningful during a fight)
     if (isFightState() && Math.hypot(p.x - TOUCH_UI.pause.x, p.y - TOUCH_UI.pause.y) < TOUCH_UI.pause.r * 1.6) {
       togglePause(); continue;
@@ -753,6 +755,8 @@ canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
 canvas.addEventListener('mousedown', (e) => {
   Sound.unlock();
   const p = toGame(e.clientX, e.clientY);
+  if (game.movesOpen) { movesTap(p); return; }
+  if (movesAvailable() && !game.paused && hitMovesBtn(p)) { openMoves(); return; }
   if (isFightState() && !game.paused) return;
   handleTap(p);
 });
@@ -1760,7 +1764,7 @@ function openSelect() {
   if (Arcade.active()) { game.arcade = null; CONFIG.CPU_LEVEL = BASE_CPU_LEVEL; }   // quitting out of an arcade run
   setState('select');
   game.sel = { p1: game.sel ? game.sel.p1 : 0, p2: game.sel ? game.sel.p2 : 1, p1Done: false, p2Done: false, startT: 0 };
-  game.paused = false; game.fighters = [];
+  game.paused = false; game.movesOpen = false; game.fighters = [];
   game.entities = []; game.particles = []; game.heads = []; game.decals = []; game.texts = [];
   if (game.mode === 'online') { game.sel.p1Done = false; game.sel.p2Done = false; }
 }
@@ -1894,6 +1898,11 @@ function stepCore(codes) {
   const has = (list) => codes.some((c) => list.includes(c));
 
   // global keys
+  if (game.movesOpen && !movesAvailable()) game.movesOpen = false;
+  const MOVES_CLOSE = (c) => c === 'KeyM' || CONFIG.PAUSE_KEYS.includes(c) || CONFIG.CONFIRM_KEYS.includes(c);
+  if (game.movesOpen) { if (codes.some(MOVES_CLOSE)) closeMoves(); codes = codes.filter((c) => !MOVES_CLOSE(c)); }
+  else if (codes.includes('KeyM') && movesAvailable()) { if (game.paused) { game.movesOpen = true; Sound.play('select'); } else openMoves(); codes = codes.filter((c) => c !== 'KeyM'); }
+  if (game.movesOpen && game.mode === 'online') { const i0 = game.inputs[0]; i0.presses.length = 0; i0.held = {}; }   // my fighter goes neutral, the match keeps running
   if (game.mode === 'online' && isFightState() && codes.includes('Escape')) { Net.leave(); return; }
   if (['mode', 'lobby', 'controls', 'netwait', 'ladder', 'continue', 'arcadeEnd'].includes(game.state)) { menuStep(codes, has); return; }
   if (has(CONFIG.PAUSE_KEYS) && game.state === 'select' && game.mode === 'online' && !game.showHelp) { Net.leave(); return; }
@@ -3052,40 +3061,167 @@ function drawTouchControls(g) {
   circle(g, pz.x, pz.y, pz.r, '#222', '#fff', 2); g.fillStyle = '#fff'; g.fillRect(pz.x - 7, pz.y - 8, 5, 16); g.fillRect(pz.x + 2, pz.y - 8, 5, 16);
   g.restore();
 }
-/** Help / pause overlay: controls + full move list. */
+/* ---------------- MOVE LISTS: one shared source for the pause screen, the select-screen preview and the MOVES panel ---------------- */
+const KEY_NAMES = {   // keyboard labels used in the move lists (match CONFIG.KEYS)
+  p1: { U: 'W', D: 'S', L: 'A', R: 'D', LP: 'F', HP: 'R', LK: 'G', HK: 'T', ULT: 'V' },
+  p2: { U: '\u2191', D: '\u2193', L: '\u2190', R: '\u2192', LP: 'K', HP: 'I', LK: 'L', HK: 'O', ULT: ';' },
+};
+const BASIC_BTNS = ['LP', 'HP', 'LK', 'HK'];
+let TXT_LOG = null;   // while set, txt() records every string it draws (used by tests to read the panel)
+/** Complete move list for one fighter, built from CONFIG + CHARACTERS so every screen stays in sync. */
+function moveListFor(i) {
+  const ch = CHARACTERS[i], sm = CONFIG.SPECIAL_MOTIONS, FN = CONFIG.FINISHERS, M = CONFIG.MOVES;
+  const basics = [['stand', 'STAND'], ['crouch', '\u2193 CROUCH'], ['air', 'IN AIR']].map(([v, label]) =>
+    ({ label, list: BASIC_BTNS.map((b) => ({ btn: b, name: M[v][b].name })) }));
+  const specials = [];
+  for (const slot of Object.keys(ch.specials)) {
+    const sp = ch.specials[slot], m = sm[slot];
+    specials.push({ slot, name: sp.name, motion: m.motion, btn: m.btn, air: false });
+    if (sp.air) specials.push({ slot, name: sp.air.name, motion: m.motion, btn: m.btn, air: true });
+  }
+  const finishers = [{ label: 'FATALITY', name: ch.fatality.name, motion: FN.fatality.motion, btn: FN.fatality.btn }];
+  if (ch.finisher2) finishers.push({ label: 'FINISHER', name: ch.finisher2.name, motion: ch.finisher2.motion, btn: ch.finisher2.btn });
+  finishers.push({ label: 'ANYONE', name: FN.headChop.label, motion: FN.headChop.motion, btn: FN.headChop.btn });
+  return { ch, basics, specials, ult: { name: ch.ult.name, btn: 'ULT' }, finishers };
+}
+/** "↓ → + LP" (game notation, → = toward the opponent). Air versions get a prefix. */
+function specialInput(s, short) { return (s.air ? (short ? 'AIR ' : 'JUMP, THEN ') : '') + motionText(s.motion, s.btn); }
+/** The same input spelled with real keys for the way the fighter is facing right now. */
+function keyInput(s, keys, facing) {
+  const k = (d) => d === 'F' ? (facing === 1 ? keys.R : keys.L) : d === 'B' ? (facing === 1 ? keys.L : keys.R) : keys[d];
+  return (s.air ? keys.U + ', ' : '') + s.motion.map(k).join(' ') + ' + ' + keys[s.btn];
+}
+
+/* ---------------- In-fight MOVES button + panel ----------------
+ * Offline (1P / 2P / Arcade): opening the panel pauses the fight, exactly like the pause screen.
+ * Online: the host simulates and streams snapshots, so the panel is LOCAL ONLY and the match keeps running
+ * (nothing is sent over the network; your own inputs go neutral while it is open). */
+function movesBtnRect() { const w = game.touch ? 92 : 116; return { x: 514, y: 79, w, h: 26 }; }   // right of the pause button
+function hitMovesBtn(p) { const b = movesBtnRect(); return p.x > b.x - 4 && p.x < b.x + b.w + 8 && p.y > b.y - 10 && p.y < b.y + b.h + 10; }
+function movesAvailable() { return isFightState() && game.fighters.length === 2; }
+function openMoves() {
+  if (!movesAvailable() || game.movesOpen) return;
+  game.movesOpen = true;
+  if (game.mode !== 'online') game.paused = true;
+  TouchPad.stick = null; TouchPad.fingers.clear(); TouchPad.pressed.length = 0;
+  for (const k in TouchPad.held) TouchPad.held[k] = false;
+  Sound.play('select');
+}
+function closeMoves() {
+  if (!game.movesOpen) return;
+  game.movesOpen = false;
+  if (game.mode !== 'online') game.paused = false;
+  Sound.play('select');
+}
+function toggleMoves() { if (game.movesOpen) closeMoves(); else openMoves(); }
+/** Tap / click while the panel is open: the RESUME / CLOSE bar (or the MOVES button again) closes it. */
+function movesTap(p) { if (p.y > 470 || hitMovesBtn(p)) closeMoves(); }
+function drawMovesButton(g) {
+  const b = movesBtnRect();
+  g.save(); g.globalAlpha = 0.8;
+  g.fillStyle = '#000'; g.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+  g.fillStyle = '#2a1a44'; g.fillRect(b.x, b.y, b.w, b.h);
+  g.fillStyle = '#ffd23f'; g.fillRect(b.x, b.y, b.w, 2); g.fillRect(b.x, b.y + b.h - 2, b.w, 2);
+  g.globalAlpha = 1; txt(g, game.touch ? 'MOVES' : 'MOVES (M)', b.x + b.w / 2, b.y + b.h / 2 + 1, 15, '#ffd23f', 'center', 3, b.w - 4);
+  g.restore();
+}
+function moveSideInfo(side) {
+  const f = game.fighters[side], online = game.mode === 'online', me = online && side === (Net.role === 'guest' ? 1 : 0);
+  const who = (side === 0 ? 'PLAYER 1' : 'PLAYER 2') + (f.isCpu ? ' (CPU)' : me ? ' (YOU)' : '');
+  const human = !f.isCpu && (!online || me);
+  const keys = !human ? null : online || side === 0 ? KEY_NAMES.p1 : KEY_NAMES.p2;
+  const touch = human && (online || side === 0);   // the phone joystick + buttons drive player 1 (or YOU online)
+  return { f, who, keys, touch };
+}
+function drawMovesPanel(g) {
+  const online = game.mode === 'online';
+  TXT_LOG = [];
+  g.fillStyle = 'rgba(5,5,15,0.92)'; g.fillRect(0, 0, 960, 540);
+  txt(g, 'MOVES', 480, 22, 34, '#ffd23f', 'center', 4);
+  txt(g, '\u2192 = TOWARD OPPONENT   \u2190 = AWAY   \u2191 = JUMP   \u2193 = CROUCH', 480, 46, 15, '#7ff', 'center', 0);
+  for (let s = 0; s < 2; s++) drawMoveColumn(g, s, 10 + s * 474, 58, 466, 414);
+  g.fillStyle = '#000'; g.fillRect(368, 476, 224, 40); g.fillStyle = '#1f9e3a'; g.fillRect(370, 478, 220, 36);
+  txt(g, online ? 'CLOSE' : 'RESUME', 480, 496, 22, '#fff', 'center', 3);
+  txt(g, online ? 'ONLINE: THE MATCH KEEPS GOING WHILE THIS IS OPEN' : game.touch ? 'TAP RESUME TO KEEP FIGHTING' : 'M / ESC / ENTER = RESUME', 480, 528, 15, online ? '#ff8a8a' : '#aaa', 'center', 0);
+  game.movesText = TXT_LOG; TXT_LOG = null;
+}
+function drawMoveColumn(g, side, x, y, w, h) {
+  const info = moveSideInfo(side), f = info.f, L = moveListFor(f.chIdx), ch = L.ch, col = side === 0 ? '#ff5252' : '#6aa8ff';
+  const k = info.keys, X = x + 10, NX = x + 152, KX = x + w - 10;   // input | name | keyboard spelling columns
+  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x, y, w, h);
+  g.strokeStyle = col; g.lineWidth = 2; g.strokeRect(x, y, w, h);
+  g.fillStyle = shade(col, -0.45); g.fillRect(x, y, w, 30);
+  txt(g, info.who, X, y + 15, 15, '#fff', 'left', 3);
+  txt(g, ch.name, KX, y + 15, 24, ch.colors.accent, 'right', 3, w - 170);
+  let yy = y + 43;
+  const head = (s, right) => { txt(g, s, X, yy, 15, '#ffd23f', 'left', 2); if (right) txt(g, right, KX, yy, 15, '#9ab', 'right', 0); yy += 17; };
+  if (info.touch) { txt(g, 'PHONE: STICK + LP HP LK HK BUTTONS', X, yy, 15, '#9ab', 'left', 0, w - 20); yy += 15; }
+  if (k) { txt(g, `KEYS: ${k.U}${k.L}${k.D}${k.R}  ${k.LP}=LP ${k.HP}=HP ${k.LK}=LK ${k.HK}=HK ${k.ULT}=ULT`, X, yy, 15, '#9ab', 'left', 0, w - 20); yy += 15; }
+  if (!info.touch && !k) { txt(g, f.isCpu ? 'CONTROLLED BY THE COMPUTER' : 'YOUR OPPONENT', X, yy, 15, '#9ab', 'left', 0, w - 20); yy += 15; }
+  yy += 3; head('BASIC ATTACKS', 'P = PUNCH   K = KICK');
+  const cx = x + 44, cw = (w - 54) / 3;
+  L.basics.forEach((b, c) => txt(g, b.label, cx + c * cw, yy, 15, '#7ff', 'left', 0, cw - 4)); yy += 15;
+  for (const btn of BASIC_BTNS) {
+    txt(g, btn, X, yy, 15, '#7ff', 'left', 0, 32);
+    L.basics.forEach((b, c) => txt(g, b.list.find((m) => m.btn === btn).name, cx + c * cw, yy, 15, '#fff', 'left', 0, cw - 4));
+    yy += 15;
+  }
+  txt(g, 'BLOCK: HOLD \u2190 (AWAY)    LOW: HOLD \u2193\u2190', X, yy, 15, '#fff', 'left', 0, w - 20); yy += 19;
+  head('SPECIAL MOVES');
+  for (const s of L.specials) {
+    txt(g, specialInput(s, true), X, yy, 15, '#7ff', 'left', 0, 132);
+    txt(g, s.name + (s.air ? ' (IN AIR)' : ''), NX, yy, 15, '#fff', 'left', 0, k ? 200 : w - 162);
+    if (k) txt(g, keyInput(s, k, f.facing), KX, yy, 15, '#9ab', 'right', 0, 100);
+    yy += 17;
+  }
+  yy += 2; head('ULTIMATE  (FULL METER)');
+  txt(g, 'ULT', X, yy, 15, '#7ff', 'left', 0, 132); txt(g, L.ult.name, NX, yy, 15, '#ffd23f', 'left', 0, w - 180);
+  if (k) txt(g, k.ULT, KX, yy, 15, '#9ab', 'right', 0, 30);
+  yy += 19; head('FINISH THEM!  (LAST ROUND)');
+  for (const fin of L.finishers) {
+    txt(g, motionText(fin.motion, fin.btn), X, yy, 15, '#ff8a8a', 'left', 0, 132);
+    txt(g, fin.name + (fin.label === 'ANYONE' ? ' (ANYONE)' : ''), NX, yy, 15, '#fff', 'left', 0, k ? 200 : w - 162);
+    if (k) txt(g, keyInput(fin, k, f.facing), KX, yy, 15, '#9ab', 'right', 0, 100);
+    yy += 17;
+  }
+}
+
+/** Help / pause overlay: controls + full move list for all four fighters (same data as the MOVES panel). */
 function drawHelp(g, title, showButtons) {
   g.fillStyle = 'rgba(5,5,15,0.9)'; g.fillRect(0, 0, 960, 540);
-  txt(g, title, 480, 32, 40, '#ffd23f', 'center', 4);
+  txt(g, title, 480, 28, 40, '#ffd23f', 'center', 4);
   const lines = [
-    ['P1 KEYS', 'WASD MOVE  F PUNCH  G KICK  R/T HEAVY  V ULT'],
+    ['P1 KEYS', 'WASD MOVE  F PUNCH  G KICK  R/T HEAVY  V ULT  M MOVES'],
     ['P2 KEYS', 'ARROWS MOVE  K PUNCH  L KICK  I/O HEAVY  ; ULT'],
-    ['TOUCH', 'LEFT: DRAG JOYSTICK   RIGHT: LP HP LK HK + ULT'],
-    ['BASICS', 'HOLD AWAY TO BLOCK (+DOWN = LOW). CHAIN HITS TO COMBO.'],
+    ['TOUCH', 'LEFT: DRAG JOYSTICK   RIGHT: LP HP LK HK + ULT   MOVES BUTTON (TOP)'],
+    ['BASICS', 'HOLD AWAY TO BLOCK (+DOWN = LOW). \u2193 = LOW ATTACKS, JUMP = AIR ATTACKS.'],
   ];
-  let y = 70;
-  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txt(g, b, 160, y, 15, '#fff', 'left', 0, 780); y += 24; }
-  txt(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 182, 20, '#ffd23f', 'center', 3);
-  const sm = CONFIG.SPECIAL_MOTIONS;
+  let y = 62;
+  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txt(g, b, 160, y, 15, '#fff', 'left', 0, 780); y += 22; }
+  txt(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 158, 20, '#ffd23f', 'center', 3);
   for (let i = 0; i < 4; i++) {
-    const ch = CHARACTERS[i], x = 20 + i * 232, inMatch = game.fighters.some((f) => f.chIdx === i);
-    g.fillStyle = inMatch ? 'rgba(255,210,63,0.12)' : 'rgba(255,255,255,0.05)'; g.fillRect(x, 198, 222, 250);
-    g.strokeStyle = inMatch ? '#ffd23f' : '#444'; g.lineWidth = 2; g.strokeRect(x, 198, 222, 250);
-    txt(g, ch.name, x + 111, 220, 22, ch.colors.accent, 'center', 3);
-    let yy = 246;
-    for (const slot of Object.keys(ch.specials)) {
-      const sp = ch.specials[slot];   // a special with an air version shows as e.g. "TORNADO/SKY DIVE" + "(+AIR)"
-      txt(g, motionText(sm[slot].motion, sm[slot].btn) + (sp.air ? ' (+AIR)' : ''), x + 10, yy, 15, '#7ff', 'left', 0, 205);
-      txt(g, sp.air ? sp.name.split(' ')[0] + '/' + sp.air.name : sp.name, x + 10, yy + 18, 15, '#fff', 'left', 0, 205); yy += 36;
-    }
-    txt(g, 'ULT (full meter)', x + 10, yy, 15, '#ffd23f', 'left', 0); txt(g, ch.ult.name, x + 10, yy + 18, 15, '#fff', 'left', 0, 205); yy += 36;
-    txt(g, 'FATALITY: ' + motionText(CONFIG.FINISHERS.fatality.motion, CONFIG.FINISHERS.fatality.btn), x + 10, yy, 14, '#ff5252', 'left', 0, 205);
-    txt(g, ch.fatality.name, x + 10, yy + 17, 15, '#fff', 'left', 0, 205);
+    const L = moveListFor(i), ch = L.ch, x = 20 + i * 232, inMatch = game.fighters.some((f) => f.chIdx === i);
+    g.fillStyle = inMatch ? 'rgba(255,210,63,0.12)' : 'rgba(255,255,255,0.05)'; g.fillRect(x, 172, 222, 280);
+    g.strokeStyle = inMatch ? '#ffd23f' : '#444'; g.lineWidth = 2; g.strokeRect(x, 172, 222, 280);
+    txt(g, ch.name, x + 111, 190, 22, ch.colors.accent, 'center', 3);
+    let yy = 212;
+    const row = (a, b, ca) => {
+      txt(g, a, x + 10, yy, 15, ca, 'left', 0, 205);
+      let b2 = '';   // long names (e.g. FULL-SYSTEM OVERLOAD) wrap onto a second line instead of spilling into the next column
+      if (textWidth(b, 15) > 205) { const cut = Math.max(b.lastIndexOf(' ', 16), b.lastIndexOf('-', 16) + 1); if (cut > 0) { b2 = b.slice(cut).trim(); b = b.slice(0, cut).trim(); } }
+      txt(g, b, x + 10, yy + 16, 15, '#fff', 'left', 0, 205);
+      if (b2) { yy += 16; txt(g, b2, x + 10, yy + 16, 15, '#fff', 'left', 0, 205); }
+      yy += 34;
+    };
+    for (const s of L.specials) row(specialInput(s), s.name, '#7ff');
+    row('ULT (full meter)', L.ult.name, '#ffd23f');
+    for (const fin of L.finishers.filter((q) => q.label !== 'ANYONE')) row(fin.label + ': ' + motionText(fin.motion, fin.btn), fin.name, '#ff5252');
   }
-  txt(g, 'FINISH THEM!:  ' + motionText(CONFIG.FINISHERS.fatality.motion, 'HP') + ' = Fatality     ' + motionText(CONFIG.FINISHERS.headChop.motion, 'HK') + ' = Head Chop (anyone)', 480, 460, 17, '#ff5252', 'center', 3);
+  txt(g, 'FINISH THEM!:  ' + motionText(CONFIG.FINISHERS.fatality.motion, CONFIG.FINISHERS.fatality.btn) + ' = Fatality     ' + motionText(CONFIG.FINISHERS.headChop.motion, CONFIG.FINISHERS.headChop.btn) + ' = Head Chop (anyone)', 480, 462, 17, '#ff5252', 'center', 3);
   if (showButtons) {
     g.fillStyle = '#1f9e3a'; g.fillRect(300, 472, 170, 44); g.fillStyle = '#c0392b'; g.fillRect(490, 472, 170, 44);
     txt(g, 'RESUME', 385, 495, 22, '#fff', 'center', 3); txt(g, 'QUIT', 575, 495, 22, '#fff', 'center', 3);
-    txt(g, 'Esc / Enter = resume     Q = quit to select', 480, 528, 13, '#aaa', 'center', 0);
+    txt(g, 'Esc / Enter = resume     Q = quit to select     M = moves panel', 480, 528, 13, '#aaa', 'center', 0);
   } else txt(g, 'Press any button or tap to close', 480, 500, 18, '#aaa', 'center', 0);
 }
 
@@ -3161,13 +3297,15 @@ function drawSelect(g) {
       txt(g, (game.mode === 'cpu' ? 'CPU' : game.mode === 'online' && Net.role === 'guest' ? 'YOU' : 'P2') + (s.p2Done ? ' \u2714' : ''), c.x + c.w - 4, c.y + c.h - 8, 18, '#6aa8ff', 'right', 3);
     }
   }
-  // move preview for the highlighted fighter
-  const showIdx = game.mode === 'cpu' && s.p1Done ? s.p2 : s.p1, ch = CHARACTERS[showIdx], sm = CONFIG.SPECIAL_MOTIONS;
+  // move preview for the highlighted fighter (same shared move list as the pause screen and MOVES panel)
+  const showIdx = game.mode === 'cpu' && s.p1Done ? s.p2 : s.p1, ML = moveListFor(showIdx), ch = ML.ch;
   g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(40, 424, 880, 56);
   txt(g, ch.name + ':', 52, 440, 16, ch.colors.accent, 'left', 0);
-  txt(g, ['s1', 's2', 's3'].map((k) => motionText(sm[k].motion, sm[k].btn) + ' ' + ch.specials[k].name).join('  '), 190, 440, 15, '#fff', 'left', 0, 720);
-  const airTxt = Object.keys(ch.specials).filter((k) => ch.specials[k].air).map((k) => 'AIR ' + motionText(sm[k].motion, sm[k].btn) + ' ' + ch.specials[k].air.name + '   ').join('');
-  txt(g, (ch.specials.s4 ? motionText(sm.s4.motion, sm.s4.btn) + ' ' + ch.specials.s4.name + '   ' : '') + airTxt + 'ULT: ' + ch.ult.name + (ch.specials.s4 ? '' : '    FATALITY: ' + ch.fatality.name), 190, 464, 15, '#ffd23f', 'left', 0, 720);
+  const mv = (q) => specialInput(q, true) + ' ' + q.name, grd = ML.specials.filter((q) => !q.air);
+  txt(g, grd.slice(0, 3).map(mv).join('  '), 190, 440, 15, '#fff', 'left', 0, 720);
+  let l2 = [...grd.slice(3), ...ML.specials.filter((q) => q.air)].map(mv).concat(['ULT: ' + ML.ult.name]).join('   ');
+  if (textWidth(l2 + '    FATALITY: ' + ML.finishers[0].name, 15) <= 720) l2 += '    FATALITY: ' + ML.finishers[0].name;
+  txt(g, l2, 190, 464, 15, '#ffd23f', 'left', 0, 720);
   // instructions
   let hint;
   const meDone = Net.role === 'guest' ? s.p2Done : s.p1Done;
@@ -3226,8 +3364,10 @@ function drawFight(g) {
   if (game.state === 'finish') drawFinishPrompt(g);
   if (game.state === 'winner') drawWinner(g);
   drawAdlibs(g);
-  if (game.touch && isFightState() && !game.paused) drawTouchControls(g);
-  if (game.paused) drawHelp(g, 'PAUSED', true);
+  if (game.touch && isFightState() && !game.paused && !game.movesOpen) drawTouchControls(g);
+  if (isFightState() && !game.paused && !game.movesOpen) drawMovesButton(g);
+  if (game.movesOpen) drawMovesPanel(g);
+  else if (game.paused) drawHelp(g, 'PAUSED', true);
 }
 function drawWinner(g) {
   const w = game.winner; if (!w) return;
@@ -3631,6 +3771,7 @@ function fontPx(size) { return Math.max(1, Math.round(size / 15)); }
 /** Draw pixel text. x/y are game units; text is vertically centred on y. */
 function txt(g, s, x, y, size, color, align = 'center', outline = 4, maxW = 940) {
   s = String(s).toUpperCase();
+  if (TXT_LOG) TXT_LOG.push(s);
   let px = fontPx(size);
   const bm = textBitmap(s, color, outline ? 1 : 0);
   while (px > 1 && bm.width * px * 2 > maxW) px--;
@@ -3977,6 +4118,7 @@ const Net = {
     const h = {}; for (const k of [...DIRS, ...BUTTONS]) if (inp.held[k]) h[k] = 1;
     const p = inp.presses.map((x) => x.btn); inp.presses.length = 0;
     for (const d of DIRS) if (inp.dirPressed[d]) p.push(d);
+    if (game.movesOpen) { for (const q in h) delete h[q]; p.length = 0; }   // reading moves: send neutral input
     const hs = JSON.stringify(h);
     if (p.length || hs !== this.lastHeld || game.frame % 15 === 0) {
       this.lastHeld = hs;
@@ -4042,6 +4184,9 @@ function applySnapshot(s) {
 }
 function guestStep(codes) {
   game.frame++;
+  if (game.movesOpen && !movesAvailable()) game.movesOpen = false;
+  if (game.movesOpen) { if (codes.some((c) => c === 'KeyM' || c === 'Escape' || CONFIG.CONFIRM_KEYS.includes(c))) closeMoves(); codes = codes.filter((c) => c !== 'KeyM' && c !== 'Escape' && !CONFIG.CONFIRM_KEYS.includes(c)); }
+  else if (codes.includes('KeyM') && movesAvailable()) { openMoves(); codes = codes.filter((c) => c !== 'KeyM'); }
   if (codes.includes('Escape')) { Net.leave(); return; }
   if (codes.includes('KeyN')) Music.toggle();
   if (game.state === 'select' && game.showHelp) { if (codes.length) game.showHelp = false; return; }
@@ -4344,7 +4489,7 @@ function drawControls(g) {
     txt(g, title, x + 210, 108, 26, col, 'center', 4); txt(g, name, x + 210, 140, 18, '#fff', 'center', 3);
     lines.forEach(([k, v], i) => { txt(g, k, x + 24, 180 + i * 30, 18, '#ffd23f', 'left', 3); txt(g, v, x + 160, 180 + i * 30, 16, '#fff', 'left', 0); });
   };
-  panel(50, '#ff5252', 'PLAYER 1', CHARACTERS[p.p1].name, [['W A S D', 'MOVE (W JUMP, S CROUCH)'], ['F', 'PUNCH'], ['G', 'KICK'], ['R / T', 'HEAVY PUNCH / KICK'], ['V', 'ULTIMATE (FULL METER)'], ['HOLD AWAY', 'BLOCK (+ S = LOW)'], ['ESC', 'PAUSE + MOVE LIST']]);
+  panel(50, '#ff5252', 'PLAYER 1', CHARACTERS[p.p1].name, [['W A S D', 'MOVE (W JUMP, S CROUCH)'], ['F', 'PUNCH'], ['G', 'KICK'], ['R / T', 'HEAVY PUNCH / KICK'], ['V', 'ULTIMATE (FULL METER)'], ['HOLD AWAY', 'BLOCK (+ S = LOW)'], ['ESC / M', 'PAUSE / MOVES LIST']]);
   if (cpu) panel(490, '#6aa8ff', 'CPU', CHARACTERS[p.p2].name, [['', 'THE COMPUTER PLAYS'], ['', 'THIS FIGHTER.'], ['', ''], ['TIP', 'SWITCH TO 2 PLAYERS'], ['', 'ON THE SELECT SCREEN']]);
   else panel(490, '#6aa8ff', 'PLAYER 2', CHARACTERS[p.p2].name, [['ARROWS', 'MOVE (\u2191 JUMP, \u2193 CROUCH)'], ['K', 'PUNCH'], ['L', 'KICK'], ['I / O', 'HEAVY PUNCH / KICK'], [';', 'ULTIMATE (FULL METER)'], ['HOLD AWAY', 'BLOCK (+ \u2193 = LOW)'], ['NUMPAD', '4 5 1 2 6 ALSO WORK']]);
   txt(g, 'SPECIALS: \u2193 \u2192 + PUNCH    \u2190 \u2192 + HEAVY KICK    \u2193 \u2193 + KICK   (\u2192 = TOWARD OPPONENT)', 480, 446, 15, '#7ff', 'center', 0);
@@ -4409,7 +4554,7 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 /* Small hook for automated tests / tinkering in the browser console. */
-window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS };
+window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect };
 </script>
 </body>
 </html>
