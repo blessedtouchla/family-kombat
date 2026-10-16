@@ -202,20 +202,30 @@ const CHARACTERS = [
   },
   {
     id: 'cyclone', name: 'CYCLONE', tagline: 'Fast & Wild',
-    maxHp: 85, walk: 5.4, backWalk: 4.2, jump: 17.5, power: 0.9, scale: 0.84, girth: 0.95,
+    // 2026-10-16 buff: was HP 85 / power 0.9 / no reach bonus (weakest fighter). Small body (scale 0.84) keeps a
+    // smaller hurtbox, while reach 1.15 gives his punches & kicks near-normal range.
+    maxHp: 95, walk: 5.4, backWalk: 4.2, jump: 17.5, power: 1.0, scale: 0.84, girth: 0.95, reach: 1.15,
     colors: { skin: '#f4c9a8', main: '#2f6fd0', main2: '#2a5fb8', pants: '#2f6fd0', shoe: '#eef3fa',
               hair: '#1a1a24', accent: '#7fc4ff', glow: '#9be7ff', chest: '#eef3fa', glove: '#f4f7fb', cape: '#cfe0f5' },
     specials: {
-      s1: { name: 'Tornado Dash', type: 'rush', startup: 4, active: 16, recovery: 12, pose: 'dash',
-            speed: 15, dmg: 8, hitstun: 20, kb: 10, box: { x: -10, y: -120, w: 74, h: 80 }, fx: 'wind', sfx: 'whoosh' },
+      // Tornado Dash now launches (juggle after it). Same motion in the AIR = Sky Dive (spinning dive kick).
+      s1: { name: 'Tornado Dash', type: 'rush', startup: 4, active: 16, recovery: 14, pose: 'dash',
+            speed: 16, dmg: 10, hitstun: 24, kb: 7, kbY: -8, box: { x: -10, y: -120, w: 78, h: 80 }, fx: 'wind', sfx: 'whoosh',
+            air: { name: 'Sky Dive', type: 'skydive', startup: 5, active: 0, recovery: 10, pose: 'akick',
+                   vx: 8.5, vy: 9, dmg: 8, hitstun: 22, kb: 6, kbY: -6, box: { x: -6, y: -110, w: 80, h: 110 } } },
+      // Spinning Fury: faster, wider multi-hit that ends with a launching gust
       s2: { name: 'Spinning Fury', type: 'spin', startup: 5, active: 42, recovery: 14, pose: 'spin',
-            speed: 3.2, dmg: 2.6, hitEvery: 8, radius: 78, hitstun: 14, kb: 3 },
+            speed: 3.4, dmg: 2.8, hitEvery: 7, radius: 90, hitstun: 15, kb: 2.5, finalDmg: 5, finalKb: 8, finalKbY: -11 },
       s3: { name: 'Super Jump', type: 'superjump', startup: 4, active: 0, recovery: 8, pose: 'uppercut',
-            vy: -22, vx: 3, dmg: 9, invuln: 12, hitstun: 24, kb: 4, kbY: -10, box: { x: -12, y: -210, w: 74, h: 120 } },
+            vy: -22, vx: 3, dmg: 11, invuln: 12, hitstun: 24, kb: 4, kbY: -10, box: { x: -12, y: -210, w: 74, h: 120 } },
+      // NEW: spinning rising uppercut, carries the opponent up for 3 hits, last one launches
+      s4: { name: 'Twister Uppercut', type: 'twister', startup: 3, active: 0, recovery: 14, pose: 'uppercut',
+            vy: -16, vx: 3.5, invuln: 6, hits: 3, dmg: 3, lastDmg: 5, hitEvery: 5, hitstun: 30, kb: 7, kbY: -12,
+            box: { x: -14, y: -200, w: 82, h: 200 } },
     },
-    ult: { name: 'WHIRLWIND', type: 'whirlwind', dmg: 4.5, hits: 6, startup: 1, active: 30, recovery: 24, pose: 'spin' },
+    ult: { name: 'WHIRLWIND', type: 'whirlwind', dmg: 5, hits: 6, startup: 1, active: 30, recovery: 24, pose: 'spin' },
     fatality: { name: 'SPIN CYCLE', type: 'spinCycle' },
-    ai: { far: ['s1'], mid: ['s1', 's2'], close: ['s2', 's3'] },
+    ai: { far: ['s1'], mid: ['s1', 's2', 's4'], close: ['s2', 's4', 's3'] },
   },
   {
     id: 'editor', name: 'EDITOR', tagline: 'The Strategist',
@@ -345,6 +355,7 @@ const Sound = {
       case 'block': this.tone(1100, 700, 0.05, 'square', 0.12); this.noise(0.04, 0.2, 4000, 'highpass'); break;
       case 'jump': this.tone(260, 520, 0.12, 'triangle', 0.12); break;
       case 'whoosh': this.noise(0.22, 0.3, 400, 'bandpass', 0, 3000); break;
+      case 'twister': this.noise(0.38, 0.32, 300, 'bandpass', 0, 2800); this.tone(330, 990, 0.28, 'triangle', 0.1); this.tone(495, 1480, 0.22, 'sine', 0.06, 0.08); break;
       case 'fart': this.fart(0.45, 0.4); break;
       case 'bigfart': this.fart(1.4, 0.5, 60); break;
       case 'beam': this.fart(0.9, 0.35, 55); this.noise(0.8, 0.25, 300); break;
@@ -798,9 +809,9 @@ class Fighter {
   }
   /** Convert a move's local hitbox into world coordinates. */
   worldBox(b) {
-    const S = this.ch.scale;
-    const x = this.facing === 1 ? this.x + b.x * S : this.x - (b.x + b.w) * S;
-    return { x, y: this.y + b.y * S, w: b.w * S, h: b.h * S };
+    const S = this.ch.scale, SX = S * (this.ch.reach || 1);
+    const x = this.facing === 1 ? this.x + b.x * SX : this.x - (b.x + b.w) * SX;
+    return { x, y: this.y + b.y * S, w: b.w * SX, h: b.h * S };
   }
   centerY() { return this.y - 100 * this.ch.scale; }
   isFree() { return this.hitstun <= 0 && this.blockstun <= 0 && this.trapped <= 0 && this.state !== 'ko' && this.state !== 'dizzy'; }
@@ -845,7 +856,7 @@ class Fighter {
   canStart(a) {
     if (!this.isFree()) return false;
     if (a.type === 'ult' && this.meter < CONFIG.METER_MAX) return false;
-    if (!this.grounded && a.type !== 'base') return false;
+    if (!this.grounded && a.type !== 'base' && !(a.type === 'special' && this.ch.specials[a.slot] && this.ch.specials[a.slot].air)) return false;
     if (!this.grounded && this.airAttacked) return false;
     if (!this.move) return true;
     // combo cancel: a base attack that connected can be cancelled into a stronger one or a special
@@ -866,6 +877,7 @@ class Fighter {
       Sound.play(def.sfx);
     } else if (a.type === 'special') {
       def = this.ch.specials[a.slot];
+      if (!this.grounded && def.air) { def = def.air; this.airAttacked = true; }   // e.g. Cyclone's Sky Dive
       this.crouching = false;
       addText(def.name.toUpperCase(), { x: this.x, y: this.y - 205 * this.ch.scale, size: 20, color: '#fff', dur: 40, rise: 0.6 });
       Sound.play(sfxHook(`sp_${this.ch.id}_${a.slot}`, 'whoosh'));
@@ -1073,7 +1085,7 @@ const MOVE_HANDLERS = {
         if (d.fx === 'data') spawnParticle({ x: hx, y: hy + rand(-20, 20), vx: -f.facing * rand(1, 3), vy: rand(-2, 0), life: 26, size: 14, color: '#39ff88', type: 'digit' });
         if (d.fx === 'wind') for (let i = 0; i < 2; i++) spawnParticle({ x: f.x + rand(-30, 30), y: f.y - rand(10, 150) * f.ch.scale, vx: -f.facing * rand(3, 7), vy: rand(-1, 1), life: 16, size: rand(10, 24), color: 'rgba(220,240,255,0.7)', type: 'streak' });
         if (!m.hit && overlap(f.worldBox(d.box), opp.hurtbox())) {
-          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, chip: true, heavy: true, fx: d.fx });
+          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx });
           if (r) {
             m.hit = true;
             if (r === 'hit' && d.heal) {
@@ -1098,7 +1110,10 @@ const MOVE_HANDLERS = {
         if (m.frame % 10 === 0) Sound.play('whoosh');
         spawnParticle({ x: f.x + rand(-40, 40), y: f.y - rand(20, 140) * f.ch.scale, vx: rand(-4, 4), vy: rand(-1, 1), life: 14, size: rand(10, 22), color: 'rgba(200,235,255,0.7)', type: 'streak' });
         const close = Math.abs(opp.x - f.x) < d.radius * f.ch.scale + 20 && Math.abs(opp.y - f.y) < 120;
-        if (close && m.frame - m.lastHit >= d.hitEvery) {
+        if (close && d.finalDmg && m.frame === d.startup + d.active) {   // closing gust launches
+          m.lastHit = m.frame; Sound.play('twister');
+          applyHit(f, opp, { dmg: d.finalDmg, hitstun: 28, blockstun: 12, kb: d.finalKb, kbY: d.finalKbY, chip: true, heavy: true, fx: 'wind' });
+        } else if (close && m.frame - m.lastHit >= d.hitEvery) {
           m.lastHit = m.frame;
           applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 10, kb: d.kb, chip: true });
         }
@@ -1119,6 +1134,49 @@ const MOVE_HANDLERS = {
           if (applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 12, kb: d.kb, kbY: d.kbY, heavy: true, chip: true })) m.hit = true;
         }
         if (f.grounded && f.vy >= 0 && !m.data.landedAt && m.frame > d.startup + 3) { m.data.landedAt = m.frame; f.vx = 0; }
+      }
+    },
+  },
+  /** Cyclone's Twister Uppercut: spinning rising uppercut that carries the opponent up, last hit launches. */
+  twister: {
+    total(m) { return m.data.landedAt ? m.data.landedAt + m.def.recovery : 9999; },
+    update(f, m, opp) {
+      const d = m.def;
+      if (m.frame === d.startup) {
+        f.vy = d.vy; f.vx = f.facing * d.vx; f.invuln = d.invuln; Sound.play('twister');
+        for (let i = 0; i < 12; i++) spawnParticle({ x: f.x + rand(-30, 30), y: f.y, vx: rand(-3, 3), vy: rand(-3, 0), life: 26, size: rand(8, 16), color: 'rgba(230,230,230,0.6)', type: 'smoke' });
+      }
+      if (m.frame > d.startup && !m.data.landedAt) {
+        f.spinX = Math.cos(m.frame * 0.9);
+        spawnParticle({ x: f.x + rand(-36, 36), y: f.y - rand(10, 170) * f.ch.scale, vx: rand(-4, 4), vy: rand(-2, 1), life: 14, size: rand(10, 22), color: 'rgba(200,235,255,0.7)', type: 'streak' });
+        if (m.hits < d.hits && m.frame - m.lastHit >= d.hitEvery && overlap(f.worldBox(d.box), opp.hurtbox())) {
+          const last = m.hits === d.hits - 1;
+          const r = applyHit(f, opp, { dmg: last ? d.lastDmg : d.dmg, hitstun: last ? d.hitstun : 16, blockstun: 10, kb: last ? d.kb : 1,
+                                       kbY: last ? d.kbY : -6, chip: true, heavy: last, fx: 'wind' });
+          if (r) {
+            m.hit = true; m.lastHit = m.frame; m.hits = r === 'block' ? d.hits : m.hits + 1;
+            if (r === 'hit' && !last) { opp.vy = f.vy; opp.vx = f.vx; }   // swept up with him
+          }
+        }
+        if (f.grounded && f.vy >= 0 && m.frame > d.startup + 3) { m.data.landedAt = m.frame; f.vx = 0; f.spinX = 1; }
+      }
+    },
+  },
+  /** Cyclone's Sky Dive (Tornado Dash done in the air): short hang, then a spinning diagonal dive kick. */
+  skydive: {
+    total(m) { return m.data.landedAt ? m.data.landedAt + m.def.recovery : 9999; },
+    update(f, m, opp) {
+      const d = m.def;
+      if (m.frame < d.startup) { f.vy = Math.min(f.vy, 0) * 0.4; f.vx *= 0.5; }
+      if (m.frame === d.startup) { f.vx = f.facing * d.vx; f.vy = d.vy; Sound.play('whoosh'); }
+      if (m.frame >= d.startup && !m.data.landedAt) {
+        f.spinX = m.hit ? 1 : Math.cos(m.frame * 0.9);
+        if (!m.hit) for (let i = 0; i < 2; i++) spawnParticle({ x: f.x + rand(-24, 24), y: f.y - rand(10, 120) * f.ch.scale, vx: -f.vx * 0.4 + rand(-1, 1), vy: -f.vy * 0.3, life: 14, size: rand(10, 22), color: 'rgba(220,240,255,0.7)', type: 'streak' });
+        if (!m.hit && overlap(f.worldBox(d.box), opp.hurtbox())) {
+          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 12, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: 'wind' });
+          if (r) { m.hit = true; f.vx = -f.facing * 3; f.vy = -7; f.spinX = 1; }   // bounce off
+        }
+        if (f.grounded && f.vy >= 0 && m.frame > d.startup) { m.data.landedAt = m.frame; f.vx = 0; f.spinX = 1; }
       }
     },
   },
@@ -1317,7 +1375,9 @@ class CpuBrain {
       default: break;
     }
     // air attack when falling near the opponent
-    if (!f.grounded && !f.airAttacked && dist < 140 && R() < 0.15) { f.queued = { type: 'base', btn: pick(['HK', 'LK', 'HP']) }; f.queuedT = 0; }
+    const airSp = f.ch.specials.s1 && f.ch.specials.s1.air;
+    if (!f.grounded && !f.airAttacked && airSp && dist > 60 && dist < 230 && f.vy > -4 && R() < 0.06 + L * 0.1) { f.queued = { type: 'special', slot: 's1' }; f.queuedT = 0; }
+    else if (!f.grounded && !f.airAttacked && dist < 140 && R() < 0.15) { f.queued = { type: 'base', btn: pick(['HK', 'LK', 'HP']) }; f.queuedT = 0; }
     // stop walking once close enough
     if (this.plan === 'approach' && dist < 85) this.planT = 0;
   }
@@ -1332,6 +1392,7 @@ class CpuBrain {
       if (r < 0.3 + L * 0.15) queue({ type: 'special', slot: pick(ai.far) });
       else if (r < 0.85) { this.plan = 'approach'; this.planT += 10; }
       else { this.plan = 'jumpin'; this.planT = 3; }
+    } else if (dist > 110 && f.ch.specials.s1 && f.ch.specials.s1.air && r < 0.12) { this.plan = 'jumpin'; this.planT = 3;
     } else if (dist > 110) {
       if (r < 0.25 + L * 0.1) queue({ type: 'special', slot: pick(ai.mid) });
       else if (r < 0.75) this.plan = 'approach';
@@ -2081,10 +2142,11 @@ function fighterPose(f) {
   if (f.move) {
     const m = f.move, d = m.def;
     const target = POSES[d.pose] || POSES.jab;
-    const base = !f.grounded && d.type !== 'superjump' ? POSES.jump : f.crouching ? POSES.crouch : POSES.idle;
+    const jumpy = d.type === 'superjump' || d.type === 'twister';
+    const base = !f.grounded && !jumpy ? POSES.jump : f.crouching ? POSES.crouch : POSES.idle;
     const su = Math.max(1, d.startup || 1), ac = d.active || 0;
     let k;
-    if (d.type === 'superjump' && !m.data.landedAt) k = 1;
+    if ((jumpy || d.type === 'skydive') && !(m.data && m.data.landedAt)) k = 1;
     else if (m.frame <= su) k = m.frame / su;
     else if (m.frame <= su + ac) k = 1;
     else k = 1 - (m.frame - su - ac) / Math.max(1, d.recovery);
@@ -3011,8 +3073,9 @@ function drawHelp(g, title, showButtons) {
     txt(g, ch.name, x + 111, 220, 22, ch.colors.accent, 'center', 3);
     let yy = 246;
     for (const slot of Object.keys(ch.specials)) {
-      txt(g, motionText(sm[slot].motion, sm[slot].btn), x + 10, yy, 15, '#7ff', 'left', 0, 205);
-      txt(g, ch.specials[slot].name, x + 10, yy + 18, 15, '#fff', 'left', 0, 205); yy += 36;
+      const sp = ch.specials[slot];   // a special with an air version shows as e.g. "TORNADO/SKY DIVE" + "(+AIR)"
+      txt(g, motionText(sm[slot].motion, sm[slot].btn) + (sp.air ? ' (+AIR)' : ''), x + 10, yy, 15, '#7ff', 'left', 0, 205);
+      txt(g, sp.air ? sp.name.split(' ')[0] + '/' + sp.air.name : sp.name, x + 10, yy + 18, 15, '#fff', 'left', 0, 205); yy += 36;
     }
     txt(g, 'ULT (full meter)', x + 10, yy, 15, '#ffd23f', 'left', 0); txt(g, ch.ult.name, x + 10, yy + 18, 15, '#fff', 'left', 0, 205); yy += 36;
     txt(g, 'FATALITY: ' + motionText(CONFIG.FINISHERS.fatality.motion, CONFIG.FINISHERS.fatality.btn), x + 10, yy, 14, '#ff5252', 'left', 0, 205);
@@ -3103,7 +3166,8 @@ function drawSelect(g) {
   g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(40, 424, 880, 56);
   txt(g, ch.name + ':', 52, 440, 16, ch.colors.accent, 'left', 0);
   txt(g, ['s1', 's2', 's3'].map((k) => motionText(sm[k].motion, sm[k].btn) + ' ' + ch.specials[k].name).join('  '), 190, 440, 15, '#fff', 'left', 0, 720);
-  txt(g, (ch.specials.s4 ? motionText(sm.s4.motion, sm.s4.btn) + ' ' + ch.specials.s4.name + '   ' : '') + 'ULT: ' + ch.ult.name + (ch.specials.s4 ? '' : '    FATALITY: ' + ch.fatality.name), 190, 464, 15, '#ffd23f', 'left', 0, 720);
+  const airTxt = Object.keys(ch.specials).filter((k) => ch.specials[k].air).map((k) => 'AIR ' + motionText(sm[k].motion, sm[k].btn) + ' ' + ch.specials[k].air.name + '   ').join('');
+  txt(g, (ch.specials.s4 ? motionText(sm.s4.motion, sm.s4.btn) + ' ' + ch.specials.s4.name + '   ' : '') + airTxt + 'ULT: ' + ch.ult.name + (ch.specials.s4 ? '' : '    FATALITY: ' + ch.fatality.name), 190, 464, 15, '#ffd23f', 'left', 0, 720);
   // instructions
   let hint;
   const meDone = Net.role === 'guest' ? s.p2Done : s.p1Done;
