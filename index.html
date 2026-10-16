@@ -658,11 +658,12 @@ const TOUCH_UI = {
   stickBase: { x: 135, y: 420 },  // default joystick position (it follows your thumb)
   stickR: 70,
   buttons: [
-    { btn: 'LP', label: 'LP', x: 772, y: 410, r: 38, color: '#ff5252' },
-    { btn: 'HP', label: 'HP', x: 866, y: 385, r: 38, color: '#ff9f1c' },
-    { btn: 'LK', label: 'LK', x: 772, y: 494, r: 38, color: '#4dabf7' },
-    { btn: 'HK', label: 'HK', x: 866, y: 470, r: 38, color: '#9775fa' },
-    { btn: 'ULT', label: 'ULT', x: 900, y: 298, r: 32, color: '#ffd23f' },
+    // 84-unit buttons with 22+ unit gaps: >= 52pt wide and >= 13pt apart even on a 360x780 phone in landscape
+    { btn: 'LP', label: 'LP', sub: 'PUNCH', x: 742, y: 384, r: 42, color: '#ff5252' },
+    { btn: 'HP', label: 'HP', sub: 'PUNCH+', x: 848, y: 364, r: 42, color: '#ff9f1c' },
+    { btn: 'LK', label: 'LK', sub: 'KICK', x: 742, y: 490, r: 42, color: '#4dabf7' },
+    { btn: 'HK', label: 'HK', sub: 'KICK+', x: 848, y: 470, r: 42, color: '#9775fa' },
+    { btn: 'ULT', label: 'ULT', sub: '', x: 900, y: 262, r: 36, color: '#ffd23f' },
   ],
   pause: { x: 480, y: 92, r: 20 },
 };
@@ -1819,10 +1820,11 @@ function selectBack(who) {
 function startMatch(p1, p2, mode) {
   game.mode = mode;
   game.fighters = [new Fighter(p1, 0, false), new Fighter(p2, 1, mode === 'cpu')];
-  game.wins = [0, 0]; game.round = 1;
+  game.wins = [0, 0]; game.round = 1; game.camX = CAM_START; game.camDraw = null;
   startRound();
 }
 function startRound() {
+  scrollWorld(CAM_START - (game.camX ?? CAM_START));   // each round starts mid-stage (floor blood keeps its place)
   for (const f of game.fighters) f.reset();
   for (const i of game.inputs) i.clear();
   game.entities = []; game.particles = []; game.heads = []; game.texts = []; game.toilets = [];
@@ -1978,6 +1980,7 @@ function simStep() {
   if (game.state === 'fight' || game.state === 'intro') separate(a, b);
   updateWorldObjects();
   updateToilets();
+  if (game.state === 'fight' || game.state === 'finish') cameraStep();   // scroll the stage with the fighters
 
   switch (game.state) {
     case 'intro':
@@ -2704,7 +2707,277 @@ const STAGES = [
   { id: 'studio', name: 'STUDIO BACKLOT', build: buildStudio, anim: animStudio, song: 'studio' },
 ];
 const _stageCanvases = [];
-function stageCanvasFor(i) { return _stageCanvases[i] || (_stageCanvases[i] = STAGES[i].build()); }
+/* =====================================================================
+ * 15b. SCROLLING STAGES  -  every arena is now twice as wide as the screen
+ *      (960 art px = 1920 game units) with a slower far layer (parallax).
+ *      Treadmill camera: game logic stays in screen coordinates (walls at
+ *      40/920, fatality scripts untouched); when the fighters' midpoint drifts
+ *      off-centre the world scrolls: game.camX grows and every world object is
+ *      shifted back by the same amount. The host streams camX to online guests.
+ * ===================================================================== */
+const WORLD_W = 1920, CAM_MAX = WORLD_W - 960, CAM_START = CAM_MAX / 2, CAM_FOLLOW = 0.12;
+const NEAR_AW = 960, FAR_K = 0.4, FAR_AW = 480 + Math.ceil(CAM_MAX / 2 * FAR_K), OFF_N = 240, OFF_F = (FAR_AW - 480) / 2;
+/** A Raster view whose x coordinates are shifted by ox (so the original 480-px compositions can be reused). */
+function shifted(R, ox) {
+  return { px: (x, y, c) => R.px(x + ox, y, c), rect: (x, y, w, h, c) => R.rect(x + ox, y, w, h, c), grad: (x, y, w, h, cols) => R.grad(x + ox, y, w, h, cols),
+    dither: (x, y, w, h, c, l) => R.dither(x + ox, y, w, h, c, l), circle: (x, y, r, c) => R.circle(x + ox, y, r, c),
+    line: (a, b, c2, d, c) => R.line(a + ox, b, c2 + ox, d, c), poly: (p, c) => R.poly(p.map((q) => [q[0] + ox, q[1]]), c),
+    text: (s, x, y, c, sc, ce) => R.text(s, x + ox, y, c, sc, ce) };
+}
+function camNow() {
+  if (Net.role === 'guest' && Net.online() && game.camDraw != null) return game.camDraw;
+  return game.camX ?? CAM_START;
+}
+/** Scroll the world by d game units (camera moves +d, everything in the world moves -d on screen). */
+function scrollWorld(d) {
+  if (!d) return;
+  game.camX = (game.camX ?? CAM_START) + d;
+  for (const f of game.fighters) { f.x -= d; const D = f.move && f.move.data; if (D && typeof D.ox === 'number') D.ox -= d; }
+  for (const e of game.entities) { if (typeof e.x === 'number') e.x -= d; if (typeof e.x1 === 'number') e.x1 -= d; if (typeof e.x2 === 'number') e.x2 -= d; }
+  for (const L of [game.particles, game.decals, game.heads, game.toilets]) for (const o of L) o.x -= d;
+  for (const t of game.texts) if (t.kind !== 'announce' && t.x !== 480) t.x -= d;
+}
+/** Camera follows the fighters' midpoint (smoothly), clamped to the stage ends. */
+function cameraStep() {
+  const [a, b] = game.fighters; if (!a || !b) return;
+  const cam = game.camX ?? CAM_START;
+  let d = ((a.x + b.x) / 2 - 480) * CAM_FOLLOW;
+  if (Math.abs(d) < 0.02) return;
+  d = clamp(cam + d, 0, CAM_MAX) - cam;
+  scrollWorld(d);
+}
+const _stageLayers = [];
+function stageLayersFor(i) { return _stageLayers[i] || (_stageLayers[i] = STAGES[i].buildWide()); }
+function drawStageBG(g, i, cam) {
+  const L = stageLayersFor(i), ca = clamp(Math.round(cam / 2), 0, NEAR_AW - ART_W), fa = Math.round(ca * FAR_K);
+  g.drawImage(L.far, fa, 0, ART_W, ART_H, 0, 0, 960, 540);
+  g.drawImage(L.near, ca, 0, ART_W, ART_H, 0, 0, 960, 540);
+  g.save(); g.scale(2, 2); g.translate(-ca, 0); STAGES[i].animWide(g, game.frame, ca); g.restore();
+}
+/** Static 480x270 picture of a stage at the starting camera (used by art export / thumbnails). */
+function stageCanvasFor(i) {
+  if (_stageCanvases[i]) return _stageCanvases[i];
+  const c = document.createElement('canvas'); c.width = ART_W; c.height = ART_H; const g = c.getContext('2d'), L = stageLayersFor(i), ca = CAM_START / 2;
+  g.drawImage(L.far, Math.round(ca * FAR_K), 0, ART_W, ART_H, 0, 0, ART_W, ART_H); g.drawImage(L.near, ca, 0, ART_W, ART_H, 0, 0, ART_W, ART_H);
+  return (_stageCanvases[i] = c);
+}
+
+/* ---------------- JUNGLE TEMPLE: waterfall cliff (west) - temple (centre) - fallen ruins (east) ---------------- */
+const JUNGLE_TORCHES = [138, 118 + OFF_N, 362 + OFF_N, 842];
+function buildJungleWide() {
+  const F = new Raster(FAR_AW, ART_H), N = new Raster(NEAR_AW, ART_H), rnd = seeded(11);
+  F.grad(0, 0, FAR_AW, 160, ['#0b2a2a', '#14504a', '#3f8f6a', '#a8d08a']);
+  const mtn = []; for (let x = 0; x <= FAR_AW; x += 6) mtn.push([x, 96 - Math.abs(Math.sin(x / 61)) * 30 - Math.sin(x / 17) * 4]); mtn.push([FAR_AW, 200], [0, 200]);
+  F.poly(mtn, '#14504a');
+  const hill = []; for (let x = 0; x <= FAR_AW; x += 8) hill.push([x, 120 - Math.sin(x / 50) * 14 - Math.cos(x / 23) * 6]); hill.push([FAR_AW, 200], [0, 200]);
+  F.poly(hill, '#1f5a44');
+  F.rect(0, 160, FAR_AW, 110, '#1f5a44');
+  // ---- centre: the original temple
+  const R = shifted(N, OFF_N);
+  for (let i = 0; i < 6; i++) {
+    const w = 270 - i * 38, x = 240 - w / 2, y = 196 - i * 17;
+    stoneBlock(R, x, y, w, 17, '#7a7660', '#a29e80', '#4a4838', '#5e5b48');
+    R.dither(x, y + 10, w, 7, '#4f6b34', 0.25 + rnd() * 0.2);
+  }
+  for (let y = 94; y < 213; y += 3) { R.rect(222, y, 36, 2, '#8f8b70'); R.rect(222, y + 2, 36, 1, '#55523f'); }
+  R.rect(205, 60, 70, 36, '#6a6652'); R.rect(201, 54, 78, 8, '#8f8b70'); R.rect(201, 61, 78, 1, '#45433a');
+  R.rect(228, 72, 24, 24, '#1a1410'); R.rect(232, 76, 16, 20, '#2a1a10');
+  R.text('FK', 240, 64, '#d8a43a', 1, true);
+  R.rect(212, 70, 6, 26, '#55523f'); R.rect(262, 70, 6, 26, '#55523f');
+  // ---- west: waterfall cliff + giant stone head
+  N.poly([[0, 40], [40, 34], [92, 52], [118, 96], [124, 236], [0, 236]], '#4a4838');
+  for (let i = 0; i < 40; i++) N.rect((rnd() * 110) | 0, (50 + rnd() * 180) | 0, 8 + ((rnd() * 10) | 0), 3, rnd() < 0.5 ? '#5e5b48' : '#3a3828');
+  N.dither(0, 40, 124, 196, '#4f6b34', 0.18);
+  N.rect(46, 44, 30, 170, '#77ffff'); N.rect(50, 44, 22, 170, '#9be7ff'); N.rect(46, 44, 2, 170, '#ffffff');
+  N.circle(61, 212, 16, '#dfe6ec'); N.circle(48, 216, 10, '#ffffff'); N.circle(76, 216, 10, '#ffffff');
+  const hx = 196, hy = 176;   // stone head
+  N.rect(hx - 26, hy - 34, 52, 60, '#7a7660'); N.rect(hx - 26, hy - 34, 52, 3, '#a29e80'); N.rect(hx - 30, hy - 40, 60, 8, '#8f8b70');
+  N.rect(hx - 17, hy - 18, 12, 7, '#1a1410'); N.rect(hx + 5, hy - 18, 12, 7, '#1a1410'); N.rect(hx - 3, hy - 10, 6, 14, '#5e5b48');
+  N.rect(hx - 14, hy + 10, 28, 5, '#1a1410'); N.dither(hx - 26, hy - 34, 52, 60, '#4f6b34', 0.22); N.rect(hx - 30, hy + 26, 60, 34, '#5e5b48');
+  // ---- east: broken columns, fallen lintel, golden idol
+  for (const [cx, top] of [[752, 120], [808, 150], [906, 104]]) { stoneBlock(N, cx - 9, top, 18, 236 - top, '#7a7660', '#a29e80', '#4a4838', '#5e5b48'); N.rect(cx - 12, top - 4, 24, 5, '#a29e80'); N.dither(cx - 9, top, 18, 236 - top, '#4f6b34', 0.25); }
+  stoneBlock(N, 860, 222, 70, 14, '#7a7660', '#a29e80', '#4a4838', '#5e5b48');
+  N.poly([[730, 120], [790, 112], [792, 120], [732, 128]], '#8f8b70');
+  N.rect(872, 186, 20, 30, '#d8a43a'); N.circle(882, 182, 9, '#d8a43a'); N.rect(877, 179, 3, 3, '#ff3b3b'); N.rect(884, 179, 3, 3, '#ff3b3b'); N.rect(868, 214, 28, 8, '#7a7660');
+  // ---- canopy, vines, trees, bushes across the whole stage
+  for (let i = 0; i < 52; i++) { const x = rnd() * NEAR_AW, y = rnd() * 30 - 6, r = 12 + rnd() * 16; N.circle(x | 0, y | 0, r | 0, i % 3 ? '#1d4a2a' : '#2a6a34'); }
+  for (let i = 0; i < 36; i++) { const x = rnd() * NEAR_AW, y = rnd() * 22, r = 6 + rnd() * 8; N.circle(x | 0, y | 0, r | 0, '#3f8a3a'); }
+  for (let i = 0; i < 32; i++) {
+    const x = (rnd() * NEAR_AW) | 0, len = 30 + rnd() * 80;
+    for (let y = 10; y < len; y++) { N.px(x + Math.round(Math.sin(y / 9) * 2), y, '#2a6a34'); if (y % 7 === 0) { N.px(x + Math.round(Math.sin(y / 9) * 2) + 1, y, '#5aa04a'); N.px(x + Math.round(Math.sin(y / 9) * 2) - 1, y + 1, '#3f8a3a'); } }
+  }
+  for (const [x, s] of [[150, 0.9], [20 + OFF_N, 1], [70 + OFF_N, 0.8], [420 + OFF_N, 0.9], [465 + OFF_N, 1.1], [780, 1], [950, 0.9]]) {
+    N.rect(x - 4, 120, 8, 120, '#3a2616'); N.rect(x - 4, 120, 2, 120, '#5a3a20');
+    for (let k = 0; k < 6; k++) N.circle(x + ((rnd() - 0.5) * 40) | 0, (110 + rnd() * 30) | 0, (14 * s + rnd() * 8) | 0, k % 2 ? '#1d4a2a' : '#2a6a34');
+  }
+  for (let i = 0; i < 60; i++) N.circle((rnd() * NEAR_AW) | 0, (205 + rnd() * 25) | 0, (5 + rnd() * 8) | 0, i % 2 ? '#2a6a34' : '#1d4a2a');
+  for (const x of JUNGLE_TORCHES) { stoneBlock(N, x - 7, 160, 14, 76, '#7a7660', '#a29e80', '#4a4838', '#5e5b48'); N.rect(x - 9, 156, 18, 5, '#a29e80'); N.rect(x - 6, 150, 12, 6, '#3a2616'); }
+  N.grad(0, GY, NEAR_AW, 35, ['#6a6550', '#4a4636', '#302d22']);
+  for (let y = GY; y < 270; y += 7) N.rect(0, y, NEAR_AW, 1, '#2a281e');
+  for (let y = GY; y < 270; y += 7) for (let x = ((y - GY) / 7) % 2 ? 0 : 12; x < NEAR_AW; x += 24) N.rect(x, y, 1, 7, '#2a281e');
+  N.rect(0, GY, NEAR_AW, 1, '#8f8b70');
+  for (let i = 0; i < 240; i++) N.px(rnd() * NEAR_AW, GY + 1 + rnd() * 34, rnd() < 0.5 ? '#4f6b34' : '#6a8a3a');
+  return { far: F.toCanvas(), near: N.toCanvas() };
+}
+function animJungleWide(g, t) {
+  for (const x of JUNGLE_TORCHES) {
+    const f = ((t >> 2) + x) % 3;
+    g.fillStyle = '#c4261a'; g.fillRect(x - 5, 140 - f, 10, 11 + f);
+    g.fillStyle = '#ff7a1a'; g.fillRect(x - 4 + (f === 1 ? 1 : 0), 142 - f, 8, 8 + f);
+    g.fillStyle = '#ffd23f'; g.fillRect(x - 2, 145 - f, 4, 5 + f);
+    g.fillStyle = '#fff3b0'; g.fillRect(x - 1, 147, 2, 2);
+  }
+  g.fillStyle = '#ffffff';   // waterfall streaks
+  for (let i = 0; i < 7; i++) g.fillRect(50 + i * 3, 44 + ((t * 3 + i * 37) % 160), 1, 8);
+  g.fillStyle = '#e8ff6b';
+  for (let i = 0; i < 18; i++) { if (((t >> 4) + i * 3) % 5 === 0) continue; g.fillRect((40 + i * 52 + Math.round(Math.sin(t / 40 + i) * 8)) | 0, (150 + Math.round(Math.cos(t / 33 + i * 2) * 20)) | 0, 1, 1); }
+}
+
+/* ---------------- NEON CITY: arcade row (west) - KOMBAT block (centre) - hotel & TV tower (east) ---------------- */
+function buildNeonWide() {
+  const F = new Raster(FAR_AW, ART_H), N = new Raster(NEAR_AW, ART_H), rnd = seeded(77);
+  F.grad(0, 0, FAR_AW, 190, ['#05030f', '#120a2e', '#2a0f45', '#5a1658']);
+  for (let i = 0; i < 100; i++) F.px(rnd() * FAR_AW, rnd() * 90, rnd() < 0.3 ? '#ffffff' : '#8a7ab8');
+  const mx = 140 + OFF_F; F.circle(mx, 72, 14, '#f3e9c6'); F.circle(mx + 4, 68, 4, '#d8cba0'); F.circle(mx - 6, 77, 3, '#d8cba0');
+  let x = 0; while (x < FAR_AW) { const w = 14 + rnd() * 26, h = 50 + rnd() * 70; F.rect(x, 190 - h, w, h, '#1a1238'); for (let yy = 194 - h; yy < 186; yy += 5) for (let xx = x + 2; xx < x + w - 2; xx += 4) if (rnd() < 0.25) F.px(xx, yy, '#3a2a6a'); x += w + 1; }
+  F.rect(560, 40, 4, 150, '#1a1238'); F.rect(552, 60, 20, 8, '#1a1238'); F.px(562, 38, '#ff3b3b');   // TV mast
+  F.rect(0, 190, FAR_AW, 80, '#1a1238');
+  x = -10; while (x < NEAR_AW + 10) {
+    const w = 30 + rnd() * 40, h = 70 + rnd() * 70, top = GY - 30 - h;
+    N.rect(x, top, w, h + 30, '#231a40'); N.rect(x, top, w, 2, '#3a2a6a'); N.rect(x + w - 2, top, 2, h + 30, '#170f2c');
+    for (let yy = top + 6; yy < GY - 34; yy += 8) for (let xx = x + 4; xx < x + w - 6; xx += 7) { const r = rnd(); if (r < 0.45) N.rect(xx, yy, 4, 4, r < 0.25 ? '#ffd86b' : r < 0.35 ? '#77ffff' : '#ff8ad8'); else N.rect(xx, yy, 4, 4, '#140c26'); }
+    x += w + 6;
+  }
+  const sign = (sx, sy, s, col) => { const w = s.length * 6 + 6; N.dither(sx - 4, sy - 4, w + 8, 21, col, 0.2); N.rect(sx, sy, w, 13, '#0a0614'); N.rect(sx, sy, w, 1, col); N.rect(sx, sy + 12, w, 1, col); N.rect(sx, sy, 1, 13, col); N.rect(sx + w - 1, sy, 1, 13, col); N.text(s, sx + 4, sy + 3, col); };
+  sign(40 + OFF_N, 92, 'KOMBAT', '#ff3fa4'); sign(330 + OFF_N, 80, 'RAMEN', '#38e8ff'); sign(200 + OFF_N, 70, '24H', '#ffd23f');
+  N.rect(410 + OFF_N, 120, 30, 50, '#0a0614'); N.text('B', 420 + OFF_N, 124, '#c77dff'); N.text('A', 420 + OFF_N, 133, '#c77dff'); N.text('R', 420 + OFF_N, 142, '#c77dff');
+  // west: arcade with a marquee of bulbs + pizza
+  N.rect(30, 132, 150, 104, '#170f2c'); N.rect(30, 132, 150, 3, '#ff3fa4'); N.rect(56, 170, 98, 66, '#0a0614');
+  for (let i = 0; i < 4; i++) { N.rect(64 + i * 22, 182, 14, 26, '#3a2a6a'); N.rect(66 + i * 22, 185, 10, 8, i % 2 ? '#77ffff' : '#ffd23f'); }
+  sign(52, 140, 'ARCADE', '#ffd23f'); sign(190, 104, 'PIZZA', '#ff3fa4');
+  // east: hotel with a vertical sign + FK TV billboard
+  N.rect(880, 70, 60, 166, '#170f2c'); N.rect(880, 70, 60, 2, '#3a2a6a');
+  N.rect(866, 84, 12, 72, '#0a0614'); 'HOTEL'.split('').forEach((ch, k) => N.text(ch, 869, 88 + k * 13, '#38e8ff'));
+  sign(752, 96, 'FK TV', '#39d98a');
+  for (const lx of [100, 340, 620, 860]) { N.rect(lx, 150, 2, 85, '#3a3450'); N.rect(lx, 150, 14, 2, '#3a3450'); N.rect(lx + 10, 152, 6, 3, '#fff3b0'); N.rect(lx + 11, 155, 4, 1, '#c8a43a'); }
+  N.grad(0, GY, NEAR_AW, 35, ['#1c1830', '#100d1e', '#08060f']);
+  N.rect(0, GY, NEAR_AW, 1, '#3a2a6a');
+  for (let xx = 10; xx < NEAR_AW; xx += 40) N.rect(xx, 252, 20, 2, '#c8a43a');
+  for (const [rx, c] of [[52 + OFF_N, '#ff3fa4'], [80 + OFF_N, '#ff3fa4'], [345 + OFF_N, '#38e8ff'], [372 + OFF_N, '#38e8ff'], [212 + OFF_N, '#ffd23f'], [425 + OFF_N, '#c77dff'], [70, '#ffd23f'], [110, '#ffd23f'], [200, '#ff3fa4'], [770, '#39d98a'], [868, '#38e8ff']]) N.dither(rx, GY + 2, 8, 30, c, 0.3);
+  return { far: F.toCanvas(), near: N.toCanvas() };
+}
+function animNeonWide(g, t, ca) {
+  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44 + OFF_N, 95, 36, 7); }
+  if ((t >> 5) % 2) { g.fillStyle = '#ff3fa4'; g.fillRect(410 + OFF_N, 112, 30, 4); }
+  if ((t >> 4) % 3 === 0) { g.fillStyle = '#0a0614'; g.fillRect(869, 101, 7, 9); }
+  g.fillStyle = (t >> 3) % 2 ? '#ffd23f' : '#ff3fa4';   // arcade marquee bulbs chase
+  for (let i = 0; i < 15; i++) if ((i + (t >> 3)) % 3 === 0) g.fillRect(32 + i * 10, 133, 2, 2);
+  g.fillStyle = '#6a5aa0';   // rain is screen-space
+  for (let i = 0; i < 40; i++) { const x = (i * 53 + t * 3) % 500 - 10 + ca, y = (i * 97 + t * 7) % 270; g.fillRect(x, y, 1, 4); }
+}
+
+/* ---------------- DESERT ARENA: grand gate (west) - arena (centre) - broken wall & dunes (east) ---------------- */
+const DESERT_BANNERS = [120, 60 + OFF_N, 160 + OFF_N, 300 + OFF_N, 400 + OFF_N, 740];
+function buildDesertWide() {
+  const F = new Raster(FAR_AW, ART_H), N = new Raster(NEAR_AW, ART_H), rnd = seeded(5);
+  F.grad(0, 0, FAR_AW, 150, ['#2a4a8a', '#5a8ad0', '#a8c8e0', '#f2d8a0']);
+  F.circle(90 + OFF_F, 50, 22, '#ffe680'); F.circle(90 + OFF_F, 50, 17, '#fff3b0');
+  for (let i = 0; i < 6; i++) F.rect(20 + rnd() * 600, 20 + rnd() * 40, 30 + rnd() * 30, 3, '#e8f0f8');
+  for (const [a, top, b] of [[-40, 112, 60], [OFF_F, 105, 120 + OFF_F], [300 + OFF_F, 95, 440 + OFF_F], [560, 110, 700]]) { const w = b - a; F.poly([[a, 150], [a + w * 0.25, top], [b - w * 0.25, top], [b, 150]], '#b5653a'); F.rect(a + w * 0.25, top, w * 0.5, 2, '#d8865a'); }
+  F.poly([[600, 150], [640, 118], [680, 150]], '#c8945a');   // distant pyramid
+  F.dither(0, 120, FAR_AW, 30, '#8a4a2a', 0.2);
+  F.grad(0, 140, FAR_AW, 130, ['#d0a060', '#e0b070']);
+  const WALL_END = 800;
+  N.rect(0, 140, WALL_END, 96, '#d8a86a'); N.rect(0, 140, WALL_END, 3, '#f2c890'); N.rect(0, 180, WALL_END, 2, '#a87a48'); N.rect(0, 229, WALL_END, 7, '#a87a48');
+  for (let row = 0; row < 2; row++) for (let ax = 6; ax < WALL_END - 24; ax += 34) {
+    if (ax < 150) continue;   // the gate stands here
+    const ay = 147 + row * 40;
+    N.rect(ax, ay + 6, 22, 26, '#5a3a22'); N.circle(ax + 11, ay + 7, 11, '#5a3a22'); N.rect(ax, ay + 7, 22, 26, '#5a3a22');
+    for (let k = 0; k < 8; k++) { const cx = ax + 3 + (k % 4) * 5, cy = ay + 14 + Math.floor(k / 4) * 8; N.rect(cx, cy, 3, 3, ['#f0c4a0', '#d9a273', '#8a5a3a', '#f4c9a8'][k % 4]); N.rect(cx, cy + 3, 3, 4, ['#e8202a', '#3d8ff0', '#ffd23f', '#39d98a', '#c77dff'][(k + ax) % 5]); }
+  }
+  // broken wall end + rubble, then open dunes
+  N.poly([[WALL_END - 4, 140], [WALL_END + 18, 160], [WALL_END + 6, 190], [WALL_END + 24, 236], [WALL_END - 4, 236]], '#d8a86a');
+  for (let i = 0; i < 14; i++) N.rect(WALL_END + 10 + rnd() * 60, 222 + rnd() * 12, 6 + rnd() * 8, 4, rnd() < 0.5 ? '#c8945a' : '#a87a48');
+  N.poly([[WALL_END + 20, 236], [860, 196], [920, 210], [960, 200], [960, 236]], '#e0b06a'); N.poly([[880, 236], [930, 214], [960, 222], [960, 236]], '#f0cc84');
+  for (const [cx, h] of [[884, 34], [936, 24]]) { N.rect(cx - 3, 236 - h, 6, h, '#4f6b34'); N.rect(cx - 10, 236 - h + 8, 4, 10, '#4f6b34'); N.rect(cx - 10, 236 - h + 8, 8, 3, '#4f6b34'); N.rect(cx + 6, 236 - h + 4, 4, 9, '#4f6b34'); N.rect(cx + 2, 236 - h + 11, 8, 3, '#4f6b34'); }
+  // grand gate on the west
+  N.rect(10, 96, 140, 140, '#c8945a'); N.rect(10, 96, 140, 4, '#ffd23f'); N.rect(6, 90, 148, 8, '#a87a48');
+  N.rect(48, 140, 64, 96, '#3a2414'); N.circle(80, 140, 32, '#3a2414'); N.rect(48, 140, 64, 2, '#3a2414');
+  for (let y = 120; y < 236; y += 10) N.rect(48, y, 64, 1, '#5a3a22'); for (let gx = 52; gx < 112; gx += 10) N.rect(gx, 110, 2, 126, '#8a6a4a');
+  N.text('ARENA', 80, 102, '#5a3a22', 1, true);
+  for (const [bx, s] of DESERT_BANNERS.map((v) => [v, 0])) { N.rect(bx, 120, 14, 34, '#c0392b'); N.rect(bx, 120, 14, 2, '#ffd23f'); N.rect(bx + 5, 128, 4, 12, '#ffd23f'); N.poly([[bx, 154], [bx + 7, 148], [bx + 14, 154]], '#d8a86a'); N.rect(bx + 6, 112, 2, 8, '#5a3a22'); }
+  for (const ox of [16 + OFF_N, 456 + OFF_N, 170]) { N.poly([[ox - 8, 236], [ox - 5, 110], [ox + 5, 110], [ox + 8, 236]], '#c8945a'); N.poly([[ox - 5, 110], [ox, 98], [ox + 5, 110]], '#ffd23f'); N.rect(ox - 1, 120, 2, 100, '#a87a48'); }
+  N.grad(0, GY, NEAR_AW, 35, ['#f0cc84', '#e0b06a', '#c8945a']);
+  N.rect(0, GY, NEAR_AW, 1, '#a87a48');
+  for (let i = 0; i < 520; i++) N.px(rnd() * NEAR_AW, GY + 1 + rnd() * 34, rnd() < 0.5 ? '#d0a45e' : '#fae0a0');
+  for (let i = 0; i < 12; i++) { const sx = rnd() * (NEAR_AW - 20), sy = GY + 6 + rnd() * 24; N.rect(sx, sy, 5, 2, '#8a6a4a'); N.rect(sx + 1, sy - 1, 3, 1, '#b08a60'); }
+  return { far: F.toCanvas(), near: N.toCanvas() };
+}
+function animDesertWide(g, t) {
+  g.fillStyle = '#e8b878';
+  for (const bx of DESERT_BANNERS) if ((t >> 4) % 2) g.fillRect(bx + 13, 140 + ((t >> 3) % 3) * 4, 1, 6);
+  g.fillStyle = '#5a3a22';
+  for (let ax = 6; ax < 776; ax += 34) if (ax >= 150 && ((t >> 3) + ax) % 4 === 0) { g.fillRect(ax + 3, 161, 18, 1); g.fillRect(ax + 3, 201, 18, 1); }
+  g.fillStyle = '#fae0a0';   // blowing sand past the dunes
+  for (let i = 0; i < 10; i++) g.fillRect(800 + ((t * 2 + i * 41) % 160), 200 + ((i * 13) % 30), 3, 1);
+}
+
+/* ---------------- STUDIO BACKLOT: trailers & billboard (west) - saloon set (centre) - Stage 7 + rocket set (east) ---------------- */
+function buildStudioWide() {
+  const F = new Raster(FAR_AW, ART_H), N = new Raster(NEAR_AW, ART_H), rnd = seeded(42);
+  F.grad(0, 0, FAR_AW, 170, ['#1a1a3a', '#4a2a5a', '#b04a5a', '#f2a06a']);
+  for (let i = 0; i < 35; i++) F.px(rnd() * FAR_AW, rnd() * 50, '#ffffff');
+  for (const px of [30 + OFF_F, 300 + OFF_F, 20, 610]) { for (let y = 70; y < 170; y++) F.rect(px + Math.round(Math.sin(y / 30) * 3), y, 3, 1, '#2a1a30'); for (let k = 0; k < 6; k++) { const a = k * 1.05; for (let r = 0; r < 18; r++) F.px(px + 1 + Math.cos(a) * r, 70 + Math.sin(a) * r * 0.5 + r * r * 0.02, '#2a1a30'); } }
+  F.poly([[0, 170], [120, 140], [260, 160], [420, 136], [560, 158], [FAR_AW, 142], [FAR_AW, 270], [0, 270]], '#2a1a30');   // Hollywood hills
+  const R = shifted(N, OFF_N);
+  R.rect(370, 50, 50, 34, '#9aa0a8'); R.rect(370, 50, 50, 2, '#c8ccd2'); R.rect(370, 82, 50, 2, '#6a7078'); R.poly([[366, 50], [395, 34], [424, 50]], '#7a8088');
+  R.text('FK', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
+  for (const lx of [374, 392, 412]) R.line(lx, 84, lx - 4 + (lx - 392) / 4, 150, '#5a5f68');
+  R.line(372, 110, 416, 110, '#5a5f68');
+  N.rect(0, 150, NEAR_AW, 85, '#7a6a5a'); N.rect(0, 150, NEAR_AW, 2, '#9a8a78'); for (let x = 0; x < NEAR_AW; x += 16) N.rect(x, 152, 1, 83, '#6a5a4c');
+  R.rect(176, 132, 90, 103, '#8a5a34'); R.rect(176, 132, 90, 3, '#a8784a'); R.poly([[176, 132], [221, 118], [266, 132]], '#8a5a34');
+  R.rect(184, 140, 74, 12, '#3a2414'); R.text('SALOON', 221, 143, '#ffd23f', 1, true);
+  R.rect(200, 175, 42, 60, '#3a2414'); R.rect(220, 175, 2, 60, '#5a3a20'); for (const wx of [182, 248]) R.rect(wx, 165, 12, 16, '#f2b06a');
+  R.rect(176, 200, 90, 3, '#5a3a20');
+  const stage = (sx, w, h, n) => { const top = GY - h; N.rect(sx, top, w, h, '#c8b89a'); N.poly([[sx - 3, top], [sx + w / 2, top - 16], [sx + w + 3, top]], '#a8987a'); N.rect(sx, top, w, 2, '#e0d4b8'); N.rect(sx + w - 3, top, 3, h, '#9a8a6e');
+    N.rect(sx + w / 2 - 28, GY - 62, 56, 62, '#6a5e4a'); for (let y = GY - 60; y < GY; y += 6) N.rect(sx + w / 2 - 28, y, 56, 1, '#5a4e3c');
+    N.rect(sx + w / 2 - 22, top + 8, 44, 13, '#2a2a34'); N.text('STAGE ' + n, sx + w / 2, top + 11, '#ffd23f', 1, true); };
+  stage(-20 + OFF_N, 190, 120, 3); stage(270 + OFF_N, 210, 110, 4); stage(744, 196, 128, 7);
+  R.rect(118, 150, 40, 12, '#2a1a1a'); R.text('ON AIR', 138, 152, '#5a1a1a', 1, true);
+  // west: billboard on stilts + star trailers
+  N.rect(24, 78, 176, 44, '#2a2a34'); N.rect(28, 82, 168, 36, '#c0392b'); N.text('FAMILY KOMBAT', 112, 88, '#ffd23f', 1, true); N.text('NOW FILMING', 112, 102, '#ffffff', 1, true);
+  for (const sx of [56, 168]) N.rect(sx, 122, 4, 28, '#2a2a34');
+  for (const tx of [30, 120]) { N.rect(tx, 186, 80, 44, '#d8cfbf'); N.rect(tx, 186, 80, 3, '#f4f1e6'); N.rect(tx + 8, 196, 18, 12, '#6a7580'); N.rect(tx + 52, 194, 18, 36, '#a8987a'); N.text('*', tx + 58, 202, '#ffd23f'); N.circle(tx + 16, 232, 5, '#222228'); N.circle(tx + 64, 232, 5, '#222228'); }
+  // east: rocket ship prop in front of Stage 7
+  N.poly([[908, 236], [908, 150], [920, 120], [932, 150], [932, 236]], '#dfe6ec'); N.poly([[920, 120], [914, 134], [926, 134]], '#c0392b');
+  N.circle(920, 166, 6, '#33cccc'); N.poly([[896, 236], [908, 200], [908, 236]], '#c0392b'); N.poly([[944, 236], [932, 200], [932, 236]], '#c0392b');
+  // foreground props
+  R.line(52, 236, 62, 196, '#2a2a2a'); R.line(72, 236, 62, 196, '#2a2a2a'); R.line(62, 236, 62, 196, '#2a2a2a');
+  R.rect(50, 180, 30, 18, '#222228'); R.rect(80, 185, 10, 8, '#444450'); R.circle(56, 176, 6, '#333340'); R.circle(72, 176, 6, '#333340'); R.circle(56, 176, 2, '#777'); R.circle(72, 176, 2, '#777');
+  R.line(420, 236, 430, 200, '#2a2a2a'); R.line(440, 236, 430, 200, '#2a2a2a'); R.rect(420, 186, 22, 16, '#3a3a44'); R.rect(416, 188, 4, 12, '#fff3b0');
+  R.rect(140, 214, 18, 3, '#7a4a1e'); R.rect(140, 200, 18, 10, '#222'); R.text('DIR', 149, 202, '#ffd23f', 1, true); R.line(141, 217, 155, 234, '#7a4a1e'); R.line(156, 217, 142, 234, '#7a4a1e');
+  N.grad(0, GY, NEAR_AW, 35, ['#4a4a52', '#38383e', '#26262c']);
+  N.rect(0, GY, NEAR_AW, 1, '#6a6a72');
+  for (let i = 0; i < 320; i++) N.px(rnd() * NEAR_AW, GY + 1 + rnd() * 34, rnd() < 0.5 ? '#2e2e34' : '#55555c');
+  for (const tx of [100, 150 + OFF_N, 330 + OFF_N, 860]) { N.line(tx - 5, 245, tx + 5, 255, '#ffd23f'); N.line(tx + 5, 245, tx - 5, 255, '#ffd23f'); }
+  for (let xx = 0; xx < NEAR_AW; xx++) N.px(xx, 262 + Math.round(Math.sin(xx / 25) * 2), '#111114');
+  return { far: F.toCanvas(), near: N.toCanvas() };
+}
+function animStudioWide(g, t) {
+  g.fillStyle = 'rgba(255,243,176,0.18)';
+  for (const [bx, ph] of [[150 + OFF_N, 0], [330 + OFF_N, 2], [842, 4]]) {
+    const a = Math.sin(t / 70 + ph) * 0.5 - Math.PI / 2;
+    g.beginPath(); g.moveTo(bx, 125); g.lineTo(bx + Math.cos(a - 0.06) * 300, 125 + Math.sin(a - 0.06) * 300); g.lineTo(bx + Math.cos(a + 0.06) * 300, 125 + Math.sin(a + 0.06) * 300); g.fill();
+  }
+  if ((t >> 5) % 2) { g.fillStyle = '#ff2a2a'; g.fillRect(120 + OFF_N, 151, 36, 10); g.fillStyle = '#ffffff'; g.fillRect(124 + OFF_N, 153, 1, 6); }
+  if ((t >> 4) % 4 === 0) { g.fillStyle = '#ff7a1a'; g.fillRect(912, 236 - 4, 16, 4); }
+}
+STAGES[0].buildWide = buildJungleWide; STAGES[0].animWide = animJungleWide;
+STAGES[1].buildWide = buildNeonWide; STAGES[1].animWide = animNeonWide;
+STAGES[2].buildWide = buildDesertWide; STAGES[2].animWide = animDesertWide;
+STAGES[3].buildWide = buildStudioWide; STAGES[3].animWide = animStudioWide;
+
+
 
 /* =====================================================================
  * 16. WORLD RENDERING  -  fighters, projectiles, particles, effects
@@ -3051,6 +3324,7 @@ const DPAD_PAD = { off: 50, r: 24 };
 const ARROW_COL = { '\u2191': DPAD.up.col, '\u2193': DPAD.down.col, '\u2190': DPAD.left.col, '\u2192': DPAD.right.col };
 const DPAD_PAL_EXTRA = [];   // exact palette entries so the colours survive the pixel-palette snap
 for (const k in DPAD) { const c = DPAD[k].col; DPAD_PAL_EXTRA.push(c, shade(c, -0.4), shade(c, 0.35)); }
+for (const b of TOUCH_UI.buttons) DPAD_PAL_EXTRA.push(b.color, shade(b.color, -0.4), shade(b.color, 0.35));
 /** Pad centre in game units for a stick origin (used by drawing and tests). */
 function dpadPadPos(k, bx, by) { const d = DPAD[k]; return { x: bx + d.ax * DPAD_PAD.off, y: by + d.ay * DPAD_PAD.off }; }
 function drawDpadPads(g, bx, by) {
@@ -3107,6 +3381,23 @@ function keySegs(s, keys, facing, base) {
   return out;
 }
 
+/** Attack buttons in the same style as the d-pad: dark tinted pad + bright rim at rest, full colour + glow when pressed. */
+function drawAttackButtons(g) {
+  const me = game.fighters[Net.role === 'guest' ? 1 : 0];
+  for (const b of TOUCH_UI.buttons) {
+    const on = !!TouchPad.held[b.btn], ready = b.btn !== 'ULT' || (me && me.meter >= CONFIG.METER_MAX);
+    if (on) {
+      g.globalAlpha = 0.6; circle(g, b.x, b.y, b.r + 10, shade(b.color, 0.35), null);
+      g.globalAlpha = 1; circle(g, b.x, b.y, b.r + 2, b.color, '#ffffff', 4);
+    } else {
+      g.globalAlpha = ready ? 0.85 : 0.4; circle(g, b.x, b.y, b.r, shade(b.color, -0.4), b.color, 4);
+    }
+    g.globalAlpha = ready || on ? 1 : 0.55;
+    txt(g, b.label, b.x, b.y - (b.sub ? 7 : 0), 30, '#fff', 'center', 3);
+    if (b.sub) txt(g, b.sub, b.x, b.y + 21, 15, on ? '#fff' : shade(b.color, 0.35), 'center', 3, b.r * 2 - 8);
+  }
+  g.globalAlpha = 1;
+}
 function drawTouchControls(g) {
   g.save();
   const s = TouchPad.stick, bx = s ? s.ox : TOUCH_UI.stickBase.x, by = s ? s.oy : TOUCH_UI.stickBase.y;
@@ -3115,14 +3406,7 @@ function drawTouchControls(g) {
   if (s) { const dx = s.x - s.ox, dy = s.y - s.oy, dd = Math.hypot(dx, dy) || 1, m = Math.min(dd, TOUCH_UI.stickR); kx = bx + dx / dd * m; ky = by + dy / dd * m; }
   g.globalAlpha = 0.5; circle(g, kx, ky, 30, '#ddd', '#fff', 3);
   g.globalAlpha = 1; drawDpadPads(g, bx, by);   // pads on top of the knob so a pressed one is never hidden
-  for (const b of TOUCH_UI.buttons) {
-    const on = TouchPad.held[b.btn];
-    const me = game.fighters[Net.role === 'guest' ? 1 : 0];
-    const ready = b.btn !== 'ULT' || (me && me.meter >= CONFIG.METER_MAX);
-    g.globalAlpha = on ? 0.85 : ready ? 0.5 : 0.25;
-    circle(g, b.x, b.y, b.r, b.color, '#fff', 3);
-    g.globalAlpha = 0.95; txt(g, b.label, b.x, b.y + 1, b.btn === 'ULT' ? 18 : 20, '#fff', 'center', 3);
-  }
+  drawAttackButtons(g);
   g.globalAlpha = game.mode === 'online' ? 0 : 0.6; const pz = TOUCH_UI.pause;
   circle(g, pz.x, pz.y, pz.r, '#222', '#fff', 2); g.fillStyle = '#fff'; g.fillRect(pz.x - 7, pz.y - 8, 5, 16); g.fillRect(pz.x + 2, pz.y - 8, 5, 16);
   g.restore();
@@ -3395,8 +3679,7 @@ function drawSelect(g) {
 function drawFight(g) {
   g.save();
   if (game.shake > 0.3) { g.translate(Math.round(rand(-game.shake, game.shake) / 2) * 2, Math.round(rand(-game.shake, game.shake) / 2) * 2); game.shake *= 0.88; } else game.shake = 0;
-  g.drawImage(stageCanvasFor(game.stageIdx), 0, 0, 960, 540);
-  g.save(); g.scale(2, 2); STAGES[game.stageIdx].anim(g, game.frame); g.restore();
+  drawStageBG(g, game.stageIdx, camNow());   // wide stage: far layer (parallax) + near layer + animated details
   for (const d of game.decals) { g.fillStyle = d.color; g.globalAlpha = 0.8; g.beginPath(); g.ellipse(d.x, d.y, d.r * 1.6, d.r * 0.5, 0, 0, Math.PI * 2); g.fill(); }
   g.globalAlpha = 1;
   for (const e of game.entities) if (e.type === 'cloud' || e.type === 'tornado') drawEntity(g, e);
@@ -3694,6 +3977,7 @@ function buildPalettes() {
   const all = BASE_COLORS.slice();
   for (const ch of CHARACTERS) { const l = charPaletteList(ch); CHAR_PAL.push(makePaletteWithShading(l)); all.push(...l); }
   all.push(...DPAD_PAL_EXTRA);
+  all.push(...["#05030f", "#08060f", "#0a0614", "#0b2a2a", "#100d1e", "#111114", "#120a2e", "#140c26", "#14504a", "#170f2c", "#1a1238", "#1a1410", "#1a1a3a", "#1c1830", "#1d4a2a", "#1f5a44", "#222228", "#231a40", "#26262c", "#2a0f45", "#2a1a10", "#2a1a1a", "#2a1a30", "#2a281e", "#2a2a2a", "#2a2a34", "#2a4a8a", "#2a6a34", "#2e2e34", "#302d22", "#333340", "#33cccc", "#38383e", "#38e8ff", "#39d98a", "#3a2414", "#3a2616", "#3a2a6a", "#3a3450", "#3a3828", "#3a3a44", "#3d8ff0", "#3f8a3a", "#3f8f6a", "#444450", "#45433a", "#4a2a5a", "#4a4636", "#4a4838", "#4a4a52", "#4f6b34", "#55523f", "#55555c", "#5a1658", "#5a1a1a", "#5a3a20", "#5a3a22", "#5a4e3c", "#5a5f68", "#5a8ad0", "#5aa04a", "#5e5b48", "#6a5a4c", "#6a5aa0", "#6a5e4a", "#6a6550", "#6a6652", "#6a6a72", "#6a7078", "#6a7580", "#6a8a3a", "#77ffff", "#7a4a1e", "#7a6a5a", "#7a7660", "#7a8088", "#8a4a2a", "#8a5a34", "#8a5a3a", "#8a6a4a", "#8a7ab8", "#8f8b70", "#9a8a6e", "#9a8a78", "#9aa0a8", "#9be7ff", "#a29e80", "#a8784a", "#a87a48", "#a8987a", "#a8c8e0", "#a8d08a", "#b04a5a", "#b08a60", "#b5653a", "#c0392b", "#c4261a", "#c77dff", "#c8945a", "#c8a43a", "#c8b89a", "#c8ccd2", "#d0a060", "#d0a45e", "#d8865a", "#d8a43a", "#d8a86a", "#d8cba0", "#d8cfbf", "#d9a273", "#dfe6ec", "#e0b06a", "#e0b070", "#e0d4b8", "#e8202a", "#e8b878", "#e8f0f8", "#e8ff6b", "#f0c4a0", "#f0cc84", "#f2a06a", "#f2b06a", "#f2c890", "#f2d8a0", "#f3e9c6", "#f4c9a8", "#f4f1e6", "#fae0a0", "#ff2a2a", "#ff3b3b", "#ff3fa4", "#ff7a1a", "#ff8ad8", "#ffd23f", "#ffd86b", "#ffe680", "#fff3b0", "#ffffff"]);   // stage colours
   WORLD_PAL = makePalette(all);
 }
 function makePaletteWithShading(list) {
@@ -4216,7 +4500,7 @@ function decVal(v) {
   if ('$c' in v) return CHARACTERS[v.$c];
   const o = {}; for (const k in v) o[k] = decVal(v[k]); return o;
 }
-const SNAP_KEYS = ['toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
+const SNAP_KEYS = ['camX', 'toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
 function encodeSnapshot() {
   const s = { t: 'snap', fr: game.frame, sfx: Net.sfx.slice(), voice: Net.voice.slice(), shake: Math.round(game.shake) };
   s.F = game.fighters.map((f) => {
@@ -4243,7 +4527,9 @@ function applySnapshot(s) {
     f._fx = Math.abs(fromX - o.x) < 140 ? fromX : o.x; f._fy = Math.abs(fromY - o.y) < 140 ? fromY : o.y; f._tx = o.x; f._ty = o.y;
     return f;
   });
+  const camWas = game.camDraw ?? game.camX;
   for (const k of SNAP_KEYS) if (k in s) game[k] = decVal(s[k]);
+  game._camFrom = camWas ?? game.camX; game._camTo = game.camX;   // guest: background glides between snapshots
   game.particles = decVal(s.particles || []);
   game.shake = Math.max(game.shake, s.shake || 0);
   for (const n of s.sfx || []) Sound.play(n, true);
@@ -4267,6 +4553,7 @@ function guestStep(codes) {
 function guestInterpolate() {
   const k = clamp((performance.now() - Net.lastSnapAt) / Net.snapGap, 0, 1);
   for (const f of game.fighters) if (f._tx !== undefined) { f.x = lerp(f._fx, f._tx, k); f.y = lerp(f._fy, f._ty, k); }
+  if (game._camTo != null) game.camDraw = Math.abs(game._camTo - game._camFrom) > 200 ? game._camTo : lerp(game._camFrom, game._camTo, k);
 }
 
 /* ---------- join-code box (a real text field so phone keyboards work) ---------- */
@@ -4621,7 +4908,7 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 /* Small hook for automated tests / tinkering in the browser console. */
-window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad };
+window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W };
 </script>
 </body>
 </html>
