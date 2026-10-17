@@ -118,6 +118,7 @@ const CONFIG = {
     s2: { motion: ['B', 'F'], btn: 'HK' },   // back, forward + Heavy Kick
     s3: { motion: ['D', 'D'], btn: 'LK' },   // down, down   + Light Kick
     s4: { motion: ['D', 'B'], btn: 'HP' },   // down, back   + Heavy Punch (only fighters that have an s4)
+    s5: { motion: ['D', 'F'], btn: 'HP' },   // down, forward + Heavy Punch (only fighters that have an s5: Grok Girl's Prompt Beam)
   },
   // ---- Finishers, only during "FINISH THEM!" ----
   FINISHERS: {
@@ -185,20 +186,31 @@ const CHARACTERS = [
   },
   {
     id: 'grok', name: 'GROK GIRL', tagline: 'Half Cyborg - All Business',
-    maxHp: 100, walk: 3.6, backWalk: 2.8, jump: 16, power: 1.0, scale: 1.0, girth: 1.0,
+    maxHp: 90, walk: 3.6, backWalk: 2.8, jump: 16, power: 0.85, scale: 1.0, girth: 1.0,
     colors: { skin: '#f0c4a0', main: '#c3ccd6', main2: '#8e9aa8', pants: '#aab4c0', shoe: '#d6dde5',
               hair: '#9a6a3a', hairHi: '#c8945a', accent: '#2a7dff', glow: '#5cd0ff', metal: '#b8c2cc' },
     specials: {
-      s1: { name: 'Plasma Punch', type: 'rush', startup: 7, active: 14, recovery: 16, pose: 'jab',
-            speed: 11, dmg: 10, hitstun: 22, kb: 9, box: { x: 10, y: -130, w: 64, h: 34 }, fx: 'plasma', sfx: 'zap' },
-      s2: { name: 'Data-Drain Kick', type: 'rush', startup: 8, active: 8, recovery: 18, pose: 'highkick',
-            speed: 5, dmg: 9, heal: 0.6, hitstun: 20, kb: 7, box: { x: 15, y: -140, w: 84, h: 40 }, fx: 'data', sfx: 'hk' },
-      s3: { name: 'Laser Net', type: 'projectile', startup: 12, active: 1, recovery: 22, pose: 'cast',
-            proj: { kind: 'net', speed: 7, dmg: 3, w: 52, h: 64, y: -100, hitstun: 10, kb: 0, trap: 90, sfx: 'laser' } },
+      // 2026-10-16 level-up. Plasma Punch: faster, and an OVERCLOCK burst follows a hit and launches.
+      s1: { name: 'Plasma Punch', type: 'rush', startup: 6, active: 14, recovery: 16, pose: 'jab', sfxStart: 'gk_think',
+            speed: 12, dmg: 8, hitstun: 24, kb: 4, box: { x: 10, y: -130, w: 66, h: 36 }, fx: 'plasma', sfx: 'gk_plasma',
+            burst: { delay: 7, dmg: 5, kb: 7, kbY: -9 } },
+      // Data-Drain Kick: heals more and also downloads the opponent's ULT meter
+      s2: { name: 'Data-Drain Kick', type: 'rush', startup: 8, active: 8, recovery: 18, pose: 'highkick', sfxStart: 'gk_think',
+            speed: 5.5, dmg: 9, heal: 0.8, drainMeter: 15, hitstun: 20, kb: 7, box: { x: 15, y: -140, w: 88, h: 40 }, fx: 'data', sfx: 'gk_process', healSfx: 'gk_drain' },
+      // Laser Net: faster, and the opponent is left BUFFERING (loading bar) a little longer
+      s3: { name: 'Laser Net', type: 'projectile', startup: 11, active: 1, recovery: 20, pose: 'cast', sfxStart: 'gk_think',
+            proj: { kind: 'net', speed: 9, dmg: 4, w: 56, h: 68, y: -100, hitstun: 10, kb: 0, trap: 96, trapText: 'BUFFERING...', sfx: 'gk_net' } },
+      // NEW: Reroute (down, back + HP): invincible glitch-teleport behind the opponent + plasma elbow that pops them up
+      s4: { name: 'Reroute', type: 'reroute', startup: 12, active: 7, recovery: 17, pose: 'cross', sfxStart: 'gk_reroute',
+            at: 9, invuln: 16, dmg: 8, hitstun: 24, kb: 5, kbY: -7, box: { x: 0, y: -150, w: 92, h: 90 } },
+      // NEW: Prompt Beam (down, forward + HP): thinks, then streams a long beam of tokens (4 hits, the last knocks back)
+      s5: { name: 'Prompt Beam', type: 'promptBeam', startup: 15, active: 30, recovery: 18, pose: 'cast', sfxStart: 'gk_think',
+            beam: { len: 520, grow: 40, thick: 26, y: -116, dmg: 1.4, hitEvery: 5, hits: 4, hitstun: 14, kb: 0.3, lastDmg: 3, lastKb: 8 } },
     },
-    ult: { name: 'FULL-SYSTEM OVERLOAD', type: 'overload', dmg: 5, hits: 5, radius: 250, startup: 1, active: 60, recovery: 20, pose: 'cast' },
+    // NEW ULT: SINGULARITY - GENERATING... pulls the opponent in, 6 data strikes, then the OUTPUT COMPLETE blast (unblockable)
+    ult: { name: 'SINGULARITY', type: 'singularity', dmg: 2, hits: 6, every: 7, finalDmg: 9, startup: 1, active: 110, recovery: 18, pose: 'cast', armor: true },
     fatality: { name: 'HARD REBOOT', type: 'hardReboot' },
-    ai: { far: ['s3'], mid: ['s1', 's3'], close: ['s2', 's1'] },
+    ai: { far: ['s3', 's5', 's4'], mid: ['s1', 's3', 's5', 's4'], close: ['s2', 's1', 's4'] },
   },
   {
     id: 'cyclone', name: 'CYCLONE', tagline: 'Fast & Wild',
@@ -347,6 +359,7 @@ const Sound = {
     if (!this.ctx) return;
     if (SFX_SAMPLES[name] && playSample(name)) return;   // any hook name can be replaced by a recorded sample
     if (name.startsWith('st_')) { stinger(name.slice(3)); return; }
+    if (name.startsWith('gk_')) { gkSfx(this, name); return; }
     switch (name) {
       case 'lp': case 'lk': this.noise(0.07, 0.25, 2200, 'bandpass'); break;
       case 'hp': case 'hk': this.noise(0.14, 0.35, 900, 'bandpass', 0, 300); break;
@@ -888,7 +901,7 @@ class Fighter {
       if (!this.grounded && def.air) { def = def.air; this.airAttacked = true; }   // e.g. Cyclone's Sky Dive
       this.crouching = false;
       addText(def.name.toUpperCase(), { x: this.x, y: this.y - 205 * this.ch.scale, size: 20, color: '#fff', dur: 40, rise: 0.6 });
-      Sound.play(sfxHook(`sp_${this.ch.id}_${a.slot}`, 'whoosh'));
+      Sound.play(sfxHook(`sp_${this.ch.id}_${a.slot}`, def.sfxStart || 'whoosh'));
     } else if (a.type === 'ult') {
       def = this.ch.ult; this.meter = 0; this.crouching = false;
       platPullDown(this); platPullDown(this.opp);   // ultimates happen on the floor
@@ -1089,6 +1102,7 @@ const MOVE_HANDLERS = {
   rush: {
     update(f, m, opp) {
       const d = m.def;
+      if (d.burst && m.data.burstAt === m.frame) gkBurst(f, m, opp);   // Grok Girl's OVERCLOCK follow-up
       if (inActive(m)) {
         if (m.frame === d.startup + 1) Sound.play(d.sfx || 'whoosh');
         f.vx = m.hit ? f.vx * 0.6 : f.facing * d.speed;
@@ -1101,11 +1115,16 @@ const MOVE_HANDLERS = {
           const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx });
           if (r) {
             m.hit = true;
+            if (r === 'hit' && d.burst) m.data.burstAt = m.frame + d.burst.delay;
+            if (r === 'hit' && d.drainMeter && opp.meter > 0) {   // Data-Drain also downloads ULT meter
+              const take = Math.min(opp.meter, d.drainMeter); opp.meter -= take; f.meter = Math.min(CONFIG.METER_MAX, f.meter + take);
+              addText('METER DRAINED', { x: opp.x, y: opp.y - 215 * opp.ch.scale, size: 18, color: '#39ff88', dur: 40, rise: 0.6 });
+            }
             if (r === 'hit' && d.heal) {
               const gain = d.dmg * f.ch.power * d.heal;
               f.hp = Math.min(f.ch.maxHp, f.hp + gain);
               addText('+' + gain.toFixed(0) + ' HP', { x: f.x, y: f.y - 200 * f.ch.scale, size: 22, color: '#39ff88', dur: 50, rise: 0.8 });
-              Sound.play('drain');
+              Sound.play(d.healSfx || 'drain');
               for (let i = 0; i < 14; i++) spawnParticle({ x: opp.x, y: opp.centerY() + rand(-30, 30), vx: (f.x - opp.x) / 22 + rand(-1, 1), vy: rand(-2, 2), life: 24, size: 14, color: '#39ff88', type: 'digit' });
             }
           }
@@ -1300,9 +1319,14 @@ function applyHit(att, def, h) {
   // ---- it's a hit ----
   const comboing = def.hitstun > 0 || def.trapped > 0 || !def.grounded || def.state === 'ko';
   att.combo = comboing ? att.combo + 1 : 1;
-  const scaling = Math.max(0.45, 1 - (att.combo - 1) * 0.08);   // long combos do less per hit
+  const scaling = h.noScale ? 1 : Math.max(0.45, 1 - (att.combo - 1) * 0.08);   // long combos do less per hit
   const dmg = h.dmg * att.ch.power * scaling;
   def.hp = Math.max(0, def.hp - dmg);
+  if (def.move && def.move.def.armor && def.hp > 0) {   // super armour (Grok Girl's SINGULARITY): takes the damage but is not interrupted
+    def.flash = 5; att.meter = Math.min(CONFIG.METER_MAX, att.meter + dmg * CONFIG.METER_GAIN_DEAL);
+    for (let i = 0; i < 8; i++) spawnParticle({ x: def.x - dir * 16, y: def.centerY() + rand(-40, 30), vx: -dir * rand(1, 5), vy: rand(-4, 2), life: 14, size: rand(2, 4), color: '#38e8ff', type: 'spark' });
+    Sound.play('block'); game.hitstop = 3; return 'hit';
+  }
   def.hitstun = Math.max(def.hitstun, h.hitstun || 12);
   def.move = null; def.spinX = 1; def.alpha = 1; def.crouching = false;
   def.vx = dir * (h.kb || 2);
@@ -1370,9 +1394,13 @@ class CpuBrain {
     const threat = threatTo(f);
     if (threat && this.plan !== 'block' && !f.move && R() < 0.04 + L * 0.22) {
       const proj = game.entities.find((e) => e.type === 'proj' && e.owner === opp);
-      if (proj && R() < L * 0.5) { this.plan = 'jumpin'; this.planT = 2; }
+      if (proj && f.ch.specials.s4 && f.ch.specials.s4.type === 'reroute' && Math.abs(opp.x - f.x) < 520 && R() < 0.1 + L * 0.15) { f.queued = { type: 'special', slot: 's4' }; f.queuedT = 0; }   // Grok Girl reroutes through projectiles
+      else if (proj && R() < L * 0.5) { this.plan = 'jumpin'; this.planT = 2; }
       else { this.plan = 'block'; this.planT = 16 + ((R() * 14) | 0); this.lowBlock = threat.low || R() < 0.3; }
     }
+    // Grok Girl beams away gas clouds / projectiles in front of her
+    if (f.ch.specials.s5 && f.ch.specials.s5.type === 'promptBeam' && !f.move && f.grounded && !f.queued && R() < 0.02 + L * 0.03 &&
+        game.entities.some((e) => e.owner === opp && (e.type === 'cloud' || e.type === 'proj') && Math.abs(e.x - f.x) < 420 && (e.x - f.x) * (opp.x - f.x) > 0)) { f.queued = { type: 'special', slot: 's5' }; f.queuedT = 0; }
     // keep pressing buttons for a queued combo
     if (this.combo.length && (!f.move || (f.move.hit && f.move.kind === 'base'))) {
       const next = this.combo[0];
@@ -1513,7 +1541,7 @@ function updateWorldObjects() {
         const r = applyHit(e.owner, opp, { dmg: e.p.dmg, hitstun: e.p.hitstun, blockstun: 10, kb: e.p.kb, chip: true, fx: e.kind === 'butt' ? 'brown' : e.kind === 'net' ? 'plasma' : null, noBlood: e.kind === 'mind' || e.kind === 'net' });
         if (r) {
           e.dead = true;
-          if (r === 'hit' && e.p.trap) { opp.trapped = e.p.trap; addText('TRAPPED!', { x: opp.x, y: opp.y - 200, size: 24, color: '#38e8ff', dur: 50 }); }
+          if (r === 'hit' && e.p.trap) { opp.trapped = e.p.trap; opp.gkBuf = e.p.trapText ? e.p.trap : 0; if (e.p.trapText) Sound.play('gk_buffer'); addText(e.p.trapText || 'TRAPPED!', { x: opp.x, y: opp.y - 200, size: 24, color: '#38e8ff', dur: 50 }); }
           if (r === 'hit' && e.p.reverse) { opp.reversed = e.p.reverse; addText('CONTROLS REVERSED!', { x: opp.x, y: opp.y - 200, size: 22, color: '#c77dff', dur: 70 }); }
           if (e.kind === 'butt') Sound.play('fart');
         }
@@ -3274,6 +3302,7 @@ function drawFunnel(g, x, y, s) {
 /** Visuals for moves in progress (Diarrhea Beam, Full-System Overload). */
 function drawMoveFX(g, f) {
   const m = f.move; if (!m) return;
+  if (m.data.gk) gkDrawFX(g, f, m);
   if (m.data.beam) {
     const b = m.data.beam, t = game.frame, cy = b.y + b.h / 2;
     g.save();
@@ -3880,12 +3909,13 @@ function drawFight(g) {
   drawHeads(g);
   for (const e of game.entities) if (e.type !== 'cloud' && e.type !== 'tornado') drawEntity(g, e);
   for (const f of game.fighters) drawMoveFX(g, f);
+  gkDrawTrap(g);
   drawParticles(g);
   drawFatalityFX(g);
   g.restore();
 
   // full-screen overlays
-  if (game.tint) { const T = game.tint; g.fillStyle = `rgba(${T.r},${T.g},${T.b},${T.a * Math.min(1, T.t / 30)})`; g.fillRect(0, 0, 960, 540); if (T.t > 100) txt(g, 'BROWNOUT', 480, 270, 110, '#4a2a0c', 'center', 0); }
+  if (game.tint) { const T = game.tint; g.fillStyle = `rgba(${T.r},${T.g},${T.b},${T.a * Math.min(1, T.t / 30)})`; g.fillRect(0, 0, 960, 540); if (T.t > 100 && T.label !== '') txt(g, T.label || 'BROWNOUT', 480, 270, 110, '#4a2a0c', 'center', 0); }
   if (game.fatal && game.fatal.sepia) { g.fillStyle = 'rgba(112,66,20,0.45)'; g.fillRect(0, 0, 960, 540); }
   if (game.filmStrip > 0) drawFilmStrip(g);
   if (game.flash > 0) { g.fillStyle = `rgba(255,255,255,${game.flash / 12})`; g.fillRect(0, 0, 960, 540); }
@@ -7354,6 +7384,210 @@ canvas.addEventListener('touchcancel', () => { if (Pad.on) Pad.pump([]); }, { pa
 // links: ?pad=CODE (from the TV's QR code) opens this page as a controller; ?tv=1 opens TV mode directly (handy as a TV bookmark)
 setTimeout(() => { const pc = NET_Q.get('pad'), tv = NET_Q.get('tv'); if (pc) Pad.join(pc); else if (tv) TV.start(); }, 250);
 
+/* ---------------- GROK GIRL LEVEL-UP (2026-10-16): new moves, upgraded specials, AI-themed sounds and effects ----------------
+ * Prompt Beam (D,F + HP)  : "thinks" for a moment, then streams a long beam of glowing tokens across the stage.
+ * Reroute     (D,B + HP)  : glitches out (invincible), reappears behind the opponent and strikes with a plasma elbow.
+ * SINGULARITY (ULT)       : GENERATING... pulls the opponent in, rains 6 data strikes on them, then OUTPUT COMPLETE blast.
+ * Upgrades: Plasma Punch gets an OVERCLOCK burst that launches, Data-Drain Kick also steals ULT meter,
+ *           Laser Net is faster and leaves the opponent BUFFERING (loading bar).
+ * Sounds evoke an AI thinking / processing / generating (soft shimmer, data chatter, rising arpeggios) - not robot beeps. */
+const GK_PENTA = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1567.98, 1760];
+function gkSfx(S, name) {
+  const c = S.ctx; if (!c) return;
+  const blip = (f, d, vol, delay, type = 'sine') => S.tone(f, f * 1.015, d, type, vol, delay);
+  const chatter = (n, gap, vol, delay = 0, oct = 1) => { for (let i = 0; i < n; i++) blip(pick(GK_PENTA) * oct, gap * 1.1, vol, delay + i * gap, i % 3 ? 'sine' : 'triangle'); };
+  switch (name) {
+    case 'gk_think':     // "thinking": a soft detuned shimmer that drifts upward + three typing-indicator dots
+      S.tone(392, 466, 0.55, 'sine', 0.07); S.tone(394, 470, 0.55, 'sine', 0.06); S.tone(784, 932, 0.55, 'triangle', 0.025);
+      S.noise(0.5, 0.045, 1800, 'bandpass', 0, 6500);
+      for (let i = 0; i < 3; i++) blip(1318.51, 0.05, 0.055, 0.1 + i * 0.12);
+      break;
+    case 'gk_process':   // "processing": rapid, soft data chatter
+      chatter(10, 0.028, 0.05); S.noise(0.3, 0.035, 4200, 'bandpass'); break;
+    case 'gk_generate':  // "generated": rising arpeggio, airy sweep, then a resolved bright chord
+      [523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => blip(f, 0.13, 0.075, i * 0.045, 'triangle'));
+      S.noise(0.35, 0.07, 700, 'bandpass', 0, 7000);
+      [1046.5, 1318.51, 1567.98].forEach((f) => S.tone(f, f, 0.55, 'sine', 0.045, 0.24));
+      break;
+    case 'gk_plasma':    // Plasma Punch: bright rising chirp with a sparkle on top
+      S.tone(520, 2100, 0.13, 'sine', 0.15); S.tone(780, 3150, 0.12, 'triangle', 0.05, 0.02); S.noise(0.12, 0.1, 5200, 'highpass'); chatter(3, 0.03, 0.04, 0.06, 2); break;
+    case 'gk_burst':     // OVERCLOCK burst: low thump + fast upward arpeggio
+      S.tone(110, 55, 0.3, 'sine', 0.26); S.tone(220, 1760, 0.24, 'sine', 0.13); S.noise(0.3, 0.16, 1100, 'bandpass', 0, 6500);
+      [1046.5, 1318.51, 1567.98, 2093].forEach((f, i) => blip(f, 0.07, 0.06, 0.04 + i * 0.03, 'triangle')); break;
+    case 'gk_beam':      // Prompt Beam: a stream of tokens (quick pentatonic run) over a warm sustained pad
+      for (let i = 0; i < 16; i++) blip(GK_PENTA[(i * 3 + ((Math.random() * 3) | 0)) % GK_PENTA.length], 0.045, 0.055, i * 0.034, i % 2 ? 'sine' : 'triangle');
+      S.tone(261.63, 523.25, 0.7, 'sine', 0.09); S.tone(392, 784, 0.7, 'triangle', 0.035);
+      S.noise(0.65, 0.07, 900, 'bandpass', 0, 5200); break;
+    case 'gk_reroute':   // Reroute: a glitchy stutter (signal dropping out and re-routing) and a pitch jump
+      for (let i = 0; i < 4; i++) S.noise(0.03, 0.18, 3000 + i * 900, 'bandpass', i * 0.045);
+      S.tone(1400, 320, 0.12, 'sine', 0.1); S.tone(330, 1500, 0.14, 'sine', 0.11, 0.16); chatter(4, 0.025, 0.045, 0.17, 2); break;
+    case 'gk_net':       // Laser Net: a soft sine laser + processing chatter
+      S.tone(1500, 650, 0.26, 'sine', 0.11); S.tone(2250, 980, 0.2, 'triangle', 0.035); chatter(6, 0.03, 0.04, 0.05); break;
+    case 'gk_buffer':    // opponent BUFFERING: a little "loading" loop
+      for (let i = 0; i < 4; i++) blip([659.25, 783.99, 880, 783.99][i], 0.08, 0.05, i * 0.09, 'triangle'); break;
+    case 'gk_drain':     // Data-Drain: downloading glide + chatter
+      S.tone(300, 1200, 0.32, 'sine', 0.16); chatter(6, 0.035, 0.045, 0.05, 2); break;
+    case 'gk_tick':      // ultimate data strikes
+      blip(pick(GK_PENTA) * 2, 0.06, 0.07, 0, 'triangle'); S.noise(0.08, 0.12, 3500, 'bandpass'); S.tone(180, 90, 0.1, 'sine', 0.16); break;
+    case 'gk_ult':       // SINGULARITY: long think, rising generation sweep, sub-bass swell
+      gkSfx(S, 'gk_think'); chatter(18, 0.032, 0.045, 0.35);
+      S.tone(55, 110, 1.4, 'sine', 0.22); S.tone(220, 880, 1.1, 'sine', 0.06, 0.2); S.noise(1.1, 0.06, 400, 'bandpass', 0.2, 6000); break;
+    default: break;
+  }
+}
+
+/** Glitch burst of cyan / magenta pixels (Reroute). */
+function gkGlitch(f) {
+  for (let i = 0; i < 26; i++) spawnParticle({ x: f.x + rand(-34, 34), y: f.y - rand(0, 190) * f.ch.scale, vx: rand(-5, 5), vy: rand(-3, 2), life: rand(14, 26) | 0, size: rand(4, 10), color: pick(['#38e8ff', '#ff3355', '#ffffff', '#c77dff']), type: 'pixel' });
+}
+/** Plasma Punch OVERCLOCK: a delayed burst that launches the opponent. */
+function gkBurst(f, m, opp) {
+  const b = m.def.burst, S = f.ch.scale, hx = f.x + f.facing * 60 * S, hy = f.y - 115 * S;
+  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; spawnParticle({ x: hx, y: hy, vx: Math.cos(a) * 7, vy: Math.sin(a) * 7, life: 18, size: rand(5, 9), color: pick(['#38e8ff', '#bff8ff', '#ffffff']), type: 'glow' }); }
+  Sound.play('gk_burst'); game.flash = Math.max(game.flash, 3);
+  if (Math.abs(opp.x - f.x) < 170 && Math.abs(opp.y - f.y) < 140) {
+    const r = applyHit(f, opp, { dmg: b.dmg, hitstun: 28, blockstun: 12, kb: b.kb, kbY: b.kbY, chip: true, heavy: true, fx: 'plasma', noBlood: true });
+    if (r === 'hit') addText('OVERCLOCK!', { x: f.x, y: f.y - 215 * S, size: 22, color: '#38e8ff', dur: 40, rise: 0.6 });
+  }
+}
+
+Object.assign(MOVE_HANDLERS, {
+  /** Prompt Beam: thinking charge, then a growing beam of tokens; the 4th hit knocks back. */
+  promptBeam: {
+    update(f, m, opp) {
+      const d = m.def, b = d.beam, S = f.ch.scale, hx = f.x + f.facing * 30 * S, hy = f.y + b.y * S;
+      if (m.frame < d.startup) {
+        m.data.gk = { kind: 'think', t: m.frame, x: hx, y: hy };
+        if (m.frame % 2 === 0) { const a = rand(0, Math.PI * 2), r = rand(40, 90); spawnParticle({ x: hx + Math.cos(a) * r, y: hy + Math.sin(a) * r, vx: -Math.cos(a) * r / 12, vy: -Math.sin(a) * r / 12, life: 12, size: 12, color: pick(['#38e8ff', '#bff8ff', '#ff3355']), type: 'digit' }); }
+      }
+      if (m.frame === d.startup) Sound.play('gk_beam');
+      if (inActive(m)) {
+        const k = m.frame - d.startup + 1, len = Math.min(b.len, b.grow * k);
+        const box = { x: f.facing === 1 ? hx : hx - len, y: hy - b.thick / 2, w: len, h: b.thick };
+        m.data.gk = { kind: 'beam', x: box.x, y: box.y, w: box.w, h: box.h, dir: f.facing, t: k };
+        for (const e of game.entities) {   // the prompt overrides enemy projectiles and blows away gas clouds in its path
+          if (e.owner === f || e.dead) continue;
+          if (e.type === 'proj' && e.x + e.w / 2 > box.x && e.x - e.w / 2 < box.x + box.w && Math.abs(e.y - (box.y + box.h / 2)) < 110) { e.dead = true; smokePuff(e.x, e.y); Sound.play('gk_tick'); }
+          else if (e.type === 'cloud' && e.life > 12 && e.x > box.x - e.r * 0.5 && e.x < box.x + box.w + e.r * 0.5) { e.life = 12; addText('CLEARED', { x: e.x, y: e.y - 60, size: 18, color: '#bff8ff', dur: 30, rise: 0.6 }); }
+        }
+        if (m.frame % 2 === 0) spawnParticle({ x: hx + f.facing * rand(0, len), y: hy + rand(-10, 10), vx: f.facing * rand(2, 5), vy: rand(-1.5, 1.5), life: 18, size: 12, color: pick(['#38e8ff', '#ffffff', '#9be7ff']), type: 'digit' });
+        if (m.hits < b.hits && m.frame - m.lastHit >= b.hitEvery && overlap(box, opp.hurtbox())) {
+          m.lastHit = m.frame;
+          const fin = m.hits === b.hits - 1;
+          const r = applyHit(f, opp, { dmg: fin ? b.lastDmg : b.dmg, hitstun: fin ? 26 : b.hitstun, blockstun: 8, kb: fin ? b.lastKb : b.kb, kbY: fin ? -6 : 0, chip: true, fx: 'plasma', noBlood: !fin, heavy: fin });
+          if (r) { m.hit = true; m.hits++; }
+        }
+      } else if (m.frame > d.startup) m.data.gk = null;
+    },
+  },
+  /** Reroute: invincible glitch-teleport behind the opponent, then a plasma elbow that pops them up. */
+  reroute: {
+    update(f, m, opp) {
+      const d = m.def;
+      if (m.frame === 1) { f.invuln = d.invuln; f.ghost = d.invuln; gkGlitch(f); }
+      if (m.frame < d.at) { f.alpha = m.frame % 4 < 2 ? 0.2 : 0.65; m.data.gk = { kind: 'glitch', t: m.frame }; }
+      if (m.frame === d.at) {
+        const side = opp.x >= f.x ? 1 : -1;
+        let nx = opp.x + side * 80;
+        if (nx < CONFIG.STAGE_LEFT + 10 || nx > CONFIG.STAGE_RIGHT - 10) nx = opp.x - side * 80;   // cornered: other side
+        f.x = clamp(nx, CONFIG.STAGE_LEFT, CONFIG.STAGE_RIGHT);
+        f.facing = opp.x >= f.x ? 1 : -1;
+        gkGlitch(f); Sound.play('gk_tick');
+        addText('REROUTED', { x: f.x, y: f.y - 215 * f.ch.scale, size: 18, color: '#c77dff', dur: 30, rise: 0.6 });
+      }
+      if (m.frame > d.at) { f.alpha = Math.min(1, f.alpha + 0.2); m.data.gk = null; }
+      if (inActive(m) && !m.hit && overlap(f.worldBox(d.box), opp.hurtbox())) {
+        const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: 'plasma' });
+        if (r) m.hit = true;
+      }
+      if (m.frame >= d.startup + d.active + d.recovery - 1) f.alpha = 1;
+    },
+  },
+  /** SINGULARITY: GENERATING... (pull in), six data strikes, OUTPUT COMPLETE blast. Unblockable, reaches anywhere. */
+  singularity: {
+    update(f, m, opp) {
+      const d = m.def, G0 = 44, last = G0 + d.hits * d.every;
+      if (m.frame === 1) {
+        Sound.play('gk_ult'); game.flash = 6;
+        game.tint = { r: 8, g: 26, b: 64, a: 0.72, t: 150, max: 150, label: '' };
+        addText('GENERATING...', { x: 480, y: 120, size: 34, color: '#38e8ff', dur: 44 });
+      }
+      m.data.gk = { kind: 'sing', t: m.frame, gen: Math.min(1, m.frame / G0), tx: opp.x, ty: opp.centerY(), hit: m.data.lastStrike || 0, end: last };
+      if (m.frame <= G0) {
+        if (opp.state !== 'ko' && opp.hp > 0) { const dx = f.x - opp.x; if (Math.abs(dx) > 130) opp.x = clamp(opp.x + Math.sign(dx) * Math.min(6, Math.abs(dx) - 130), CONFIG.STAGE_LEFT, CONFIG.STAGE_RIGHT); }
+        if (m.frame % 2 === 0) for (let i = 0; i < 2; i++) { const sx = Math.random() < 0.5 ? -20 : 980, sy = rand(80, 460); spawnParticle({ x: sx, y: sy, vx: (f.x - sx) / 24, vy: (f.centerY() - sy) / 24, life: 24, size: 14, color: pick(['#38e8ff', '#bff8ff', '#ff3355']), type: 'digit' }); }
+      }
+      if (m.frame > G0 && m.frame <= last && (m.frame - G0) % d.every === 0) {
+        m.hits++; m.data.lastStrike = m.frame; Sound.play('gk_tick');
+        applyHit(f, opp, { dmg: d.dmg, hitstun: 34, blockstun: 12, kb: 0.6, kbY: opp.grounded ? 0 : -2.5, unblockable: true, noScale: true, fx: 'plasma', noBlood: true });
+        for (let i = 0; i < 8; i++) spawnParticle({ x: opp.x + rand(-26, 26), y: rand(60, opp.y - 40), vx: 0, vy: rand(6, 12), life: 14, size: 14, color: pick(['#38e8ff', '#ffffff']), type: 'digit' });
+      }
+      if (m.frame === last + 10) {
+        applyHit(f, opp, { dmg: d.finalDmg, hitstun: 60, blockstun: 20, kb: 12, kbY: -10, unblockable: true, noScale: true, xray: true, fire: true, heavy: true, fx: 'plasma' });
+        addText('OUTPUT COMPLETE', { x: 480, y: 150, size: 30, color: '#ffffff', dur: 60 });
+        Sound.play('gk_generate'); game.shake = Math.max(game.shake, 18); game.flash = 10;
+      }
+      if (m.frame > last + 26) m.data.gk = null;
+    },
+  },
+});
+
+/** Effects for Grok Girl's moves (drawn by drawMoveFX, also on the online guest via m.data.gk). */
+function gkDrawFX(g, f, m) {
+  const q = m.data.gk, t = game.frame;
+  g.save();
+  if (q.kind === 'think') {
+    const r = 10 + (q.t % 8);
+    g.globalAlpha = 0.8; circle(g, q.x, q.y, r, 'rgba(56,232,255,0.35)', null); circle(g, q.x, q.y, 5, '#ffffff', null);
+    for (let i = 0; i < 3; i++) if ((q.t >> 2) % 4 > i) circle(g, f.x - 14 + i * 14, f.y - 222 * f.ch.scale, 4, '#bff8ff', null);   // typing dots
+  } else if (q.kind === 'beam') {
+    const cy = q.y + q.h / 2, tip = q.dir === 1 ? q.x + q.w : q.x;
+    g.fillStyle = 'rgba(56,232,255,0.45)'; g.fillRect(q.x, q.y - 4, q.w, q.h + 8);
+    g.fillStyle = '#38e8ff'; g.fillRect(q.x, q.y + 3, q.w, q.h - 6);
+    g.fillStyle = '#ffffff'; g.fillRect(q.x, cy - 3, q.w, 6);
+    g.fillStyle = '#15101e'; g.font = 'bold 16px monospace'; g.textAlign = 'center';
+    const TOK = 'GROK>PROMPT_01';
+    for (let x = 18; x < q.w - 8; x += 22) { const xx = q.dir === 1 ? q.x + x : q.x + q.w - x; g.fillText(TOK[((x / 22 | 0) + (t >> 1)) % TOK.length], xx, cy + 6); }
+    if ((t >> 2) % 2) { g.fillStyle = '#ffffff'; g.fillRect(tip - (q.dir === 1 ? 0 : 12), q.y - 2, 12, q.h + 4); }   // blinking cursor at the tip
+    circle(g, tip, cy, 16 + Math.sin(t * 0.8) * 3, 'rgba(255,255,255,0.6)', null);
+  } else if (q.kind === 'glitch') {
+    const S = f.ch.scale;
+    for (let i = 0; i < 6; i++) { const yy = f.y - rand(10, 190) * S; g.fillStyle = i % 2 ? 'rgba(56,232,255,0.7)' : 'rgba(255,51,85,0.7)'; g.fillRect(f.x - 30 + rand(-14, 14), yy, rand(30, 70), rand(3, 7)); }
+  } else if (q.kind === 'sing') {
+    const cx = f.x, cy = f.centerY(), S = f.ch.scale;
+    // halo rings around her
+    g.strokeStyle = 'rgba(56,232,255,0.8)'; g.lineWidth = 3;
+    for (let i = 0; i < 3; i++) { const R = 70 + i * 34 + Math.sin(t * 0.15 + i) * 6; g.beginPath(); for (let k = 0; k <= 6; k++) { const a = k / 6 * Math.PI * 2 + t * 0.03 * (i % 2 ? -1 : 1); const px = cx + Math.cos(a) * R, py = cy + Math.sin(a) * R * 0.75; if (k) g.lineTo(px, py); else g.moveTo(px, py); } g.stroke(); }
+    if (q.gen < 1) {   // GENERATING progress bar over her head
+      const bx = cx - 80, by = f.y - 250 * S;
+      g.fillStyle = '#000'; g.fillRect(bx - 3, by - 3, 166, 20); g.fillStyle = '#15303f'; g.fillRect(bx, by, 160, 14);
+      g.fillStyle = '#38e8ff'; g.fillRect(bx, by, 160 * q.gen, 14);
+      txt(g, Math.round(q.gen * 100) + '%', cx, by + 7, 15, '#ffffff', 'center', 2);
+    }
+    if (q.hit && q.t - q.hit < 6) {   // data strike: a column of light onto the opponent
+      const w = 44 - (q.t - q.hit) * 6;
+      g.fillStyle = 'rgba(56,232,255,0.55)'; g.fillRect(q.tx - w, 0, w * 2, q.ty + 60);
+      g.fillStyle = '#ffffff'; g.fillRect(q.tx - w / 4, 0, w / 2, q.ty + 60);
+    }
+    if (q.t >= q.end + 10 && q.t < q.end + 26) {   // OUTPUT blast
+      const k = (q.t - q.end - 10) / 16;
+      g.globalAlpha = 1 - k; g.fillStyle = '#ffffff'; g.fillRect(q.tx - 90 * (1 - k * 0.5), 0, 180 * (1 - k * 0.5), 540);
+      circle(g, q.tx, q.ty, 60 + k * 160, 'rgba(56,232,255,0.6)', null);
+    }
+  }
+  g.restore();
+}
+/** BUFFERING loading bar over a fighter caught in Grok Girl's Laser Net. */
+function gkDrawTrap(g) {
+  for (const f of game.fighters) {
+    if (!(f.trapped > 0 && f.gkBuf)) continue;
+    const x = f.x - 44, y = f.y - 232 * f.ch.scale, k = 1 - f.trapped / f.gkBuf;
+    g.fillStyle = '#000'; g.fillRect(x - 3, y - 3, 94, 16); g.fillStyle = '#15303f'; g.fillRect(x, y, 88, 10);
+    g.fillStyle = '#38e8ff'; g.fillRect(x, y, 88 * k, 10);
+    txt(g, 'BUFFERING', f.x, y - 12, 15, '#bff8ff', 'center', 2);
+  }
+}
+
 /* ---------- state snapshots ---------- */
 const SNAP_SKIP_F = new Set(['ch', 'brain', 'dims', 'aiHeld', 'queued', 'move']);
 function encVal(v, depth = 0) {
@@ -7379,7 +7613,7 @@ function encodeSnapshot() {
   const s = { t: 'snap', fr: game.frame, sfx: Net.sfx.slice(), voice: Net.voice.slice(), shake: Math.round(game.shake) };
   s.F = game.fighters.map((f) => {
     const o = {}; for (const k in f) if (!SNAP_SKIP_F.has(k)) { const e = encVal(f[k]); if (e !== undefined) o[k] = e; }
-    if (f.move) { const m = f.move, d = m.def; o.move = { def: { pose: d.pose, type: d.type, startup: d.startup, active: d.active, recovery: d.recovery, radius: d.radius }, kind: m.kind, btn: m.btn, frame: m.frame, hit: m.hit, data: encVal({ beam: m.data.beam, arc: m.data.arc, landedAt: m.data.landedAt }) }; }
+    if (f.move) { const m = f.move, d = m.def; o.move = { def: { pose: d.pose, type: d.type, startup: d.startup, active: d.active, recovery: d.recovery, radius: d.radius }, kind: m.kind, btn: m.btn, frame: m.frame, hit: m.hit, data: encVal({ beam: m.data.beam, arc: m.data.arc, landedAt: m.data.landedAt, gk: m.data.gk }) }; }
     else o.move = null;
     return o;
   });
