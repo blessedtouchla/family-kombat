@@ -5279,10 +5279,10 @@ var qrcode = function() {
       for (var i = 0; i < s.length; i += 1) {
         var c = s.charAt(i);
         switch(c) {
-        case '<': escaped += '<'; break;
-        case '>': escaped += '>'; break;
-        case '&': escaped += '&'; break;
-        case '"': escaped += '"'; break;
+        case '<': escaped += '&' + 'lt;'; break;
+        case '>': escaped += '&' + 'gt;'; break;
+        case '&': escaped += '&' + 'amp;'; break;
+        case '"': escaped += '&' + 'quot;'; break;
         default : escaped += c; break;
         }
       }
