@@ -240,20 +240,36 @@ const CHARACTERS = [
     ai: { far: ['s1'], mid: ['s1', 's2', 's4'], close: ['s2', 's4', 's3'] },
   },
   {
-    id: 'editor', name: 'EDITOR', tagline: 'The Strategist',
-    maxHp: 95, walk: 3.5, backWalk: 3.0, jump: 15.5, power: 0.95, scale: 1.08, girth: 0.9,
-    colors: { skin: '#e8b890', main: '#1c1c22', main2: '#2a2a32', pants: '#1c1c22', shoe: '#141418',
-              hair: '#6a4424', accent: '#e0b040', glow: '#ffd23f', shirt: '#f2f2ee', beret: '#18181c' },
+    id: 'editor', name: 'EDITOR', tagline: 'Video Editor - Cut, Splice, Render',
+    // 2026-10-16 rework: a clear VIDEO EDITOR (hoodie with a timeline stripe, editing glasses, lanyard badge, film reel,
+    // clapperboard). Was HP 95 / power 0.95 with 3 specials (8% CPU win rate); now HP 108 / power 1.04, 5 specials + air Jump Cut.
+    maxHp: 108, walk: 3.7, backWalk: 3.1, jump: 15.5, power: 1.04, scale: 1.08, girth: 0.9, reach: 1.05,
+    colors: { skin: '#e8b890', main: '#323a4e', main2: '#262c3c', pants: '#2a3a58', shoe: '#ececec',
+              hair: '#6a4424', accent: '#ffd23f', glow: '#ffd23f', shirt: '#f2f2ee',
+              clipA: '#4d9dff', clipB: '#3ce05a', clipC: '#c77dff', clipD: '#ff5c8a', badge: '#e8202a', screen: '#9be7ff' },
     specials: {
-      s1: { name: 'Card-Throw Jab', type: 'projectile', startup: 8, active: 1, recovery: 14, pose: 'throw',
-            proj: { kind: 'cards', speed: 12, dmg: 7, w: 42, h: 26, y: -118, hitstun: 16, kb: 5, sfx: 'whoosh' } },
-      s2: { name: 'Smoke-and-Mirrors', type: 'teleport', startup: 2, active: 30, recovery: 8, pose: 'block', invuln: 34, at: 14 },
-      s3: { name: 'Mind-Trick', type: 'projectile', startup: 14, active: 1, recovery: 20, pose: 'cast',
-            proj: { kind: 'mind', speed: 6, dmg: 2, w: 48, h: 72, y: -112, hitstun: 10, kb: 1, reverse: 120, sfx: 'zap' } },
+      // Razor Cut: slice dash with the razor tool. Same motion in the AIR = Jump Cut (hard cut to behind the opponent).
+      s1: { name: 'Razor Cut', type: 'rush', startup: 5, active: 14, recovery: 14, pose: 'dash', sfxStart: 'ed_click',
+            speed: 12, dmg: 9, hitstun: 22, kb: 6, kbY: -3, box: { x: 4, y: -140, w: 90, h: 84 }, fx: 'razor', sfx: 'ed_razor',
+            air: { name: 'Jump Cut', type: 'teleport', fx: 'cut', startup: 2, active: 16, recovery: 6, pose: 'block', invuln: 18, at: 7 } },
+      // Splice: grab, snip and swap sides (unblockable, close range)
+      s2: { name: 'Splice', type: 'splice', startup: 5, active: 4, recovery: 20, pose: 'cross', sfxStart: 'ed_click',
+            range: 118, dmg: 11, hitstun: 30, kb: 5, kbY: -6 },
+      // Freeze Frame: a viewfinder shot that pauses the opponent on a frame
+      s3: { name: 'Freeze Frame', type: 'projectile', startup: 9, active: 1, recovery: 16, pose: 'cast', sfxStart: 'ed_shutter',
+            proj: { kind: 'frame', speed: 10, dmg: 5, w: 58, h: 80, y: -112, hitstun: 12, kb: 0, trap: 58, trapText: 'HOLD THAT POSE!',
+                    barText: 'PAUSED', trapSfx: 'ed_freeze', textCol: '#9be7ff', sfx: 'ed_scrub' } },
+      // Rewind: invincible VHS-rewind back to where he was ~0.75 s ago and UNDO the damage of the last hit taken
+      s4: { name: 'Rewind', type: 'rewind', startup: 3, active: 22, recovery: 8, pose: 'block', sfxStart: 'ed_rewind',
+            invuln: 28, back: 45, heal: 9 },
+      // Zoom In: a heavy punch; on hit the camera smash-zooms onto the victim
+      s5: { name: 'Zoom In', type: 'rush', startup: 8, active: 8, recovery: 16, pose: 'cross', sfxStart: 'ed_click',
+            speed: 6.5, dmg: 13, hitstun: 28, kb: 9, kbY: -5, box: { x: 10, y: -150, w: 86, h: 56 }, fx: 'zoom', zoomHit: true, sfx: 'ed_zoom' },
     },
-    ult: { name: 'FINAL CUT', type: 'finalCut', dmg: 26, range: 640, startup: 1, active: 50, recovery: 20, pose: 'cross' },
+    // FINAL CUT (kept, now the highlight): RENDERING... bar on a timeline, then a full-screen razor cut
+    ult: { name: 'FINAL CUT', type: 'finalCut', dmg: 27, range: 660, startup: 1, active: 56, recovery: 18, pose: 'cross' },
     fatality: { name: "DIRECTOR'S CUT", type: 'directorsCut' },
-    ai: { far: ['s1', 's3'], mid: ['s1', 's2'], close: ['s2'] },
+    ai: { far: ['s3', 's1'], mid: ['s1', 's5', 's3', 's2'], close: ['s2', 's5', 's1', 's4'] },
   },
 ];
 
@@ -360,6 +376,7 @@ const Sound = {
     if (SFX_SAMPLES[name] && playSample(name)) return;   // any hook name can be replaced by a recorded sample
     if (name.startsWith('st_')) { stinger(name.slice(3)); return; }
     if (name.startsWith('gk_')) { gkSfx(this, name); return; }
+    if (name.startsWith('ed_')) { edSfx(this, name); return; }
     switch (name) {
       case 'lp': case 'lk': this.noise(0.07, 0.25, 2200, 'bandpass'); break;
       case 'hp': case 'hk': this.noise(0.14, 0.35, 900, 'bandpass', 0, 300); break;
@@ -626,7 +643,7 @@ class PlayerInput {
       for (const k of this.touch.pressed) newly[k] = true;
       this.touch.pressed.length = 0;
     }
-    // Mind-Trick: left and right are swapped while "reversed" is active
+    // left and right are swapped while "reversed" is active (no move uses it since the Editor rework)
     if (reversed) {
       [held.left, held.right] = [held.right, held.left];
       [newly.left, newly.right] = [newly.right, newly.left];
@@ -953,6 +970,7 @@ class Fighter {
   /** One frame of logic. `inp` is this player's PlayerInput. */
   update(inp) {
     const opp = this.opp, ch = this.ch;
+    if (ch.id === 'editor') { (this.hist || (this.hist = [])).push({ wx: this.x + (game.camX || 0), hp: this.hp }); if (this.hist.length > 60) this.hist.shift(); }
     if (this.held) {   // being flushed by Mierda Man's toilet: the move script drives this fighter
       this.t++;
       if (this.heldBy && (!this.heldBy.move || this.heldBy.move.def.type !== 'toilet')) releaseHeld(this);
@@ -1102,7 +1120,7 @@ const MOVE_HANDLERS = {
       }
     },
   },
-  /** Throw something (Butt-Shot, Laser Net, Cards, Mind-Trick). */
+  /** Throw something (Butt-Shot, Laser Net, Freeze Frame). */
   projectile: {
     update(f, m) {
       const d = m.def, p = d.proj, S = f.ch.scale;
@@ -1152,12 +1170,20 @@ const MOVE_HANDLERS = {
         const hx = f.x + f.facing * 40 * f.ch.scale, hy = f.y - 110 * f.ch.scale;
         if (d.fx === 'plasma') spawnParticle({ x: hx, y: hy + rand(-8, 8), vx: -f.facing * rand(1, 3), vy: rand(-1, 1), life: 18, size: rand(4, 9), color: pick(['#38e8ff', '#a0f8ff', '#ffffff']), type: 'glow' });
         if (d.fx === 'data') spawnParticle({ x: hx, y: hy + rand(-20, 20), vx: -f.facing * rand(1, 3), vy: rand(-2, 0), life: 26, size: 14, color: '#39ff88', type: 'digit' });
+        if (d.fx === 'razor') spawnParticle({ x: hx - f.facing * rand(0, 60), y: hy + rand(-30, 40), vx: -f.facing * rand(4, 8), vy: 0, life: 10, size: rand(14, 30), color: pick(['#ffffff', '#ffd23f', '#9be7ff']), type: 'streak' });
+        if (d.fx === 'zoom' && m.frame % 2 === 0) spawnParticle({ x: hx, y: hy + rand(-20, 20), vx: f.facing * rand(2, 4), vy: rand(-1, 1), life: 10, size: rand(10, 20), color: '#ffffff', type: 'streak' });
         if (d.fx === 'wind') for (let i = 0; i < 2; i++) spawnParticle({ x: f.x + rand(-30, 30), y: f.y - rand(10, 150) * f.ch.scale, vx: -f.facing * rand(3, 7), vy: rand(-1, 1), life: 16, size: rand(10, 24), color: 'rgba(220,240,255,0.7)', type: 'streak' });
         if (!m.hit && overlap(f.worldBox(d.box), opp.hurtbox())) {
           const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx });
           if (r) {
             m.hit = true;
             if (r === 'hit' && d.burst) m.data.burstAt = m.frame + d.burst.delay;
+            if (r === 'hit' && d.fx === 'razor') { const y = opp.y - 110 * opp.ch.scale; game.entities.push({ type: 'slash', x1: opp.x - 70, y1: y + 40, x2: opp.x + 70, y2: y - 40, life: 16, max: 16 }); }
+            if (r === 'hit' && d.zoomHit) {   // Zoom In: the camera smash-zooms onto the victim
+              game.zoomPunch = { x: opp.x, y: opp.y - 110 * opp.ch.scale, t: 28 };
+              game.flash = Math.max(game.flash, 3); Sound.play('ed_shutter');
+              addText('ZOOM!', { x: opp.x, y: opp.y - 175 * opp.ch.scale, size: 26, color: '#ffffff', dur: 34, rise: 0.4 });
+            }
             if (r === 'hit' && d.drainMeter && opp.meter > 0) {   // Data-Drain also downloads ULT meter
               const take = Math.min(opp.meter, d.drainMeter); opp.meter -= take; f.meter = Math.min(CONFIG.METER_MAX, f.meter + take);
               addText('METER DRAINED', { x: opp.x, y: opp.y - 215 * opp.ch.scale, size: 18, color: '#39ff88', dur: 40, rise: 0.6 });
@@ -1254,21 +1280,73 @@ const MOVE_HANDLERS = {
       }
     },
   },
-  /** Invincible smoke teleport behind the opponent (Smoke-and-Mirrors). */
+  /** Invincible teleport behind the opponent (smoke, or Editor's Jump Cut as a hard film cut). */
   teleport: {
     update(f, m, opp) {
       const d = m.def;
-      if (m.frame === 1) { f.invuln = d.invuln; f.ghost = d.invuln; smokePuff(f.x, f.y - 80); Sound.play('smoke'); }
-      if (m.frame < d.at) f.alpha = 1 - m.frame / d.at * 0.8;
+      const cut = d.fx === 'cut';   // Editor's Jump Cut: a hard film cut instead of smoke
+      if (m.frame === 1) { f.invuln = d.invuln; f.ghost = cut ? 0 : d.invuln; if (cut) edCutFx(f.x, f.y - 90); else smokePuff(f.x, f.y - 80); Sound.play(cut ? 'ed_cut' : 'smoke'); }
+      if (m.frame < d.at) f.alpha = cut ? (m.frame % 4 < 2 ? 1 : 0.25) : 1 - m.frame / d.at * 0.8;
       if (m.frame === d.at) {
         const side = opp.x >= f.x ? 1 : -1;
         let nx = opp.x + side * 85;
         if (nx < CONFIG.STAGE_LEFT + 10 || nx > CONFIG.STAGE_RIGHT - 10) nx = opp.x - side * 85; // cornered: other side
         f.x = clamp(nx, CONFIG.STAGE_LEFT, CONFIG.STAGE_RIGHT);
         f.facing = opp.x >= f.x ? 1 : -1;
-        smokePuff(f.x, f.y - 80);
+        if (cut) { edCutFx(f.x, f.y - 90); f.alpha = 1; game.flash = Math.max(game.flash, 3); } else smokePuff(f.x, f.y - 80);
       }
       if (m.frame > d.at) f.alpha = Math.min(1, f.alpha + 0.1);
+    },
+  },
+
+  /** Editor's Splice: close grab, snip the film and swap sides with the opponent (unblockable). */
+  splice: {
+    update(f, m, opp) {
+      const d = m.def;
+      if (m.frame !== d.startup) return;
+      const S = f.ch.scale, dx = Math.abs(opp.x - f.x);
+      if (dx < d.range * S && Math.abs(opp.y - f.y) < 40 && opp.invuln <= 0 && opp.state !== 'ko' && !opp.held && game.state === 'fight') {
+        const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 0, kb: 0, unblockable: true, heavy: true, noBlood: true, fx: 'slash' });
+        if (r === 'hit') {
+          const a = f.x; f.x = opp.x; opp.x = a;   // swap sides
+          f.facing = opp.x >= f.x ? 1 : -1; opp.facing = -f.facing;
+          opp.vx = f.facing * d.kb; opp.vy = d.kbY; m.hit = true;
+          const mx = (f.x + opp.x) / 2, y = f.y - 110 * S;
+          game.entities.push({ type: 'edsplice', x: mx, y, life: 22, max: 22 });
+          game.entities.push({ type: 'slash', x1: mx, y1: y - 110, x2: mx, y2: y + 100, life: 18, max: 18 });
+          addText('SNIP!', { x: mx, y: y - 120, size: 24, color: '#ffd23f', dur: 36, rise: 0.5 });
+          Sound.play('ed_splice');
+        }
+      } else Sound.play('whoosh');
+    },
+  },
+  /** Editor's Rewind: invincible VHS rewind to where he stood ~45 frames ago, undoing the damage taken since. */
+  rewind: {
+    update(f, m, opp) {
+      const d = m.def;
+      if (m.frame === 1) {
+        const h = f.hist || [], cam = game.camX || 0, past = h.length ? h[Math.max(0, h.length - d.back)] : null;
+        let to = past ? past.wx - cam : f.x - f.facing * 150;
+        if (Math.abs(to - f.x) < 60) to = f.x - f.facing * 150;   // nowhere to go: rewind a step back anyway
+        to = clamp(to, CONFIG.STAGE_LEFT + 20, CONFIG.STAGE_RIGHT - 20);
+        if (Math.abs(to - opp.x) > ZOOM.maxSep) to = opp.x + Math.sign(to - opp.x) * ZOOM.maxSep;
+        const hp0 = h.length ? Math.max(...h.slice(-d.back).map((e) => e.hp)) : f.hp;
+        m.data.from = f.x; m.data.to = to; m.data.heal = Math.min(d.heal, Math.max(0, hp0 - f.hp));
+        f.invuln = d.invuln; f.vx = 0;
+        game.edFx = { kind: 'rewind', t: d.startup + d.active + 4, max: d.startup + d.active + 4 };
+      }
+      if (m.frame >= d.startup && m.frame <= d.startup + d.active) {
+        const k = (m.frame - d.startup) / d.active, e = k * k * (3 - 2 * k);
+        f.x = lerp(m.data.from, m.data.to, e); f.vx = 0; f.ghost = 8;
+        if (m.frame % 2 === 0) spawnParticle({ x: f.x + rand(-30, 30), y: f.y - rand(10, 170) * f.ch.scale, vx: Math.sign(m.data.from - m.data.to) * rand(3, 7), vy: 0, life: 12, size: rand(12, 26), color: pick(['#9be7ff', '#ffffff', '#ff5c8a']), type: 'streak' });
+      }
+      if (m.frame === d.startup + d.active) {
+        f.ghost = 0; f.facing = opp.x >= f.x ? 1 : -1;
+        const heal = m.data.heal;
+        if (heal > 0.5) { f.hp = Math.min(f.ch.maxHp, f.hp + heal); addText('UNDO! +' + Math.round(heal) + ' HP', { x: f.x, y: f.y - 210 * f.ch.scale, size: 22, color: '#39ff88', dur: 50, rise: 0.8 }); }
+        else addText('UNDO!', { x: f.x, y: f.y - 210 * f.ch.scale, size: 22, color: '#9be7ff', dur: 40, rise: 0.8 });
+        Sound.play('ed_click');
+      }
     },
   },
 
@@ -1320,7 +1398,13 @@ const MOVE_HANDLERS = {
   finalCut: {
     update(f, m, opp) {
       const d = m.def;
-      if (m.frame === 1) { game.filmStrip = 90; Sound.play('clap'); }
+      if (m.frame === 1) { game.filmStrip = 110; Sound.play('ed_render'); game.edFx = { kind: 'render', t: 20, max: 20 }; }
+      if (m.frame === 20) { game.edFx = { kind: 'cut', t: 34, max: 34 }; Sound.play('ed_done'); game.flash = 6; }
+      if (m.frame === 26 || m.frame === 32) {   // two extra visual razor strokes: the FINAL CUT draws a big X
+        const y = opp.y - 120 * opp.ch.scale, s = m.frame === 26 ? 1 : -1;
+        game.entities.push({ type: 'slash', x1: opp.x - 150, y1: y + s * 90, x2: opp.x + 150, y2: y - s * 90, life: 22, max: 22 });
+        Sound.play('slice');
+      }
       if (m.frame === 20) {
         const y = opp.y - 120 * opp.ch.scale;
         game.entities.push({ type: 'slash', x1: f.x - f.facing * 80, y1: y + 60, x2: f.x + f.facing * d.range, y2: y - 40, life: 26, max: 26 });
@@ -1580,10 +1664,10 @@ function updateWorldObjects() {
         }
       }
       if (!e.dead && opp && opp.invuln <= 0 && opp.state !== 'ko' && overlap(box, opp.hurtbox())) {
-        const r = applyHit(e.owner, opp, { dmg: e.p.dmg, hitstun: e.p.hitstun, blockstun: 10, kb: e.p.kb, chip: true, fx: e.kind === 'butt' ? 'brown' : e.kind === 'net' ? 'plasma' : null, noBlood: e.kind === 'mind' || e.kind === 'net' });
+        const r = applyHit(e.owner, opp, { dmg: e.p.dmg, hitstun: e.p.hitstun, blockstun: 10, kb: e.p.kb, chip: true, fx: e.kind === 'butt' ? 'brown' : e.kind === 'net' ? 'plasma' : null, noBlood: e.kind === 'mind' || e.kind === 'net' || e.kind === 'frame' });
         if (r) {
           e.dead = true;
-          if (r === 'hit' && e.p.trap) { opp.trapped = e.p.trap; opp.gkBuf = e.p.trapText ? e.p.trap : 0; if (e.p.trapText) Sound.play('gk_buffer'); addText(e.p.trapText || 'TRAPPED!', { x: opp.x, y: opp.y - 200, size: 24, color: '#38e8ff', dur: 50 }); }
+          if (r === 'hit' && e.p.trap) { opp.trapped = e.p.trap; opp.gkBuf = e.p.trapText ? e.p.trap : 0; opp.trapLabel = e.p.barText || 'BUFFERING'; if (e.p.trapText) Sound.play(e.p.trapSfx || 'gk_buffer'); addText(e.p.trapText || 'TRAPPED!', { x: opp.x, y: opp.y - 200, size: 24, color: e.p.textCol || '#38e8ff', dur: 50 }); }
           if (r === 'hit' && e.p.reverse) { opp.reversed = e.p.reverse; addText('CONTROLS REVERSED!', { x: opp.x, y: opp.y - 200, size: 22, color: '#c77dff', dur: 70 }); }
           if (e.kind === 'butt') Sound.play('fart');
         }
@@ -1619,7 +1703,7 @@ function updateWorldObjects() {
         }
         if (game.state !== 'fight') { e.dead = true; opp.spinX = 1; }
       }
-    } else if (e.type === 'slash') {
+    } else if (e.type === 'slash' || e.type === 'edcut' || e.type === 'edsplice') {
       e.life--; if (e.life <= 0) e.dead = true;
     }
   }
@@ -1835,7 +1919,7 @@ const game = {
   round: 1, wins: [0, 0], timer: CONFIG.ROUND_TIME, timerSub: 0,
   entities: [], particles: [], decals: [], heads: [], texts: [],
   comboText: [null, null],
-  shake: 0, flash: 0, tint: null, xray: null, cinematic: null, hitstop: 0, slowmo: 0, timeAcc: 0, filmStrip: 0,
+  shake: 0, flash: 0, tint: null, xray: null, cinematic: null, hitstop: 0, slowmo: 0, timeAcc: 0, filmStrip: 0, zoomPunch: null, edFx: null,
   winner: null, loser: null, fatal: null, result: '',
   touch: document.body.classList.contains('touch'),
   titleT: 0,
@@ -1922,7 +2006,7 @@ function startRound() {
   game.entities = []; game.particles = []; game.heads = []; game.texts = []; game.toilets = [];
   game.decals = game.round === 1 ? [] : game.decals;   // blood stays on the floor between rounds
   game.timer = CONFIG.ROUND_TIME; game.timerSub = 0; platReset();   // the cracked slab is repaired every round
-  game.tint = null; game.xray = null; game.cinematic = null; game.hitstop = 0; game.slowmo = 0; game.filmStrip = 0;
+  game.tint = null; game.xray = null; game.cinematic = null; game.hitstop = 0; game.slowmo = 0; game.filmStrip = 0; game.zoomPunch = null; game.edFx = null;
   game.comboText = [null, null]; game.fatal = null; game.winner = null; game.loser = null; game.result = '';
   setState('intro'); game.adlibs = [];
   sayAdlib(game.fighters[0], 'pre', 4, 'intro'); sayAdlib(game.fighters[1], 'pre', 16, 'intro');
@@ -2048,6 +2132,8 @@ function worldStep() {
   if (game.xray && ++game.xray.t >= game.xray.dur) game.xray = null;
   if (game.flash > 0) game.flash--;
   if (game.filmStrip > 0) game.filmStrip--;
+  if (game.zoomPunch && --game.zoomPunch.t <= 0) game.zoomPunch = null;
+  if (game.edFx && --game.edFx.t <= 0) game.edFx = null;
   if (game.cinematic) {
     const c = game.cinematic;
     if (c.t % 3 === 0) spawnParticle({ x: c.f.x + rand(-50, 50), y: c.f.y - rand(0, 180), vx: 0, vy: rand(-3, -1), life: 24, size: rand(4, 9), color: c.f.ch.colors.glow, type: 'glow' });
@@ -2408,11 +2494,11 @@ function drawBody(g, ch, J, d, o) {
     ellipse(g, x, bot + 3 * S, 13 * S, 8 * S, col('plunger'), '#111', 2.5);
     g.fillStyle = col('plunger'); g.fillRect(x - 13 * S, bot + 3 * S, 26 * S, 5 * S);
   } else if (!plain && id === 'editor') {
-    g.save(); g.translate(J.bh.x, J.bh.y); g.rotate(-0.25 + J.lean);   // clapperboard
-    g.fillStyle = '#111'; g.fillRect(-2 * S, -14 * S, 26 * S, 22 * S);
-    g.fillStyle = col('main2'); g.fillRect(0, -6 * S, 22 * S, 12 * S);
-    for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? col('accent') : '#111'; g.fillRect(i * 6 * S, -13 * S, 5 * S, 5 * S); }
-    g.fillStyle = col('accent'); g.fillRect(3 * S, -2 * S, 14 * S, 2 * S); g.fillRect(3 * S, 2 * S, 10 * S, 2 * S);
+    g.save(); g.translate(J.bh.x, J.bh.y); g.rotate(-0.25 + J.lean); g.scale(1.3, 1.3);   // film clapperboard (black/white sticks, slate lines)
+    g.fillStyle = '#111'; g.fillRect(-2 * S, -16 * S, 30 * S, 26 * S);
+    g.fillStyle = '#262c3c'; g.fillRect(0, -6 * S, 26 * S, 14 * S);
+    for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#111' : col('shirt'); g.fillRect(i * 5.4 * S, -15 * S, 4.6 * S, 6 * S); }
+    g.fillStyle = col('shirt'); g.fillRect(3 * S, -3 * S, 18 * S, 1.6 * S); g.fillRect(3 * S, 1 * S, 12 * S, 1.6 * S); g.fillRect(3 * S, 5 * S, 15 * S, 1.6 * S);
     g.restore();
   }
   const backFist = id === 'mierda' || id === 'grok' ? dark('main') : id === 'cyclone' ? dark('glove') : dark('skin');
@@ -2446,35 +2532,43 @@ function drawBody(g, ch, J, d, o) {
       g.beginPath(); g.arc(chest.x + off * 0.5, chest.y, 2.5 * S, Math.PI, Math.PI * 2.5); g.stroke();   // tornado swirl
       band(0.18, 0.26, col('main2'), 0.95);
       g.fillStyle = col('chest'); g.fillRect(belly.x - 3 * S, lp(J.hip, J.sh, 0.225).y - 2 * S, 6 * S, 4 * S);
-    } else if (id === 'editor') {
-      const top = lp(J.hip, J.sh, 0.95), mid = lp(J.hip, J.sh, 0.5);
-      poly([[top.x + off - 6 * S, top.y], [top.x + off + 6 * S, top.y], [mid.x + off, mid.y]], col('shirt'), null);
-      poly([[top.x + off - 1.5 * S, top.y + 2 * S], [top.x + off + 1.5 * S, top.y + 2 * S], [mid.x + off + 1 * S, mid.y + 4 * S], [mid.x + off - 1 * S, mid.y + 4 * S]], '#111111', null);
-      g.strokeStyle = col('accent'); g.lineWidth = 1.8 * S; g.beginPath();   // gold lapel trim
-      g.moveTo(top.x + off - 7 * S, top.y); g.lineTo(mid.x + off - 1 * S, mid.y + 2 * S); g.lineTo(J.hip.x + off - 3 * S, J.hip.y - 4 * S);
-      g.moveTo(top.x + off + 7 * S, top.y); g.lineTo(mid.x + off + 2 * S, mid.y + 2 * S); g.stroke();
-      const pk = lp(J.hip, J.sh, 0.4);
-      g.fillStyle = '#111'; g.fillRect(pk.x + off - 7 * S, pk.y - 3 * S, 14 * S, 7 * S);
-      g.fillStyle = col('accent'); g.fillRect(pk.x + off - 6 * S, pk.y - 2 * S, 12 * S, 5 * S);
-      g.fillStyle = col('main'); g.fillRect(pk.x + off - 4 * S, pk.y - 1 * S, 8 * S, 3 * S);
+    } else if (id === 'editor') {   // editing hoodie: hood, drawstrings, timeline stripe, play logo, lanyard badge, film reel
+      const top = lp(J.hip, J.sh, 0.95), mid = lp(J.hip, J.sh, 0.55);
+      limbDraw(g, [lp(J.hip, J.sh, 0.86), lp(J.hip, J.sh, 1.02)], tw * 0.95, [col('main2')]);   // bunched hood
+      g.strokeStyle = col('shirt'); g.lineWidth = 1.4 * S; g.beginPath();   // drawstrings
+      g.moveTo(top.x + off - 3 * S, top.y); g.lineTo(top.x + off - 4 * S, top.y + 14 * S); g.moveTo(top.x + off + 3 * S, top.y); g.lineTo(top.x + off + 3 * S, top.y + 12 * S); g.stroke();
+      const tl = lp(J.hip, J.sh, 0.62), cl = [col('clipA'), col('clipB'), col('clipC'), col('clipD')];   // timeline stripe across the chest
+      g.fillStyle = '#111'; g.fillRect(tl.x + off - tw * 0.55, tl.y - 6 * S, tw * 1.1, 12 * S);
+      for (let i = 0; i < 4; i++) { g.fillStyle = cl[i]; g.fillRect(tl.x + off - tw * 0.55 + 1.2 * S + i * tw * 1.1 / 4, tl.y - 4.5 * S, tw * 1.1 / 4 - 1.8 * S, 9 * S); }
+      g.fillStyle = col('accent'); g.fillRect(tl.x + off + tw * 0.08, tl.y - 9 * S, 2 * S, 18 * S);   // playhead
+      const pl = lp(J.hip, J.sh, 0.4);   // play-button logo on the kangaroo pocket
+      g.fillStyle = col('main2'); g.fillRect(pl.x + off - 9 * S, pl.y - 5 * S, 18 * S, 10 * S);
+      g.fillStyle = col('shirt'); g.beginPath(); g.moveTo(pl.x + off - 3 * S, pl.y - 4 * S); g.lineTo(pl.x + off + 4 * S, pl.y); g.lineTo(pl.x + off - 3 * S, pl.y + 4 * S); g.fill();
+      g.strokeStyle = col('badge'); g.lineWidth = 1.4 * S; g.beginPath();   // lanyard + ID badge
+      g.moveTo(top.x + off - 6 * S, top.y); g.lineTo(mid.x + off - 8 * S, mid.y + 4 * S); g.moveTo(top.x + off + 6 * S, top.y); g.lineTo(mid.x + off - 6 * S, mid.y + 4 * S); g.stroke();
+      g.fillStyle = '#111'; g.fillRect(mid.x + off - 12 * S, mid.y + 3 * S, 9 * S, 11 * S);
+      g.fillStyle = col('shirt'); g.fillRect(mid.x + off - 11 * S, mid.y + 4 * S, 7 * S, 9 * S);
+      g.fillStyle = col('screen'); g.fillRect(mid.x + off - 10 * S, mid.y + 5 * S, 5 * S, 3 * S);
+      const rl = lp(J.hip, J.sh, 0.14);   // film reel clipped to the belt
+      circle(g, rl.x - off * 0.8, rl.y, 6.5 * S, '#9aa3b5', '#111', 2);
+      for (let i = 0; i < 5; i++) { const a = i * Math.PI * 0.4 + 0.3; circle(g, rl.x - off * 0.8 + Math.cos(a) * 3.6 * S, rl.y + Math.sin(a) * 3.6 * S, 1.3 * S, '#111', null); }
     }
   }
 
   // ================= front leg =================
   limbDraw(g, [J.hip, J.fk, J.ff], d.limbW * (id === 'mierda' ? 1.25 : 1.1), [col(legC), col(legC)]);
   if (!plain && id === 'grok') along(J.fk, J.ff, 1.6 * S, col('accent'), 2 * S);
-  if (!plain && id === 'editor') along(J.hip, J.fk, 1.4 * S, col('accent'), d.limbW * 0.45);
   if (id === 'cyclone' || id === 'grok') limbDraw(g, [lp(J.fk, J.ff, 0.55), J.ff], d.limbW * 1.2, [col('shoe')]);
   if (!plain && id === 'cyclone') { const cp = lp(J.hip, J.fk, 0.6); circle(g, cp.x, cp.y, 3.5 * S, col('chest'), '#111', 1.5); }
   ellipse(g, J.ff.x + 6 * S, J.ff.y - 2 * S, (id === 'mierda' ? 13 : 11) * S, (id === 'mierda' ? 7 : 6) * S, col('shoe'));
-  if (!plain && id === 'editor') { g.fillStyle = col('accent'); g.fillRect(J.ff.x + 2 * S, J.ff.y - 6 * S, 6 * S, 2 * S); }
+  if (!plain && id === 'editor') { g.fillStyle = col('clipA'); g.fillRect(J.ff.x + 1 * S, J.ff.y - 5 * S, 9 * S, 2 * S); }   // sneaker stripe
   if (id === 'mierda') { circle(g, J.fk.x, J.fk.y, 6.5 * S, col('trim'), '#111', 2); circle(g, J.fk.x, J.fk.y, 2.5 * S, dark('trim'), null); }
 
   // ================= neck + head =================
   if (!o.headless) {
     limbDraw(g, [J.sh, lp(J.sh, J.head, 0.5)], d.limbW * 0.8, [col(id === 'mierda' ? 'main2' : id === 'grok' ? 'main' : 'skin')]);
     if (!plain && id === 'cyclone') limbDraw(g, [lp(J.sh, J.head, 0.05), lp(J.sh, J.head, 0.25)], d.limbW * 1.3, [col('main2')]);   // scarf
-    if (!plain && id === 'editor') limbDraw(g, [lp(J.sh, J.head, 0.05), lp(J.sh, J.head, 0.2)], d.limbW * 1.1, [col('shirt')]);
+    if (!plain && id === 'editor') limbDraw(g, [lp(J.sh, J.head, 0.05), lp(J.sh, J.head, 0.22)], d.limbW * 1.25, [col('main2')]);   // hoodie collar
     drawHead(g, ch, J.head, d.headR, o);
   } else {
     ellipse(g, J.sh.x, J.sh.y - 3 * S, d.limbW * 0.7, 4 * S, CONFIG.BLOOD_COLOR, '#111', 2);
@@ -2551,10 +2645,10 @@ function drawHead(g, ch, hc, r, o = {}) {
       g.beginPath(); g.arc(hc.x, hc.y, r * 1.05, Math.PI * 0.9, Math.PI * 1.95);
       g.lineTo(hc.x + r * 0.85, hc.y - r * 0.2); g.lineTo(hc.x + r * 0.55, hc.y - r * 0.4); g.lineTo(hc.x + r * 0.35, hc.y - r * 0.15);
       g.lineTo(hc.x + r * 0.05, hc.y - r * 0.4); g.lineTo(hc.x - r * 0.4, hc.y - r * 0.1); g.lineTo(hc.x - r * 0.95, hc.y + r * 0.35); g.closePath(); g.fill(); g.stroke();
-      ellipse(g, hc.x + r * 0.05, hc.y - r * 0.85, r * 1.2, r * 0.5, col('beret'), '#111', 2.5, -0.08);   // beret + gold band
-      g.fillStyle = col('accent'); g.fillRect(hc.x - r * 0.9, hc.y - r * 0.68, r * 1.8, r * 0.14);
-      g.fillRect(hc.x + r * 0.25, hc.y - r * 1.05, r * 0.3, r * 0.2);
-      g.fillStyle = col('beret'); g.fillRect(hc.x - r * 0.05, hc.y - r * 1.42, r * 0.14, r * 0.2);
+      g.fillStyle = col('hair'); g.strokeStyle = '#111'; g.lineWidth = 2.5; g.beginPath();   // messy late-night-edit hair tufts (no hat)
+      g.moveTo(hc.x - r * 0.9, hc.y - r * 0.55); g.lineTo(hc.x - r * 0.55, hc.y - r * 1.35); g.lineTo(hc.x - r * 0.25, hc.y - r * 0.95);
+      g.lineTo(hc.x + r * 0.1, hc.y - r * 1.45); g.lineTo(hc.x + r * 0.35, hc.y - r * 0.95); g.lineTo(hc.x + r * 0.8, hc.y - r * 1.25);
+      g.lineTo(hc.x + r * 0.95, hc.y - r * 0.5); g.closePath(); g.fill(); g.stroke();
     }
   }
   if (o.hurt) {
@@ -2572,9 +2666,9 @@ function drawHead(g, ch, hc, r, o = {}) {
     g.strokeStyle = '#111'; g.lineWidth = 2;
     g.beginPath(); g.moveTo(ex - r * 0.25, ey - r * 0.33); g.lineTo(ex + r * 0.22, ey - r * 0.25); g.stroke();
     g.beginPath(); g.moveTo(hc.x + r * 0.4, hc.y + r * 0.5); g.quadraticCurveTo(hc.x + r * 0.6, hc.y + r * 0.62, hc.x + r * 0.82, hc.y + r * 0.42); g.stroke();
-    if (id === 'editor' && !plain) {   // round glasses
-      g.strokeStyle = '#111'; g.lineWidth = 2.5; g.beginPath(); g.arc(ex, ey, r * 0.3, 0, Math.PI * 2); g.stroke();
-      g.strokeStyle = col('accent'); g.lineWidth = 1.2; g.beginPath(); g.arc(ex, ey, r * 0.3, Math.PI * 1.1, Math.PI * 1.6); g.stroke();
+    if (id === 'editor' && !plain) {   // square editing glasses with a blue screen glint
+      g.strokeStyle = '#111'; g.lineWidth = 2.5; g.strokeRect(ex - r * 0.3, ey - r * 0.24, r * 0.6, r * 0.46);
+      g.strokeStyle = col('screen'); g.lineWidth = 1.4; g.beginPath(); g.moveTo(ex - r * 0.2, ey - r * 0.14); g.lineTo(ex + r * 0.05, ey - r * 0.14); g.stroke();
       g.strokeStyle = '#111'; g.lineWidth = 2; g.beginPath(); g.moveTo(ex - r * 0.3, ey - r * 0.02); g.lineTo(hc.x - r * 0.45, ey - r * 0.1); g.stroke();
     }
   }
@@ -2830,6 +2924,8 @@ function zoomHead(f) { return f.y - 228 * (f.ch.scale || 1); }
 function zoomTarget() {
   const fs = game.fighters.filter((f) => f && !f.hidden);
   if (!ZOOM.on || fs.length < 1) return { z: 1, mx: 480, T: 0 };
+  const zp = game.zoomPunch;
+  if (zp && zp.t > 0 && game.state === 'fight') { const z = 1.75; return { z, mx: zp.x, T: clamp(zp.y - 250 / z, 0, 540 - 540 / z) }; }
   const xs = fs.map((f) => f.x), sep = Math.max(...xs) - Math.min(...xs);
   let z = 960 / (sep + 230);
   const feet = Math.max(...fs.map((f) => Math.min(f.y, CONFIG.GROUND_Y))) + 22;
@@ -3313,7 +3409,15 @@ function drawFighter(g, f) {
   if (f.boss) g.restore();
   const S = f.ch.scale, top = f.y - 190 * S;
   // status effects
-  if (f.trapped > 0) {
+  if (f.trapped > 0 && f.trapLabel === 'PAUSED') {   // Editor's Freeze Frame: viewfinder brackets + pause bars, a cold tint
+    const hb = f.hurtbox(), x0 = hb.x - 14, y0 = hb.y - 10, x1 = hb.x + hb.w + 14, y1 = hb.y + hb.h + 8, L = 18;
+    g.save(); g.fillStyle = 'rgba(155,231,255,0.18)'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.beginPath();
+    g.moveTo(x0, y0 + L); g.lineTo(x0, y0); g.lineTo(x0 + L, y0); g.moveTo(x1 - L, y0); g.lineTo(x1, y0); g.lineTo(x1, y0 + L);
+    g.moveTo(x0, y1 - L); g.lineTo(x0, y1); g.lineTo(x0 + L, y1); g.moveTo(x1 - L, y1); g.lineTo(x1, y1); g.lineTo(x1, y1 - L); g.stroke();
+    g.fillStyle = '#ffffff'; g.fillRect(x1 + 6, y0 + 4, 6, 18); g.fillRect(x1 + 16, y0 + 4, 6, 18);
+    g.restore();
+  } else if (f.trapped > 0) {
     const hb = f.hurtbox(); g.save(); g.strokeStyle = '#38e8ff'; g.shadowColor = '#38e8ff'; g.shadowBlur = 8; g.lineWidth = 2;
     for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(hb.x - 8 + i * (hb.w + 16) / 6, hb.y); g.lineTo(hb.x - 8 + (6 - i) * (hb.w + 16) / 6, hb.y + hb.h); g.stroke(); }
     for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(hb.x - 8, hb.y + i * hb.h / 6); g.lineTo(hb.x + hb.w + 8, hb.y + i * hb.h / 6); g.stroke(); }
@@ -3354,6 +3458,13 @@ function drawEntity(g, e) {
       g.rotate(e.t * 0.1); g.shadowColor = '#38e8ff'; g.shadowBlur = 12; g.strokeStyle = '#38e8ff'; g.lineWidth = 2;
       const R = e.h / 2; g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.stroke();
       for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(i * R / 3, -R); g.lineTo(i * R / 3, R); g.moveTo(-R, i * R / 3); g.lineTo(R, i * R / 3); g.stroke(); }
+    } else if (e.kind === 'frame') {   // Editor's Freeze Frame shot: a flying viewfinder frame with a REC dot
+      const w = e.w, h = e.h, L = 14; g.shadowColor = '#9be7ff'; g.shadowBlur = 12;
+      g.fillStyle = 'rgba(155,231,255,0.22)'; g.fillRect(-w / 2, -h / 2, w, h);
+      g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.beginPath();
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { g.moveTo(sx * w / 2, sy * (h / 2 - L)); g.lineTo(sx * w / 2, sy * h / 2); g.lineTo(sx * (w / 2 - L), sy * h / 2); }
+      g.stroke(); g.lineWidth = 2; g.beginPath(); g.moveTo(-8, 0); g.lineTo(8, 0); g.moveTo(0, -8); g.lineTo(0, 8); g.stroke();
+      g.fillStyle = e.t % 20 < 10 ? '#ff3040' : '#7a1018'; g.beginPath(); g.arc(-w / 2 + 9, -h / 2 + 9, 4, 0, Math.PI * 2); g.fill();
     } else if (e.kind === 'cards') {
       for (let i = 0; i < 3; i++) {
         g.save(); g.translate(-i * 14, (i - 1) * 9); g.scale(Math.cos(e.t * 0.5 + i), 1);
@@ -3380,6 +3491,21 @@ function drawEntity(g, e) {
     g.restore();
   } else if (e.type === 'tornado') {
     drawFunnel(g, e.x, e.y, 1);
+  } else if (e.type === 'edcut') {   // a film frame flashing on a hard cut
+    const k = e.life / e.max; g.save(); g.globalAlpha = k;
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(e.x - 60, e.y - 110, 120, 200);
+    g.fillStyle = '#111'; g.fillRect(e.x - 72, e.y - 110, 14, 200); g.fillRect(e.x + 58, e.y - 110, 14, 200);
+    g.fillStyle = '#ffffff'; for (let i = 0; i < 8; i++) { g.fillRect(e.x - 68, e.y - 104 + i * 25, 6, 12); g.fillRect(e.x + 62, e.y - 104 + i * 25, 6, 12); }
+    g.restore();
+  } else if (e.type === 'edsplice') {   // a strip of film snipped in two, the halves sliding apart
+    const k = e.life / e.max, o = (1 - k) * 40; g.save(); g.globalAlpha = Math.min(1, k * 1.5);
+    for (const s of [-1, 1]) {
+      const x = e.x + s * (o + 4) - (s < 0 ? 70 : 0);
+      g.fillStyle = '#111'; g.fillRect(x, e.y - 24, 70, 48);
+      g.fillStyle = '#ffd23f'; g.fillRect(x + 6, e.y - 14, 58, 28);
+      g.fillStyle = '#ffffff'; for (let i = 0; i < 5; i++) { g.fillRect(x + 4 + i * 14, e.y - 22, 6, 5); g.fillRect(x + 4 + i * 14, e.y + 17, 6, 5); }
+    }
+    g.restore();
   } else if (e.type === 'slash') {
     const k = e.life / e.max;
     g.save(); g.lineCap = 'round'; g.shadowColor = '#fff'; g.shadowBlur = 20;
@@ -4079,6 +4205,7 @@ function drawFight(g) {
   if (game.tint) { const T = game.tint; g.fillStyle = `rgba(${T.r},${T.g},${T.b},${T.a * Math.min(1, T.t / 30)})`; g.fillRect(0, 0, 960, 540); if (T.t > 100 && T.label !== '') txt(g, T.label || 'BROWNOUT', 480, 270, 110, '#4a2a0c', 'center', 0); }
   if (game.fatal && game.fatal.sepia) { g.fillStyle = 'rgba(112,66,20,0.45)'; g.fillRect(0, 0, 960, 540); }
   if (game.filmStrip > 0) drawFilmStrip(g);
+  if (game.edFx) drawEdFx(g);
   if (game.flash > 0) { g.fillStyle = `rgba(255,255,255,${game.flash / 12})`; g.fillRect(0, 0, 960, 540); }
   if (game.cinematic) {
     const c = game.cinematic, k = Math.min(1, c.t / 8);
@@ -4245,8 +4372,8 @@ const ADLIBS = {
     win: ['Blown away!', 'Too fast, too furious!', 'Whirlwind wins again!'],
   },
   editor: {
-    pre: ['Places, everyone. Action!', "I've already scripted your defeat.", "This scene needs a villain. You're it.", "Let's keep this short. I hate long takes."],
-    win: ["Cut! That's a wrap.", 'Your performance? Left on the cutting room floor.', 'Final cut: me.'],
+    pre: ['Places, everyone. Action!', 'Hold still. I need a clean frame.', "I've already scripted your defeat.", "This scene needs a villain. You're it.", "Let's keep this short. I hate long takes."],
+    win: ["Cut! That's a wrap.", 'Your performance? Left on the cutting room floor.', 'Final cut: me.', 'Rendered. Exported. Done.'],
   },
 };
 const ADLIB_FRAMES = 90;   // 1.5 s at 60 fps
@@ -7657,6 +7784,67 @@ function gkSfx(S, name) {
   }
 }
 
+/** Editor's cartoon editing sounds: mouse clicks, tape scrubs, razor whooshes and the clapperboard shutter (no musical notes). */
+function edSfx(S, name) {
+  if (!S.ctx) return;
+  const click = (delay = 0, vol = 0.35) => { S.noise(0.018, vol, 3800, 'bandpass', delay); S.tone(2400, 1700, 0.015, 'square', vol * 0.22, delay); };
+  const scrub = (dur, f1, f2, delay = 0, vol = 0.22) => { S.noise(dur, vol, f1, 'bandpass', delay, f2); S.tone(f1 / 9, f2 / 9, dur, 'sawtooth', vol * 0.22, delay); };
+  switch (name) {
+    case 'ed_click': click(); click(0.07, 0.25); break;                                             // mouse double-click
+    case 'ed_razor': click(); S.noise(0.16, 0.42, 7000, 'highpass', 0.02); S.noise(0.22, 0.3, 500, 'bandpass', 0.02, 4200); break;   // blade + slice whoosh
+    case 'ed_cut': S.noise(0.05, 0.5, 5200, 'highpass'); click(0.04, 0.4); S.noise(0.12, 0.25, 400, 'bandpass', 0.04, 3000); break;   // hard cut
+    case 'ed_splice': click(); S.noise(0.07, 0.45, 2600, 'bandpass', 0.04); click(0.13, 0.4); S.noise(0.09, 0.38, 1700, 'bandpass', 0.17); break;   // snip + tape
+    case 'ed_shutter': S.noise(0.025, 0.85, 2500, 'bandpass'); S.noise(0.025, 0.6, 3600, 'bandpass', 0.06); S.tone(900, 260, 0.05, 'square', 0.08); break;   // clapper/shutter clack-clack
+    case 'ed_freeze': S.noise(0.03, 0.8, 2500, 'bandpass'); S.tone(420, 40, 0.38, 'sawtooth', 0.11, 0.02); break;   // shutter + tape-stop
+    case 'ed_scrub': scrub(0.18, 1500, 4800); scrub(0.16, 4800, 1300, 0.18); break;                  // timeline scrub back and forth
+    case 'ed_rewind': scrub(0.5, 6500, 900, 0, 0.24); for (let i = 0; i < 6; i++) click(i * 0.08, 0.1); break;   // VHS rewind
+    case 'ed_zoom': S.noise(0.26, 0.34, 300, 'bandpass', 0, 3600); S.tone(180, 900, 0.22, 'sine', 0.09); click(0.24, 0.45); break;   // lens whir + snap
+    case 'ed_render': for (let i = 0; i < 12; i++) click(i * 0.045, 0.14); S.noise(0.6, 0.1, 800, 'bandpass', 0, 5200); break;   // render ticking
+    case 'ed_done': S.noise(0.03, 0.95, 2500, 'bandpass'); S.tone(150, 50, 0.22, 'sine', 0.3); break;   // render complete: clapper slam
+    default: break;
+  }
+}
+
+/** Editor: a film-frame "hard cut" flash at a point. */
+function edCutFx(x, y) {
+  game.entities.push({ type: 'edcut', x, y, life: 14, max: 14 });
+  for (let i = 0; i < 10; i++) spawnParticle({ x: x + rand(-40, 40), y: y + rand(-90, 60), vx: rand(-4, 4), vy: rand(-2, 2), life: 14, size: rand(8, 18), color: pick(['#ffffff', '#ffd23f']), type: 'streak' });
+}
+
+/** Editor screen overlays: FINAL CUT render bar + timeline, the CUT, and the VHS Rewind look (screen space). */
+function drawEdFx(g) {
+  const e = game.edFx; if (!e || e.t <= 0) return;
+  g.save();
+  const timeline = (y, k, split) => {   // a little editing timeline: colored clips + a sweeping playhead
+    const x = 250, w = 460, cols = ['#4d9dff', '#3ce05a', '#c77dff', '#ff5c8a', '#4d9dff', '#3ce05a'];
+    g.fillStyle = 'rgba(10,12,20,0.7)'; g.fillRect(x - 12, y - 44, w + 24, 92);
+    g.fillStyle = '#1e2433'; g.fillRect(x, y, w, 30);
+    let cx = x + 4; for (let i = 0; i < cols.length; i++) { const cw = [70, 90, 60, 80, 70, 74][i]; g.fillStyle = cols[i]; g.fillRect(cx, y + 4, cw - 4, 22); cx += cw; }
+    const px = x + w * Math.min(1, k);
+    g.fillStyle = '#ffd23f'; g.fillRect(x, y + 34, w * Math.min(1, k), 8);
+    g.fillStyle = split ? '#ff3040' : '#ffffff'; g.fillRect(px - 2, y - 6, 4, 54);
+    g.beginPath(); g.moveTo(px - 8, y - 12); g.lineTo(px + 8, y - 12); g.lineTo(px, y - 2); g.fill();
+  };
+  if (e.kind === 'render') {
+    const k = 1 - e.t / e.max;
+    timeline(470, k, false);
+    txt(g, 'RENDERING FINAL CUT... ' + Math.round(k * 100) + '%', 480, 442, 18, '#ffd23f', 'center', 3);
+  } else if (e.kind === 'cut') {
+    const k = e.t / e.max;
+    g.globalAlpha = Math.min(1, k * 2);
+    timeline(470, 1, true);
+    txt(g, '100%  CUT!', 480, 442, 22, '#ffffff', 'center', 3);
+  } else if (e.kind === 'rewind') {
+    g.fillStyle = 'rgba(40,70,140,0.18)'; g.fillRect(0, 0, 960, 540);
+    for (let y = (game.frame * 9) % 14; y < 540; y += 14) { g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, y, 960, 3); }
+    const by = 100 + ((game.frame * 23) % 380); g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(0, by, 960, 10);   // tracking band
+    g.fillStyle = '#ffffff';
+    for (const ox of [0, 22]) { g.beginPath(); g.moveTo(60 + ox, 126); g.lineTo(80 + ox, 112); g.lineTo(80 + ox, 140); g.fill(); }
+    txt(g, 'REWIND', 112, 136, 24, '#ffffff', 'left', 3);
+  }
+  g.restore();
+}
+
 /** Glitch burst of cyan / magenta pixels (Reroute). */
 function gkGlitch(f) {
   for (let i = 0; i < 26; i++) spawnParticle({ x: f.x + rand(-34, 34), y: f.y - rand(0, 190) * f.ch.scale, vx: rand(-5, 5), vy: rand(-3, 2), life: rand(14, 26) | 0, size: rand(4, 10), color: pick(['#38e8ff', '#ff3355', '#ffffff', '#c77dff']), type: 'pixel' });
@@ -7805,12 +7993,12 @@ function gkDrawTrap(g) {
     const x = f.x - 44, y = f.y - 232 * f.ch.scale, k = 1 - f.trapped / f.gkBuf;
     g.fillStyle = '#000'; g.fillRect(x - 3, y - 3, 94, 16); g.fillStyle = '#15303f'; g.fillRect(x, y, 88, 10);
     g.fillStyle = '#38e8ff'; g.fillRect(x, y, 88 * k, 10);
-    txt(g, 'BUFFERING', f.x, y - 12, 15, '#bff8ff', 'center', 2);
+    txt(g, f.trapLabel || 'BUFFERING', f.x, y - 12, 15, '#bff8ff', 'center', 2);
   }
 }
 
 /* ---------- state snapshots ---------- */
-const SNAP_SKIP_F = new Set(['ch', 'brain', 'dims', 'aiHeld', 'queued', 'move']);
+const SNAP_SKIP_F = new Set(['ch', 'brain', 'dims', 'aiHeld', 'queued', 'move', 'hist']);
 function encVal(v, depth = 0) {
   if (v === null || v === undefined) return v;
   if (typeof v === 'number') return Number.isInteger(v) ? v : Math.round(v * 100) / 100;
@@ -7829,7 +8017,7 @@ function decVal(v) {
   if ('$c' in v) return CHARACTERS[v.$c];
   const o = {}; for (const k in v) o[k] = decVal(v[k]); return o;
 }
-const SNAP_KEYS = ['camX', 'slab', 'toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
+const SNAP_KEYS = ['camX', 'slab', 'toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'zoomPunch', 'edFx', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
 function encodeSnapshot() {
   const s = { t: 'snap', fr: game.frame, sfx: Net.sfx.slice(), voice: Net.voice.slice(), shake: Math.round(game.shake) };
   s.F = game.fighters.map((f) => {
