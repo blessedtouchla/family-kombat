@@ -804,8 +804,9 @@ class Fighter {
     this.headless = false; this.skeleton = false; this.xrayView = false; this.charred = false;
     this.hidden = false; this.rot = 0; this.spinX = 1; this.forcePose = null; this.alpha = 1;
     this.aiHeld = {}; this.held = false; this.heldBy = null; this.shrink = 1;
+    this.plat = false; this.noPlat = false; this.knockedOff = false; this.dropPend = 0; this.dropReq = false; this._dnPrev = false; this._dnAt = -99;   // balcony
   }
-  get grounded() { return this.y >= CONFIG.GROUND_Y - 0.01; }
+  get grounded() { return this.y >= (this.plat ? PLAT.y : CONFIG.GROUND_Y) - 0.01; }   // standing on the floor or on the balcony
   get opp() { return game.fighters[1 - this.side]; }
   /** The area that can be hit. */
   hurtbox() {
@@ -888,6 +889,7 @@ class Fighter {
       Sound.play(sfxHook(`sp_${this.ch.id}_${a.slot}`, 'whoosh'));
     } else if (a.type === 'ult') {
       def = this.ch.ult; this.meter = 0; this.crouching = false;
+      platPullDown(this); platPullDown(this.opp);   // ultimates happen on the floor
       startCinematic(this, def.name);
     }
     if (this.grounded) this.vx = 0;
@@ -921,6 +923,7 @@ class Fighter {
     this.holdBack = !!held[back] && !held[fwd];
 
     const control = allowControl(this);
+    platInput(this, held, inp, control);   // double-tap down drops through the balcony
     if (this.state === 'ko' || this.state === 'dizzy' || this.state === 'dead') {
       // no control, just physics below
     } else if (this.trapped > 0) {
@@ -970,20 +973,23 @@ class Fighter {
 
   /** Gravity, landing, walls, friction. */
   physics() {
+    const prevY = this.y;
     if (!this.grounded || this.vy < 0) this.vy += CONFIG.GRAVITY;
     this.x += this.vx; this.y += this.vy;
+    platPhysics(this, prevY);   // land on / leave the balcony
     if (this.y >= CONFIG.GROUND_Y) {
       if (this.vy > 0) {
         if (this.state === 'ko' && this.vy > 5) { game.shake = Math.max(game.shake, 6); Sound.play('bonk'); }
-        this.vy = 0; this.airAttacked = false;
+        this.vy = 0; this.airAttacked = false; platFloorLand(this);
         if (this.move && this.move.kind === 'base' && this.move.data.air !== false && CONFIG.MOVES.air[this.move.btn] === this.move.def) this.move = null;
         if (this.state === 'jump') this.state = 'idle';
       }
-      this.y = CONFIG.GROUND_Y;
+      this.y = CONFIG.GROUND_Y; this.plat = false; this.noPlat = false;
     }
     const onGround = this.grounded;
     if (onGround && (this.hitstun > 0 || this.blockstun > 0 || this.state === 'ko' || this.state === 'dead' || this.trapped > 0)) this.vx *= 0.82;
     this.x = clamp(this.x, CONFIG.STAGE_LEFT, CONFIG.STAGE_RIGHT);
+    platAfterMove(this);
     // KO'd fighters tip over
     if (this.state === 'ko') this.rot = lerp(this.rot, -this.facing * Math.PI / 2, 0.12);
   }
@@ -1320,6 +1326,7 @@ function applyHit(att, def, h) {
 
   // X-ray moment on ultimates, and on heavy hits deep in a combo
   if (h.xray || (h.heavy && att.combo >= 4 && !game.xray)) triggerXray(att, def, hy);
+  platOnHit(att, def, h, dmg, dir);   // knock-offs + cracked slab
   if (def.hp <= 0) onKO(att, def);
   return 'hit';
 }
@@ -1333,7 +1340,7 @@ function triggerXray(att, def, hitY) {
 }
 
 function onKO(winner, loser) {
-  loser.state = 'ko'; loser.vy = -9; loser.vx = (loser.x >= winner.x ? 1 : -1) * 6; loser.move = null;
+  loser.state = 'ko'; loser.vy = -9; loser.vx = (loser.x >= winner.x ? 1 : -1) * 6; loser.move = null; platOnKO(loser);
   winner.combo = 0;
   game.wins[winner.side]++;
   game.winner = winner; game.loser = loser;
@@ -1383,6 +1390,7 @@ class CpuBrain {
     const airSp = f.ch.specials.s1 && f.ch.specials.s1.air;
     if (!f.grounded && !f.airAttacked && airSp && dist > 60 && dist < 230 && f.vy > -4 && R() < 0.06 + L * 0.1) { f.queued = { type: 'special', slot: 's1' }; f.queuedT = 0; }
     else if (!f.grounded && !f.airAttacked && dist < 140 && R() < 0.15) { f.queued = { type: 'base', btn: pick(['HK', 'LK', 'HP']) }; f.queuedT = 0; }
+    platThink(this, h, dist);   // balcony: chase up, drop down, knock-offs
     // stop walking once close enough
     if (this.plan === 'approach' && dist < 85) this.planT = 0;
   }
@@ -1829,7 +1837,7 @@ function startRound() {
   for (const i of game.inputs) i.clear();
   game.entities = []; game.particles = []; game.heads = []; game.texts = []; game.toilets = [];
   game.decals = game.round === 1 ? [] : game.decals;   // blood stays on the floor between rounds
-  game.timer = CONFIG.ROUND_TIME; game.timerSub = 0;
+  game.timer = CONFIG.ROUND_TIME; game.timerSub = 0; platReset();   // the cracked slab is repaired every round
   game.tint = null; game.xray = null; game.cinematic = null; game.hitstop = 0; game.slowmo = 0; game.filmStrip = 0;
   game.comboText = [null, null]; game.fatal = null; game.winner = null; game.loser = null; game.result = '';
   setState('intro'); game.adlibs = [];
@@ -1849,6 +1857,7 @@ function startFinish() {
   game.inputs[w.side].clear();
   l.state = 'dizzy'; l.rot = 0; l.vx = 0; l.vy = 0; l.y = CONFIG.GROUND_Y; l.move = null; l.hitstun = 0; l.trapped = 0; l.onFire = 0;
   w.move = null; w.hitstun = 0; w.state = 'idle'; w.reversed = 0; w.trapped = 0;
+  platPullDown(w); platPullDown(l);   // FINISH THEM happens on the floor
   // put them at a sensible distance
   if (Math.abs(w.x - l.x) < 120) w.x = clamp(l.x + (w.x < l.x ? -140 : 140), 60, 900);
   game.entities = [];
@@ -1862,7 +1871,7 @@ function startFatality(w, kind) {
   const type = kind === 'headChop' ? 'headChop' : kind === 'special2' && w.ch.finisher2 ? w.ch.finisher2.type : w.ch.fatality.type;
   game.fatal = { type, w, l, t: 0 };
   setState('fatality');
-  w.move = null; w.vx = 0;
+  w.move = null; w.vx = 0; platPullDown(w); platPullDown(l);
   addText(FATALITIES[type].name, { x: 480, y: 140, size: 40, color: '#ffd23f', dur: 90 });
   Sound.play(sfxHook(`fatality_${type}`, 'ult'));
 }
@@ -2976,6 +2985,180 @@ STAGES[0].buildWide = buildJungleWide; STAGES[0].animWide = animJungleWide;
 STAGES[1].buildWide = buildNeonWide; STAGES[1].animWide = animNeonWide;
 STAGES[2].buildWide = buildDesertWide; STAGES[2].animWide = animDesertWide;
 STAGES[3].buildWide = buildStudioWide; STAGES[3].animWide = animStudioWide;
+/* =====================================================================
+ * 15c. SECOND FLOOR  -  Jungle stage only: a stone temple balcony.
+ *      One-way platform: jump up through it from below and land on top,
+ *      tap down twice to drop through, walk off the ends. Heavy hits and
+ *      launchers knock a fighter off; the cracked slab breaks after a few
+ *      big hits and is repaired every round. Ultimates and finishers pull
+ *      both fighters down to the floor first. Positions are in world units
+ *      (the treadmill camera turns them into screen x with - game.camX);
+ *      the host streams game.slab and each fighter's plat flag to guests.
+ * ===================================================================== */
+const PLAT = { stage: 0, x0: 1192, x1: 1532, y: 356, s0: 1300, s1: 1380, slabHp: 3 };
+function platActive() { return game.stageIdx === PLAT.stage && !!game.slab; }
+/** Is screen x over solid balcony? pad widens (+) or narrows (-) the test. */
+function onPlat(x, pad = 0, cam = game.camX ?? CAM_START) {
+  if (!platActive()) return false;
+  const w = x + cam;
+  if (w < PLAT.x0 - pad || w > PLAT.x1 + pad) return false;
+  if (game.slab.broken && w > PLAT.s0 && w < PLAT.s1) return false;
+  return true;
+}
+function onSlab(x, cam = game.camX ?? CAM_START) { const w = x + cam; return platActive() && !game.slab.broken && w > PLAT.s0 - 16 && w < PLAT.s1 + 16; }
+function platReset() { game.slab = { hp: PLAT.slabHp, broken: false, hitF: -99 }; }
+function platDust(x, y, n = 10) { for (let i = 0; i < n; i++) spawnParticle({ x: x + rand(-26, 26), y: y + rand(-6, 2), vx: rand(-2, 2), vy: rand(-2.5, -0.5), life: rand(18, 30) | 0, size: rand(8, 16), color: pick(['rgba(200,190,160,0.7)', 'rgba(160,150,120,0.7)']), type: 'smoke' }); }
+
+/** Called from Fighter.physics after the fighter moved: landing on / leaving the balcony. */
+function platPhysics(f, prevY) {
+  if (!platActive()) { f.plat = false; return; }
+  if (f.plat) {
+    if (f.y < PLAT.y - 0.5) f.plat = false;          // jumped or launched off it
+    else { f.y = PLAT.y; if (f.vy > 0) f.vy = 0; }
+    return;
+  }
+  if (f.noPlat || f.held || f.vy <= 0 || f.state === 'ko' || f.state === 'dead') return;
+  if (game.state !== 'fight' && game.state !== 'ko') return;
+  if (prevY <= PLAT.y + 0.5 && f.y >= PLAT.y && onPlat(f.x)) {
+    f.y = PLAT.y; f.vy = 0; f.plat = true; f.airAttacked = false;
+    if (f.move && f.move.kind === 'base' && f.move.data.air !== false && CONFIG.MOVES.air[f.move.btn] === f.move.def) f.move = null;
+    if (f.state === 'jump') f.state = 'idle';
+    platDust(f.x, PLAT.y, 5);
+  }
+}
+/** After the wall clamp: walked off the end, or the slab under them broke. */
+function platAfterMove(f) { if (f.plat && !onPlat(f.x)) f.plat = false; }
+/** Landing on the real floor. */
+function platFloorLand(f) {
+  f.plat = false; f.noPlat = false;
+  if (f.knockedOff) {
+    f.knockedOff = false;
+    if (game.state === 'fight' && f.state !== 'ko' && f.hp > 0) {
+      f.hp = Math.max(1, f.hp - 3); f.hitstun = Math.max(f.hitstun, 14); f.state = 'hit'; f.vy = -4;
+      game.shake = Math.max(game.shake, 7); Sound.play('bonk'); platDust(f.x, CONFIG.GROUND_Y, 12);
+    }
+  }
+}
+/** Double-tap down (or a CPU decision) drops through the balcony. */
+function platInput(f, held, inp, control) {
+  const dn = !!held.down;
+  if (!f.plat) { f.dropPend = 0; f.dropReq = false; f._dnPrev = dn; return; }
+  if (control && game.state === 'fight') {
+    if (!f.isCpu && dn && !f._dnPrev) { if (game.frame - (f._dnAt ?? -99) <= 16) f.dropPend = 7; f._dnAt = game.frame; }
+    if (f.dropReq) { f.dropReq = false; f.dropPend = 1; }
+  }
+  f._dnPrev = dn;
+  if (f.dropPend > 0) {
+    // a quick ↓↓ + button is still a special move (e.g. ↓↓ + LK), so wait a moment for a button first
+    if (f.move || !f.isFree() || !control || (!f.isCpu && inp && inp.presses && inp.presses.length)) { f.dropPend = 0; return; }
+    if (--f.dropPend === 0) platDrop(f);
+  }
+}
+function platDrop(f) {
+  f.plat = false; f.noPlat = true; f.y += 2; f.vy = 1; f.crouching = false; f.state = 'jump'; f._dnAt = -99;
+  platDust(f.x, PLAT.y, 6); Sound.play('jump');
+}
+/** Heavy hits / launchers knock a fighter off; big hits on the cracked slab break it. */
+function platOnHit(att, def, h, dmg, dir) {
+  if (!platActive() || game.state !== 'fight') return;
+  const big = dmg >= 8 || h.heavy || (h.kbY && h.kbY < -2) || h.xray;
+  if (!big) return;
+  const S = game.slab;
+  if (!S.broken && ((def.plat && onSlab(def.x)) || (att.plat && onSlab(att.x)))) {
+    S.hp--; S.hitF = game.frame; Sound.play('crack'); platDust((PLAT.s0 + PLAT.s1) / 2 - game.camX, PLAT.y + 6, 6);
+    if (S.hp <= 0) breakSlab();
+  }
+  if (def.plat || (!def.grounded && onPlat(def.x) && def.y <= PLAT.y)) {
+    def.plat = false; def.noPlat = true; def.knockedOff = true;
+    def.vx = dir * Math.max(Math.abs(def.vx), 7); def.vy = Math.min(def.vy, -5);
+    addText('KNOCKED OFF!', { x: def.x, y: PLAT.y - 200, size: 26, color: '#ffd23f', dur: 45, rise: 0.5 });
+  }
+}
+function breakSlab() {
+  const S = game.slab; if (S.broken) return;
+  S.broken = true; S.hp = 0; S.hitF = game.frame;
+  const cx = (PLAT.s0 + PLAT.s1) / 2 - game.camX;
+  Sound.play('crack'); Sound.play('bonk'); game.shake = Math.max(game.shake, 12);
+  for (let i = 0; i < 26; i++) spawnParticle({ x: cx + rand(-40, 40), y: PLAT.y + rand(0, 20), vx: rand(-3, 3), vy: rand(-5, 1), life: rand(40, 70) | 0, size: rand(5, 11), color: pick(['#7a7660', '#a29e80', '#5e5b48', '#4a4838']), type: 'pixel', grav: 0.5 });
+  platDust(cx, PLAT.y, 14);
+  addText('CRASH!', { x: cx, y: PLAT.y - 150, size: 40, color: '#ffd23f', dur: 55, rise: 0.4 });
+  for (const f of game.fighters) if (f.plat && !onPlat(f.x)) { f.plat = false; f.vy = 1; }
+}
+/** KO'd fighters fall all the way to the floor. */
+function platOnKO(l) { l.plat = false; l.noPlat = true; }
+/** Ultimates and finishers happen on the floor: bring a fighter down (smoke-puff "teleport" if standing on the balcony). */
+function platPullDown(f) {
+  if (!f) return;
+  f.dropPend = 0; f.dropReq = false; f.knockedOff = false;
+  if (f.plat) { smokePuff(f.x, f.y - 80); f.plat = false; f.y = CONFIG.GROUND_Y; f.vy = 0; smokePuff(f.x, f.y - 80); }
+  if (f.y < CONFIG.GROUND_Y) f.noPlat = true;
+}
+function shadowYFor(f) {
+  const cam = camNow();
+  return !f.noPlat && f.y <= PLAT.y + 1 && onPlat(f.x, 0, cam) ? PLAT.y : CONFIG.GROUND_Y;
+}
+
+/* ---------- CPU: chase onto the balcony, drop down, go for knock-offs ---------- */
+function platThink(B, h, dist) {
+  const f = B.f, o = f.opp, L = CONFIG.CPU_LEVEL, R = Math.random;
+  if (!platActive() || !o || f.move) return;
+  if (!f.plat && f.grounded && o.plat) {
+    // opponent is up top: get underneath, then jump up through
+    const dx = o.x - f.x;
+    h.left = h.right = false;
+    if (!onPlat(f.x, -24)) h[dx > 0 ? 'right' : 'left'] = true;
+    else if (Math.abs(dx) > 70) h[dx > 0 ? 'right' : 'left'] = true;
+    if (onPlat(f.x, -10) && R() < 0.05 + L * 0.12) { h.up = true; h.down = false; }
+    B.plan = 'platChase'; B.planT = 4;
+  } else if (f.plat && !o.plat && o.grounded) {
+    // up top while they're on the floor: drop down to fight (sooner when they're far away)
+    if (R() < (dist > 140 ? 0.03 + L * 0.06 : 0.012)) f.dropReq = true;
+  } else if (f.plat && o.plat && dist < 115 && !f.queued && R() < 0.04 + L * 0.08) {
+    f.queued = { type: 'base', btn: pick(['HK', 'HP']) }; f.queuedT = 0;   // try to knock them off
+  } else if (!f.plat && !o.plat && f.grounded && onPlat(f.x, -20) && R() < 0.008 + L * 0.012) {
+    h.up = true; h.left = h.right = false;   // now and then hop up onto the balcony
+  }
+}
+
+/* ---------- drawing (art px, inside the near layer's translate) ---------- */
+function drawBalcony(g, t) {
+  if (!game.slab || game.stageIdx !== PLAT.stage) return;
+  const X0 = PLAT.x0 / 2, X1 = PLAT.x1 / 2, S0 = PLAT.s0 / 2, S1 = PLAT.s1 / 2, top = PLAT.y / 2, GYa = CONFIG.GROUND_Y / 2, S = game.slab;
+  const broken = S.broken, shake = game.frame - S.hitF < 10 && !broken ? ((game.frame >> 1) % 2 ? 1 : -1) : 0;
+  const segs = broken ? [[X0, S0 - 1], [S1 + 1, X1]] : [[X0, X1]];
+  // pillars
+  for (const px of [X0 + 10, X1 - 22]) { g.fillStyle = '#4a4838'; g.fillRect(px, top + 12, 12, GYa - top - 12); g.fillStyle = '#5e5b48'; g.fillRect(px, top + 12, 3, GYa - top - 12); g.fillStyle = '#2a281e'; g.fillRect(px + 10, top + 12, 2, GYa - top - 12); }
+  for (const [a, b] of segs) {
+    const w = b - a;
+    // railing (behind whoever stands on top)
+    g.fillStyle = '#8f8b70'; for (let x = a + 2; x < b - 2; x += 10) g.fillRect(x, top - 11, 3, 11);
+    g.fillRect(a, top - 13, w, 3); g.fillStyle = '#a29e80'; g.fillRect(a, top - 13, w, 1);
+    // slab body
+    g.fillStyle = '#7a7660'; g.fillRect(a, top, w, 12); g.fillStyle = '#a29e80'; g.fillRect(a, top, w, 2);
+    g.fillStyle = '#4a4838'; g.fillRect(a, top + 11, w, 2);
+    g.fillStyle = '#5e5b48'; for (let x = a + 8; x < b; x += 16) g.fillRect(x, top + 3, 1, 8);
+  }
+  if (!broken) {
+    // the breakable section: crack lines grow with damage
+    const n = PLAT.slabHp - S.hp, cx = (S0 + S1) / 2 + shake;
+    g.fillStyle = '#2a281e';
+    g.fillRect(cx - 1, top, 2, 12); g.fillRect(cx + 1, top + 6, 5, 1); g.fillRect(cx + 5, top + 2, 1, 8);
+    if (n >= 1) { g.fillRect(cx - 9, top + 2, 1, 9); g.fillRect(cx - 9, top + 5, 8, 1); g.fillRect(cx + 9, top + 1, 1, 7); g.fillRect(cx + 9, top + 8, 7, 1); }
+    if (n >= 2) { g.fillRect(cx - 16, top + 1, 1, 10); g.fillRect(cx - 16, top + 9, 6, 1); g.fillRect(cx + 15, top, 1, 12); g.fillRect(cx - 4, top + 10, 12, 1); g.fillStyle = '#4a4838'; g.fillRect(S0 + 1, top + 2, S1 - S0 - 2, 1); }
+    g.fillStyle = n >= 2 ? '#c4261a' : '#5e5b48'; g.fillRect(S0, top - 1, 1, 1); g.fillRect(S1 - 1, top - 1, 1, 1);   // edge markers
+  } else {
+    // jagged broken edges + rubble pile on the floor below
+    g.fillStyle = '#7a7660';
+    for (let i = 0; i < 4; i++) { g.fillRect(S0 - 1, top + i * 3, 2 + (i % 2) * 2, 3); g.fillRect(S1 - 1 - (i % 2) * 2, top + i * 3, 2 + (i % 2) * 2, 3); }
+    const rub = [[0, 3, 7], [6, 1, 9], [15, 4, 8], [22, 0, 10], [31, 3, 6], [12, 6, 12]];
+    for (const [dx, dy, w] of rub) { g.fillStyle = '#5e5b48'; g.fillRect(S0 + dx, GYa - 5 + dy - 3, w, 5 - dy / 2); g.fillStyle = '#a29e80'; g.fillRect(S0 + dx, GYa - 5 + dy - 3, w, 1); }
+  }
+  // vines on the pillars
+  g.fillStyle = '#2a6a34'; for (let y = top + 13; y < top + 44; y++) g.fillRect(X0 + 60 + Math.round(Math.sin(y / 6) * 2), y, 1, 1);
+  g.fillStyle = '#3f8a3a'; for (let y = top + 13; y < top + 30; y += 4) g.fillRect(X1 - 40 + Math.round(Math.cos(y / 5) * 2), y, 2, 1);
+}
+{ const animJ = STAGES[PLAT.stage].animWide; STAGES[PLAT.stage].animWide = (g, t, ca) => { animJ(g, t, ca); drawBalcony(g, t); }; }
+
 
 
 
@@ -3024,7 +3207,7 @@ function drawStar(g, x, y, r, color) {
   for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
   g.closePath(); g.fill(); g.stroke();
 }
-function drawShadow(g, x, w) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x, CONFIG.GROUND_Y + 3, w, 8, 0, 0, Math.PI * 2); g.fill(); }
+function drawShadow(g, x, w, y = CONFIG.GROUND_Y) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x, y + 3, w, 8, 0, 0, Math.PI * 2); g.fill(); }
 
 function drawEntity(g, e) {
   const t = game.frame;
@@ -3517,6 +3700,7 @@ function drawMoveColumn(g, side, x, y, w, h) {
     yy += 15;
   }
   txtC(g, 'BLOCK: HOLD \u2190 (AWAY)    LOW: HOLD \u2193\u2190', X, yy, 15, '#fff', 'left', 0, w - 20); yy += 19;
+  if (game.stageIdx === PLAT.stage && game.slab) { txtC(g, 'JUMP UP ONTO THE BALCONY, \u2193\u2193 TO DROP', X, yy - 2, 15, '#9be7ff', 'left', 0, w - 20); yy += 17; }
   head('SPECIAL MOVES', 'NOW FACING ' + (f.facing === 1 ? '\u2192' : '\u2190'));
   for (const s of L.specials) {
     txtC(g, specialInput(s, true), X, yy, 15, '#7ff', 'left', 0, 132);
@@ -3546,8 +3730,9 @@ function drawHelp(g, title, showButtons) {
     ['TOUCH', 'LEFT: DRAG JOYSTICK   RIGHT: LP HP LK HK + ULT   MOVES BUTTON (TOP)'],
     ['BASICS', 'HOLD AWAY TO BLOCK (+DOWN = LOW). \u2193 = LOW ATTACKS, JUMP = AIR ATTACKS.'],
   ];
+  if (game.stageIdx === PLAT.stage && game.slab && game.fighters.length === 2) lines.push(['BALCONY', 'JUNGLE: JUMP UP ONTO THE BALCONY, \u2193\u2193 TO DROP. HEAVY HITS KNOCK FIGHTERS OFF.']);
   let y = 62;
-  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txtC(g, b, 160, y, 15, '#fff', 'left', 0, 780); y += 22; }
+  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txtC(g, b, 160, y, 15, a === 'BALCONY' ? '#9be7ff' : '#fff', 'left', 0, 780); y += lines.length > 4 ? 19 : 22; }
   txtC(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 158, 20, '#ffd23f', 'center', 3);
   for (let i = 0; i < 4; i++) {
     const L = moveListFor(i), ch = L.ch, x = 20 + i * 232, inMatch = game.fighters.some((f) => f.chIdx === i);
@@ -3685,7 +3870,7 @@ function drawFight(g) {
   for (const e of game.entities) if (e.type === 'cloud' || e.type === 'tornado') drawEntity(g, e);
   for (const T of game.toilets) drawToilet(g, T, 'back');
   const fs = [...game.fighters].sort((a, b) => (a.move ? 1 : 0) - (b.move ? 1 : 0));
-  for (const f of fs) if (!f.hidden) drawShadow(g, f.x, f.state === 'ko' ? 80 : 34 * f.ch.girth * f.ch.scale);
+  for (const f of fs) if (!f.hidden) drawShadow(g, f.x, f.state === 'ko' ? 80 : 34 * f.ch.girth * f.ch.scale, shadowYFor(f));
   for (const f of fs) drawFighter(g, f);
   for (const T of game.toilets) drawToilet(g, T, 'front');
   drawHeads(g);
@@ -3757,13 +3942,13 @@ function flushStep(v, T, k) {
 }
 function releaseHeld(v) {
   v.held = false; v.heldBy = null; v.hidden = false; v.shrink = 1; v.spinX = 1; v.forcePose = null;
-  v.y = 40; v.vy = 2; v.vx = 0;
+  v.y = 40; v.vy = 2; v.vx = 0; v.plat = false; v.noPlat = false;
 }
 MOVE_HANDLERS.toilet = {
   update(f, m, opp) {
     const d = m.def, k = m.frame - d.startup, D = m.data;
     if (k === 0) {
-      D.caught = Math.abs(opp.x - f.x) < d.range && opp.grounded && opp.state !== 'ko' && !opp.hidden && opp.invuln <= 0 && !opp.isBlocking();
+      D.caught = Math.abs(opp.x - f.x) < d.range && opp.grounded && opp.state !== 'ko' && !opp.hidden && opp.invuln <= 0 && !opp.isBlocking() && !opp.plat;   // the toilet sits on the floor
       D.toilet = { x: clamp(D.caught ? opp.x : f.x + f.facing * 150, 90, 870), t: 0, life: D.caught ? 116 : 56, lid: 'open', swirl: false };
       game.toilets.push(D.toilet); Sound.play('toilet_lid'); game.shake = 6;
       if (D.caught) { opp.held = true; opp.heldBy = f; opp.move = null; opp.hitstun = 0; D.ox = opp.x; }
@@ -4500,7 +4685,7 @@ function decVal(v) {
   if ('$c' in v) return CHARACTERS[v.$c];
   const o = {}; for (const k in v) o[k] = decVal(v[k]); return o;
 }
-const SNAP_KEYS = ['camX', 'toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
+const SNAP_KEYS = ['camX', 'slab', 'toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
 function encodeSnapshot() {
   const s = { t: 'snap', fr: game.frame, sfx: Net.sfx.slice(), voice: Net.voice.slice(), shake: Math.round(game.shake) };
   s.F = game.fighters.map((f) => {
@@ -4908,7 +5093,7 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 /* Small hook for automated tests / tinkering in the browser console. */
-window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W };
+window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown };
 </script>
 </body>
 </html>
