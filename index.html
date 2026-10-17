@@ -684,7 +684,45 @@ const TouchPad = {
   held: {}, pressed: [],
   stick: null,                 // {id, ox, oy, x, y}
   fingers: new Map(),          // touch id -> button name
+  arrows: new Map(),           // ARROW mode: touch id -> current point
 };
+/* Direction control choice, remembered per device: 'stick' (slide joystick, default) or 'arrows' (4 arrow buttons). */
+const DIRCTL = { mode: 'stick', key: 'fk-dirctl' };
+try { if (localStorage.getItem(DIRCTL.key) === 'arrows') DIRCTL.mode = 'arrows'; } catch (e) { /* private mode */ }
+function setDirMode(m) {
+  DIRCTL.mode = m === 'arrows' ? 'arrows' : 'stick';
+  try { localStorage.setItem(DIRCTL.key, DIRCTL.mode); } catch (e) { /* ignore */ }
+  TouchPad.stick = null; TouchPad.arrows.clear(); updateStickHeld();
+}
+function toggleDirMode() { setDirMode(DIRCTL.mode === 'arrows' ? 'stick' : 'arrows'); try { Sound.play('select'); } catch (e) { /* ignore */ } }
+function dirModeName() { return DIRCTL.mode === 'arrows' ? 'ARROW BUTTONS' : 'JOYSTICK'; }
+/* 88-unit arrow buttons, 16-unit gaps: >= 52pt and >= 9pt apart even on a 568x320 phone (58pt / 11pt on a 780x360 one). */
+const ARROW_UI = { cx: 158, cy: 386, s: 88, step: 104 };
+function arrowBtnRects() {
+  const A = ARROW_UI, o = {}, h = A.s / 2;
+  for (const [k, ax, ay] of [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]]) o[k] = { x: A.cx + ax * A.step - h, y: A.cy + ay * A.step - h, w: A.s, h: A.s };
+  return o;
+}
+function arrowInZone(p) { const A = ARROW_UI, m = A.step + A.s / 2 + 34; return Math.abs(p.x - A.cx) <= m && Math.abs(p.y - A.cy) <= m; }
+/** Directions under one finger: on a button = that arrow; in the gap between two arrows = both (diagonal); centre = none. */
+function arrowDirsAt(p) {
+  const A = ARROW_UI, dx = p.x - A.cx, dy = p.y - A.cy, h = A.s / 2, out = [];
+  if (!arrowInZone(p) || (Math.abs(dx) <= h && Math.abs(dy) <= h)) return out;
+  if (Math.abs(dy) > h || Math.abs(dx) <= h) out.push(dy < 0 ? 'up' : 'down');
+  if (Math.abs(dx) > h || Math.abs(dy) <= h) out.push(dx < 0 ? 'left' : 'right');
+  if (Math.abs(dx) <= h) return [dy < 0 ? 'up' : 'down'];
+  if (Math.abs(dy) <= h) return [dx < 0 ? 'left' : 'right'];
+  return out;
+}
+/** A new finger on the left side: start the joystick, or press arrow buttons. Returns true if it was used. */
+function dirTouchStart(t, p) {
+  if (DIRCTL.mode === 'arrows') {
+    if (p.x < CONFIG.WIDTH * 0.45 && arrowInZone(p)) { TouchPad.arrows.set(t.identifier, p); updateStickHeld(); return true; }
+    return false;
+  }
+  if (p.x < CONFIG.WIDTH * 0.45 && !TouchPad.stick) { TouchPad.stick = { id: t.identifier, ox: p.x, oy: p.y, x: p.x, y: p.y }; updateStickHeld(); return true; }
+  return false;
+}
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
@@ -696,6 +734,7 @@ function toGame(px, py) {
 function updateStickHeld() {
   const h = TouchPad.held;
   h.left = h.right = h.up = h.down = false;
+  if (DIRCTL.mode === 'arrows') { for (const p of TouchPad.arrows.values()) for (const d of arrowDirsAt(p)) h[d] = true; return; }   // two fingers = diagonal
   const s = TouchPad.stick; if (!s) return;
   const dx = s.x - s.ox, dy = s.y - s.oy, dead = 22;
   if (dx < -dead) h.left = true;
@@ -725,10 +764,7 @@ function onTouchStart(e) {
       togglePause(); continue;
     }
     if (game.paused || !isFightState()) { handleTap(p); continue; }
-    if (p.x < CONFIG.WIDTH * 0.45 && !TouchPad.stick) {
-      TouchPad.stick = { id: t.identifier, ox: p.x, oy: p.y, x: p.x, y: p.y };
-      updateStickHeld(); continue;
-    }
+    if (dirTouchStart(t, p)) continue;
     const b = buttonAt(p);
     if (b) { TouchPad.fingers.set(t.identifier, b.btn); TouchPad.held[b.btn] = true; TouchPad.pressed.push(b.btn); }
   }
@@ -737,6 +773,7 @@ function onTouchMove(e) {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const p = toGame(t.clientX, t.clientY);
+    if (TouchPad.arrows.has(t.identifier)) { TouchPad.arrows.set(t.identifier, p); updateStickHeld(); continue; }   // slide between arrows
     if (TouchPad.stick && TouchPad.stick.id === t.identifier) {
       const s = TouchPad.stick, dx = p.x - s.ox, dy = p.y - s.oy, d = Math.hypot(dx, dy), max = TOUCH_UI.stickR;
       // drag the stick's origin along if the thumb wanders too far
@@ -755,6 +792,7 @@ function onTouchMove(e) {
 function onTouchEnd(e) {
   e.preventDefault();
   for (const t of e.changedTouches) {
+    if (TouchPad.arrows.has(t.identifier)) { TouchPad.arrows.delete(t.identifier); updateStickHeld(); }
     if (TouchPad.stick && TouchPad.stick.id === t.identifier) { TouchPad.stick = null; updateStickHeld(); }
     if (TouchPad.fingers.has(t.identifier)) {
       const b = TouchPad.fingers.get(t.identifier); TouchPad.fingers.delete(t.identifier);
@@ -900,12 +938,13 @@ class Fighter {
       def = this.ch.specials[a.slot];
       if (!this.grounded && def.air) { def = def.air; this.airAttacked = true; }   // e.g. Cyclone's Sky Dive
       this.crouching = false;
-      addText(def.name.toUpperCase(), { x: this.x, y: this.y - 205 * this.ch.scale, size: 20, color: '#fff', dur: 40, rise: 0.6 });
+      callout(this, def.name);
       Sound.play(sfxHook(`sp_${this.ch.id}_${a.slot}`, def.sfxStart || 'whoosh'));
     } else if (a.type === 'ult') {
       def = this.ch.ult; this.meter = 0; this.crouching = false;
       platPullDown(this); platPullDown(this.opp);   // ultimates happen on the floor
       startCinematic(this, def.name);
+      callout(this, def.name, { top: true, size: 44, dur: 95 });
     }
     if (this.grounded) this.vx = 0;
     this.move = { def, kind, btn: a.btn, slot: a.slot, frame: 0, hit: false, hits: 0, lastHit: -99, data: {} };
@@ -988,7 +1027,7 @@ class Fighter {
 
   /** Gravity, landing, walls, friction. */
   physics() {
-    const prevY = this.y;
+    const prevY = this.y, prevX = this.x;
     if (!this.grounded || this.vy < 0) this.vy += CONFIG.GRAVITY;
     this.x += this.vx; this.y += this.vy;
     platPhysics(this, prevY);   // land on / leave the balcony
@@ -1004,6 +1043,9 @@ class Fighter {
     const onGround = this.grounded;
     if (onGround && (this.hitstun > 0 || this.blockstun > 0 || this.state === 'ko' || this.state === 'dead' || this.trapped > 0)) this.vx *= 0.82;
     this.x = clamp(this.x, CONFIG.STAGE_LEFT, CONFIG.STAGE_RIGHT);
+    const o = this.opp;   // max walk-apart distance, so both fighters always fit in the zoomed camera
+    if (o && !o.hidden && !this.hidden && game.state !== 'fatality' && Math.abs(this.x - o.x) > ZOOM.maxSep && Math.abs(this.x - o.x) > Math.abs(prevX - o.x))
+      this.x = Math.abs(prevX - o.x) > ZOOM.maxSep ? prevX : o.x + Math.sign(this.x - o.x) * ZOOM.maxSep;
     platAfterMove(this);
     // KO'd fighters tip over
     if (this.state === 'ko') this.rot = lerp(this.rot, -this.facing * Math.PI / 2, 0.12);
@@ -1592,6 +1634,18 @@ function addText(text, o = {}) {
   game.texts.push({ text, x: o.x ?? 480, y: o.y ?? 250, size: o.size || 40, color: o.color || '#fff',
                     dur: o.dur || 60, t: 0, rise: o.rise || 0, kind: o.kind || 'pop' });
 }
+/* ---- Move-name CALLOUTS: big, bold, fighter-coloured names for specials / ultimates / finishers ----
+ * They live in game.texts (kind 'callout'), so they mirror to the online guest and show on the TV. */
+const CALLOUT_COL = { mierda: '#7dff3a', grok: '#4d9dff', cyclone: '#9be7ff', editor: '#ffd23f' };
+function fighterCol(f) { return (f && f.ch && (CALLOUT_COL[f.ch.id] || f.ch.colors.accent)) || '#ffd23f'; }
+function callout(f, name, o = {}) {
+  const T = game.texts;
+  for (let i = T.length - 1; i >= 0; i--) if (T[i].kind === 'callout' && T[i].side === f.side) T.splice(i, 1);   // newest replaces older
+  const text = String(name).toUpperCase().replace(/[!.]*$/, '') + '!';
+  T.push({ text, x: o.top ? 480 : f.x, y: o.top ? 200 : f.y - 232 * f.ch.scale, size: o.size || 34, color: fighterCol(f),
+           dur: o.dur || 58, t: 0, rise: 0, kind: 'callout', side: f.side, top: !!o.top });
+  if (game.calloutLog) game.calloutLog.push({ side: f.side, text, top: !!o.top, frame: game.frame });
+}
 /** Ultimate super-freeze: world pauses, background darkens, ult name flashes. */
 function startCinematic(f, name) {
   game.cinematic = { f, name, t: 0, dur: 50 };
@@ -1902,7 +1956,7 @@ function startFatality(w, kind) {
   game.fatal = { type, w, l, t: 0 };
   setState('fatality');
   w.move = null; w.vx = 0; platPullDown(w); platPullDown(l);
-  addText(FATALITIES[type].name, { x: 480, y: 140, size: 40, color: '#ffd23f', dur: 90 });
+  callout(w, FATALITIES[type].name, { top: true, size: 46, dur: 110 });
   Sound.play(sfxHook(`fatality_${type}`, 'ult'));
 }
 function startWinner(result) {
@@ -2095,7 +2149,8 @@ function updateTexts() {
 /* ---------------- Taps / clicks on menus ---------------- */
 function handleTap(p) {
   if (game.paused) {
-    // RESUME / QUIT buttons in the pause overlay
+    // RESUME / QUIT buttons in the pause overlay (+ the joystick / arrows switch)
+    if (hitBtn([PAUSE_DIRBTN], p)) { toggleDirMode(); return; }
     if (p.y > 470 && p.y < 520) {
       if (p.x > 300 && p.x < 470) game.paused = false;
       else if (p.x > 490 && p.x < 660) { game.paused = false; openSelect(); }
@@ -2117,7 +2172,7 @@ function handleTap(p) {
       const c = cardRect(i);
       if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
         if (!s.p1Done) { s.p1 = i; selectConfirm(1); }
-        else if (!s.p2Done && game.mode !== 'online') { s.p2 = i; game.mode === 'cpu' ? selectConfirm(1) : selectConfirm(2); }
+        else if (!s.p2Done && game.mode !== 'online' && !(game.tvMode && TV.hostPhone)) { s.p2 = i; game.mode === 'cpu' ? selectConfirm(1) : selectConfirm(2); }
         return;
       }
     }
@@ -2765,6 +2820,48 @@ function shifted(R, ox) {
     line: (a, b, c2, d, c) => R.line(a + ox, b, c2 + ox, d, c), poly: (p, c) => R.poly(p.map((q) => [q[0] + ox, q[1]]), c),
     text: (s, x, y, c, sc, ce) => R.text(s, x + ox, y, c, sc, ce) };
 }
+/* ---- Fighter ZOOM: the camera zooms in on the fight so everyone is drawn ~32% bigger.
+ * Rendering only: every hitbox, reach, jump, the balcony and the walls stay in the same game units,
+ * so balance is untouched. The zoom eases out (never below 1.15x horizontally) as the fighters
+ * separate; they can't walk further apart than ZOOM.maxSep. It only drops toward 1x when one
+ * fighter is way up high (e.g. jumping off the balcony) so nobody leaves the screen. */
+const ZOOM = { max: 1.32, min: 1.15, maxSep: 600, z: 1.32, mx: 480, T: 0, L: 0, last: -9, boxes: [], on: true };
+function zoomHead(f) { return f.y - 228 * (f.ch.scale || 1); }
+function zoomTarget() {
+  const fs = game.fighters.filter((f) => f && !f.hidden);
+  if (!ZOOM.on || fs.length < 1) return { z: 1, mx: 480, T: 0 };
+  const xs = fs.map((f) => f.x), sep = Math.max(...xs) - Math.min(...xs);
+  let z = 960 / (sep + 230);
+  const feet = Math.max(...fs.map((f) => Math.min(f.y, CONFIG.GROUND_Y))) + 22;
+  let tLo = -1e9, tHi = 1e9;
+  for (const f of fs) {
+    const top = f.grounded ? 88 : 14;   // standing fighters stay under the health bars; jumpers may brush the top
+    z = Math.min(z, (540 - top) / Math.max(60, feet - zoomHead(f)));
+  }
+  z = clamp(z, 1, ZOOM.max);
+  for (const f of fs) tHi = Math.min(tHi, zoomHead(f) - (f.grounded ? 88 : 14) / z);
+  tLo = feet - 540 / z;
+  let T = CONFIG.GROUND_Y - 505 / z;   // floor sits near the bottom so the stage still reads
+  T = Math.min(T, tHi); T = Math.max(T, tLo);
+  return { z, mx: (Math.min(...xs) + Math.max(...xs)) / 2, T: clamp(T, 0, 540 - 540 / z) };
+}
+/** Ease the zoom toward its target (called once per rendered frame, so the online guest and the TV do it too). */
+function zoomUpdate() {
+  const t = zoomTarget(), snap = game.frame - ZOOM.last > 3 || Math.abs(t.mx - ZOOM.mx) > 260;
+  ZOOM.last = game.frame;
+  if (snap) { ZOOM.z = t.z; ZOOM.mx = t.mx; ZOOM.T = t.T; }
+  else { ZOOM.z += (t.z - ZOOM.z) * 0.14; ZOOM.mx += (t.mx - ZOOM.mx) * 0.2; ZOOM.T += (t.T - ZOOM.T) * 0.14; }
+  const z = ZOOM.z;
+  ZOOM.L = clamp(ZOOM.mx - 480 / z, 0, 960 - 960 / z);
+  ZOOM.T = clamp(ZOOM.T, 0, 540 - 540 / z);
+  ZOOM.boxes = game.fighters.filter((f) => f && !f.hidden).map((f) => {
+    const a = zmap(f.x - 58 * f.ch.girth * f.ch.scale, zoomHead(f)), b = zmap(f.x + 58 * f.ch.girth * f.ch.scale, f.y + 6);
+    return { x0: a.x, y0: a.y, x1: b.x, y1: b.y };
+  });
+}
+function zoomApply(g) { g.scale(ZOOM.z, ZOOM.z); g.translate(-ZOOM.L, -ZOOM.T); }
+/** World (game-unit) point -> screen point under the current zoom. */
+function zmap(x, y) { return { x: (x - ZOOM.L) * ZOOM.z, y: (y - ZOOM.T) * ZOOM.z }; }
 function camNow() {
   if (Net.role === 'guest' && Net.online() && game.camDraw != null) return game.camDraw;
   return game.camX ?? CAM_START;
@@ -2776,7 +2873,7 @@ function scrollWorld(d) {
   for (const f of game.fighters) { f.x -= d; const D = f.move && f.move.data; if (D && typeof D.ox === 'number') D.ox -= d; }
   for (const e of game.entities) { if (typeof e.x === 'number') e.x -= d; if (typeof e.x1 === 'number') e.x1 -= d; if (typeof e.x2 === 'number') e.x2 -= d; }
   for (const L of [game.particles, game.decals, game.heads, game.toilets]) for (const o of L) o.x -= d;
-  for (const t of game.texts) if (t.kind !== 'announce' && t.x !== 480) t.x -= d;
+  for (const t of game.texts) if (t.kind !== 'announce' && !t.top && t.x !== 480) t.x -= d;
 }
 /** Camera follows the fighters' midpoint (smoothly), clamped to the stage ends. */
 function cameraStep() {
@@ -3446,23 +3543,51 @@ function drawHUD(g) {
   // combo counters
   for (let s = 0; s < 2; s++) {
     const c = game.comboText[s]; if (!c) continue;
-    const pop = c.t > 70 ? 1 + (c.t - 70) * 0.05 : 1;
-    g.save(); g.translate(s === 0 ? 40 : 920, 120); g.scale(pop, pop);
-    txt(g, c.n + ' HIT COMBO', 0, 0, 30, '#ffd23f', s === 0 ? 'left' : 'right', 5);
-    g.restore();
+    const pop = c.t > 72 ? 1 + (c.t - 72) * 0.09 : 1, al = Math.min(1, c.t / 12);
+    drawCalloutText(g, c.n + ' HIT COMBO!', s === 0 ? 46 : 914, 122, 30, fighterCol(game.fighters[s]), s === 0 ? 'left' : 'right', pop, al);
+  }
+}
+/** A slanted dark banner with chunky fighter-coloured lettering (used by callouts and the combo counter). */
+function drawCalloutText(g, text, x, y, size, color, align, sc, alpha) {
+  const w = textWidth(text, size) + 34, h = size * 1.3, x0 = align === 'left' ? 0 : align === 'right' ? -w : -w / 2, sk = h * 0.35;
+  g.save(); g.globalAlpha = alpha; g.translate(x, y); g.scale(sc, sc);
+  g.globalAlpha = alpha * 0.62; g.fillStyle = '#000'; g.beginPath();
+  g.moveTo(x0 + sk, -h / 2); g.lineTo(x0 + w + sk, -h / 2); g.lineTo(x0 + w - sk, h / 2); g.lineTo(x0 - sk, h / 2); g.closePath(); g.fill();
+  g.globalAlpha = alpha; g.fillStyle = color; g.fillRect(x0 - sk + 4, h / 2 - 5, w, 5);
+  const tx = x0 + w / 2;
+  txt(g, text, tx + 4, 4, size, shade(color, -0.6), 'center', 0);
+  txt(g, text, tx, 0, size, color, 'center', Math.max(5, size / 7));
+  g.restore();
+  return { w: w * sc, h: h * sc };
+}
+function drawCallouts(g) {
+  const placed = [];
+  for (const t of game.texts) {
+    if (t.kind !== 'callout' || t.t < 0) continue;
+    const sc = t.t < 6 ? 1.75 - t.t * 0.125 : 1, alpha = Math.min(1, (t.dur - t.t) / 12, t.t < 2 ? 0.75 : 1);
+    const w = textWidth(t.text, t.size) + 40, h = t.size * 1.3;
+    let x = t.x, y = t.y;
+    if (!t.top) { const p = zmap(t.x, t.y); x = p.x; y = p.y; }
+    x = clamp(x, w / 2 + 12, 948 - w / 2); y = clamp(y, t.top ? 130 : 140, t.top ? 330 : 320);
+    for (const q of placed) if (Math.abs(q.y - y) < (q.h + h) / 2 && Math.abs(q.x - x) < (q.w + w) / 2) y = q.y + (q.h + h) / 2 + 4;   // never stack on each other
+    placed.push({ x, y, w, h });
+    drawCalloutText(g, t.text, x, y, t.size, t.color, 'center', sc, alpha);
   }
 }
 function drawTexts(g) {
   for (const t of game.texts) {
+    if (t.kind === 'callout') continue;
     const k = t.t / t.dur;
     const sc = t.t < 8 ? 1 + (8 - t.t) * 0.12 : 1;
     const alpha = Math.min(1, (t.dur - t.t) / 12);
-    g.save(); g.globalAlpha = alpha; g.translate(t.x, t.y - t.rise * t.t); g.scale(sc, sc);
+    const wp = t.kind !== 'announce' && t.x !== 480 ? zmap(t.x, t.y - t.rise * t.t) : { x: t.x, y: t.y - t.rise * t.t };   // world texts follow the camera zoom
+    g.save(); g.globalAlpha = alpha; g.translate(wp.x, wp.y); g.scale(sc, sc);
     if (t.kind === 'announce') { g.shadowColor = t.color; g.shadowBlur = 20; }
     txt(g, t.text, 0, 0, t.size, t.color, 'center', Math.max(4, t.size / 10));
     g.restore();
     void k;
   }
+  drawCallouts(g);   // move names on top of the other floating texts
 }
 /** Slow-mo X-ray inset: zoomed skeleton, incoming fist, bone crack. */
 function drawXrayPanel(g) {
@@ -3541,6 +3666,7 @@ const ARROW_COL = { '\u2191': DPAD.up.col, '\u2193': DPAD.down.col, '\u2190': DP
 const DPAD_PAL_EXTRA = [];   // exact palette entries so the colours survive the pixel-palette snap
 for (const k in DPAD) { const c = DPAD[k].col; DPAD_PAL_EXTRA.push(c, shade(c, -0.4), shade(c, 0.35)); }
 for (const b of TOUCH_UI.buttons) DPAD_PAL_EXTRA.push(b.color, shade(b.color, -0.4), shade(b.color, 0.35));
+for (const k in CALLOUT_COL) DPAD_PAL_EXTRA.push(CALLOUT_COL[k], shade(CALLOUT_COL[k], -0.6));
 /** Pad centre in game units for a stick origin (used by drawing and tests). */
 function dpadPadPos(k, bx, by) { const d = DPAD[k]; return { x: bx + d.ax * DPAD_PAD.off, y: by + d.ay * DPAD_PAD.off }; }
 function drawDpadPads(g, bx, by) {
@@ -3548,12 +3674,12 @@ function drawDpadPads(g, bx, by) {
   for (const k in DPAD) {
     const d = DPAD[k], on = !!TouchPad.held[k], { x, y } = dpadPadPos(k, bx, by);
     if (on) {   // pressed: glow halo + full-colour pad with a white rim
-      g.globalAlpha = 0.6; circle(g, x, y, r + 11, shade(d.col, 0.35), null);
-      g.globalAlpha = 1; circle(g, x, y, r + 2, d.col, '#ffffff', 4);
+      g.globalAlpha = TOUCH_FADE.k * (0.6); circle(g, x, y, r + 11, shade(d.col, 0.35), null);
+      g.globalAlpha = TOUCH_FADE.k * (1); circle(g, x, y, r + 2, d.col, '#ffffff', 4);
     } else {    // idle: dark tinted pad with a bright coloured rim (readable on any stage)
-      g.globalAlpha = 0.9; circle(g, x, y, r, shade(d.col, -0.4), d.col, 4);
+      g.globalAlpha = TOUCH_FADE.k * (0.9); circle(g, x, y, r, shade(d.col, -0.4), d.col, 4);
     }
-    g.globalAlpha = 1; drawBoldArrow(g, x, y, d.ax, d.ay, on ? 1.15 : 1);
+    g.globalAlpha = TOUCH_FADE.k * (1); drawBoldArrow(g, x, y, d.ax, d.ay, on ? 1.15 : 1);
   }
 }
 function drawBoldArrow(g, x, y, ax, ay, s) {
@@ -3603,29 +3729,61 @@ function drawAttackButtons(g) {
   for (const b of TOUCH_UI.buttons) {
     const on = !!TouchPad.held[b.btn], ready = b.btn !== 'ULT' || (me && me.meter >= CONFIG.METER_MAX);
     if (on) {
-      g.globalAlpha = 0.6; circle(g, b.x, b.y, b.r + 10, shade(b.color, 0.35), null);
-      g.globalAlpha = 1; circle(g, b.x, b.y, b.r + 2, b.color, '#ffffff', 4);
+      g.globalAlpha = TOUCH_FADE.k * (0.6); circle(g, b.x, b.y, b.r + 10, shade(b.color, 0.35), null);
+      g.globalAlpha = TOUCH_FADE.k * (1); circle(g, b.x, b.y, b.r + 2, b.color, '#ffffff', 4);
     } else {
-      g.globalAlpha = ready ? 0.85 : 0.4; circle(g, b.x, b.y, b.r, shade(b.color, -0.4), b.color, 4);
+      g.globalAlpha = TOUCH_FADE.k * (ready ? 0.85 : 0.4); circle(g, b.x, b.y, b.r, shade(b.color, -0.4), b.color, 4);
     }
-    g.globalAlpha = ready || on ? 1 : 0.55;
+    g.globalAlpha = TOUCH_FADE.k * (ready || on ? 1 : 0.55);
     txt(g, b.label, b.x, b.y - (b.sub ? 7 : 0), 30, '#fff', 'center', 3);
     if (b.sub) txt(g, b.sub, b.x, b.y + 21, 15, on ? '#fff' : shade(b.color, 0.35), 'center', 3, b.r * 2 - 8);
   }
-  g.globalAlpha = 1;
+  g.globalAlpha = TOUCH_FADE.k * (1);
+}
+/** Small switch button: shows the current direction control and flips it when tapped. */
+function drawDirToggle(g, b) {
+  drawButton(g, { ...b, label: 'MOVE: ' + (DIRCTL.mode === 'arrows' ? 'ARROWS' : 'JOYSTICK'), sub: b.h >= 60 ? 'TAP TO SWITCH (SAVED ON THIS PHONE)' : '' }, true, DIRCTL.mode === 'arrows' ? '#3ce05a' : '#7ff');
+}
+const TOUCH_FADE = { k: 1 };   // controls fade when a fighter is behind them
+function touchOverlap(x0, y0, x1, y1) {
+  if (game.state === 'pad' || !isFightState()) return false;
+  return (ZOOM.boxes || []).some((b) => b.x1 > x0 && b.x0 < x1 && b.y1 > y0 && b.y0 < y1);
+}
+function drawArrowPad(g) {
+  const R = arrowBtnRects();
+  g.globalAlpha = TOUCH_FADE.k * ((0.35)); circle(g, ARROW_UI.cx, ARROW_UI.cy, 20, '#111111', '#fff', 2);
+  for (const k of ['up', 'down', 'left', 'right']) {
+    const d = DPAD[k], b = R[k], on = !!TouchPad.held[k], cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    if (on) {
+      g.globalAlpha = TOUCH_FADE.k * ((0.6)); g.fillStyle = shade(d.col, 0.35); g.fillRect(b.x - 9, b.y - 9, b.w + 18, b.h + 18);
+      g.globalAlpha = TOUCH_FADE.k * ((1)); g.fillStyle = '#ffffff'; g.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4); g.fillStyle = d.col; g.fillRect(b.x + 3, b.y + 3, b.w - 6, b.h - 6);
+    } else {
+      g.globalAlpha = TOUCH_FADE.k * ((0.9)); g.fillStyle = d.col; g.fillRect(b.x, b.y, b.w, b.h); g.fillStyle = shade(d.col, -0.4); g.fillRect(b.x + 5, b.y + 5, b.w - 10, b.h - 10);
+    }
+    g.globalAlpha = TOUCH_FADE.k * ((1)); drawBoldArrow(g, cx, cy, d.ax, d.ay, on ? 1.9 : 1.7);
+  }
 }
 function drawTouchControls(g) {
   g.save();
-  const s = TouchPad.stick, bx = s ? s.ox : TOUCH_UI.stickBase.x, by = s ? s.oy : TOUCH_UI.stickBase.y;
-  g.globalAlpha = 0.45; circle(g, bx, by, TOUCH_UI.stickR, '#111111', '#fff', 3);   // darker base = more contrast for the coloured pads
-  let kx = bx, ky = by;
-  if (s) { const dx = s.x - s.ox, dy = s.y - s.oy, dd = Math.hypot(dx, dy) || 1, m = Math.min(dd, TOUCH_UI.stickR); kx = bx + dx / dd * m; ky = by + dy / dd * m; }
-  g.globalAlpha = 0.5; circle(g, kx, ky, 30, '#ddd', '#fff', 3);
-  g.globalAlpha = 1; drawDpadPads(g, bx, by);   // pads on top of the knob so a pressed one is never hidden
-  drawAttackButtons(g);
-  g.globalAlpha = game.mode === 'online' ? 0 : 0.6; const pz = TOUCH_UI.pause;
+  const arrows = DIRCTL.mode === 'arrows';
+  const ghost = game.tvMode && TV.hostPhone;   // mirrored to the TV: keep them faint
+  TOUCH_FADE.k = ghost ? 0.3 : touchOverlap(0, arrows ? 230 : 300, arrows ? 315 : 260, 540) ? 0.4 : 1;
+  if (arrows) { drawArrowPad(g); TOUCH_FADE.k = ghost ? 0.3 : touchOverlap(690, 210, 960, 540) ? 0.4 : 1; drawAttackButtons(g); }
+  else drawStickControls(g);
+  TOUCH_FADE.k = 1;
+  g.globalAlpha = game.mode === 'online' ? 0 : game.tvMode ? 0.3 : 0.6; const pz = TOUCH_UI.pause;
   circle(g, pz.x, pz.y, pz.r, '#222', '#fff', 2); g.fillStyle = '#fff'; g.fillRect(pz.x - 7, pz.y - 8, 5, 16); g.fillRect(pz.x + 2, pz.y - 8, 5, 16);
   g.restore();
+}
+function drawStickControls(g) {
+  const s = TouchPad.stick, bx = s ? s.ox : TOUCH_UI.stickBase.x, by = s ? s.oy : TOUCH_UI.stickBase.y;
+  g.globalAlpha = TOUCH_FADE.k * (0.45); circle(g, bx, by, TOUCH_UI.stickR, '#111111', '#fff', 3);   // darker base = more contrast for the coloured pads
+  let kx = bx, ky = by;
+  if (s) { const dx = s.x - s.ox, dy = s.y - s.oy, dd = Math.hypot(dx, dy) || 1, m = Math.min(dd, TOUCH_UI.stickR); kx = bx + dx / dd * m; ky = by + dy / dd * m; }
+  g.globalAlpha = TOUCH_FADE.k * (0.5); circle(g, kx, ky, 30, '#ddd', '#fff', 3);
+  g.globalAlpha = TOUCH_FADE.k * (1); drawDpadPads(g, bx, by);   // pads on top of the knob so a pressed one is never hidden
+  TOUCH_FADE.k = game.tvMode && TV.hostPhone ? 0.3 : touchOverlap(690, 210, 960, 540) ? 0.4 : 1;
+  drawAttackButtons(g);
 }
 /* ---------------- MOVE LISTS: one shared source for the pause screen, the select-screen preview and the MOVES panel ---------------- */
 const KEY_NAMES = {   // keyboard labels used in the move lists (match CONFIG.KEYS)
@@ -3669,7 +3827,7 @@ function openMoves() {
   if (!movesAvailable() || game.movesOpen) return;
   game.movesOpen = true;
   if (game.mode !== 'online') game.paused = true;
-  TouchPad.stick = null; TouchPad.fingers.clear(); TouchPad.pressed.length = 0;
+  TouchPad.stick = null; TouchPad.arrows.clear(); TouchPad.fingers.clear(); TouchPad.pressed.length = 0;
   for (const k in TouchPad.held) TouchPad.held[k] = false;
   Sound.play('select');
 }
@@ -3754,13 +3912,14 @@ function drawMoveColumn(g, side, x, y, w, h) {
 }
 
 /** Help / pause overlay: controls + full move list for all four fighters (same data as the MOVES panel). */
+const PAUSE_DIRBTN = { x: 680, y: 472, w: 250, h: 44 };   // pause screen: JOYSTICK / ARROWS switch
 function drawHelp(g, title, showButtons) {
   g.fillStyle = 'rgba(5,5,15,0.9)'; g.fillRect(0, 0, 960, 540);
   txt(g, title, 480, 28, 40, '#ffd23f', 'center', 4);
   const lines = [
     ['P1 KEYS', 'WASD MOVE  F PUNCH  G KICK  R/T HEAVY  V ULT  M MOVES'],
     ['P2 KEYS', 'ARROWS MOVE  K PUNCH  L KICK  I/O HEAVY  ; ULT'],
-    ['TOUCH', 'LEFT: DRAG JOYSTICK   RIGHT: LP HP LK HK + ULT   MOVES BUTTON (TOP)'],
+    ['TOUCH', (DIRCTL.mode === 'arrows' ? 'LEFT: ARROWS (TWO AT ONCE = DIAGONAL)   RIGHT: LP HP LK HK + ULT' : 'LEFT: DRAG JOYSTICK   RIGHT: LP HP LK HK + ULT   MOVES BUTTON (TOP)')],
     ['BASICS', 'HOLD AWAY TO BLOCK (+DOWN = LOW). \u2193 = LOW ATTACKS, JUMP = AIR ATTACKS.'],
   ];
   if (game.stageIdx === PLAT.stage && game.slab && game.fighters.length === 2) lines.push(['BALCONY', 'JUNGLE: JUMP UP ONTO THE BALCONY, \u2193\u2193 TO DROP. HEAVY HITS KNOCK FIGHTERS OFF.']);
@@ -3789,6 +3948,7 @@ function drawHelp(g, title, showButtons) {
   if (showButtons) {
     g.fillStyle = '#1f9e3a'; g.fillRect(300, 472, 170, 44); g.fillStyle = '#c0392b'; g.fillRect(490, 472, 170, 44);
     txt(g, 'RESUME', 385, 495, 22, '#fff', 'center', 3); txt(g, 'QUIT', 575, 495, 22, '#fff', 'center', 3);
+    drawDirToggle(g, PAUSE_DIRBTN);
     txt(g, 'Esc / Enter = resume     Q = quit to select     M = moves panel', 480, 528, 13, '#aaa', 'center', 0);
   } else txt(g, 'Press any button or tap to close', 480, 500, 18, '#aaa', 'center', 0);
 }
@@ -3897,6 +4057,7 @@ function drawSelect(g) {
 function drawFight(g) {
   g.save();
   if (game.shake > 0.3) { g.translate(Math.round(rand(-game.shake, game.shake) / 2) * 2, Math.round(rand(-game.shake, game.shake) / 2) * 2); game.shake *= 0.88; } else game.shake = 0;
+  zoomUpdate(); zoomApply(g);   // bigger fighters: zoom the whole world layer (HUD, texts and buttons stay put)
   drawStageBG(g, game.stageIdx, camNow());   // wide stage: far layer (parallax) + near layer + animated details
   for (const d of game.decals) { g.fillStyle = d.color; g.globalAlpha = 0.8; g.beginPath(); g.ellipse(d.x, d.y, d.r * 1.6, d.r * 0.5, 0, 0, Math.PI * 2); g.fill(); }
   g.globalAlpha = 1;
@@ -3922,7 +4083,7 @@ function drawFight(g) {
   if (game.cinematic) {
     const c = game.cinematic, k = Math.min(1, c.t / 8);
     g.fillStyle = `rgba(0,0,0,${0.65 * k})`; g.fillRect(0, 0, 960, 540);
-    g.save(); g.shadowColor = c.f.ch.colors.glow; g.shadowBlur = 30; drawFighter(g, c.f); g.restore();
+    g.save(); zoomApply(g); g.shadowColor = c.f.ch.colors.glow; g.shadowBlur = 30; drawFighter(g, c.f); g.restore();
     g.fillStyle = c.f.ch.colors.glow; g.globalAlpha = 0.85; g.fillRect(0, 380 - 40 * k, 960, 80 * k); g.globalAlpha = 1;
     txt(g, c.name, 480 + (1 - k) * 600 * (c.f.side ? 1 : -1), 380, 56, '#fff', 'center', 6);
   }
@@ -3932,7 +4093,7 @@ function drawFight(g) {
   if (game.state === 'finish') drawFinishPrompt(g);
   if (game.state === 'winner') drawWinner(g);
   drawAdlibs(g);
-  if (game.touch && isFightState() && !game.paused && !game.movesOpen && !game.tvMode) drawTouchControls(g);   // the TV shows a clean screen
+  if (game.touch && isFightState() && !game.paused && !game.movesOpen && (!game.tvMode || TV.hostPhone)) drawTouchControls(g);   // the TV shows a clean screen (host phone: faint)
   if (isFightState() && !game.paused && !game.movesOpen && !game.tvMode) drawMovesButton(g);
   if (game.movesOpen) drawMovesPanel(g);
   else if (game.paused) drawHelp(g, 'PAUSED', true);
@@ -4115,7 +4276,8 @@ function drawAdlibs(g) {
   if (!game.adlibs || !game.adlibs.length) return;
   for (const a of game.adlibs) {
     if (a.state !== game.state || game.stateT < a.from || game.stateT > a.to) continue;
-    const f = game.fighters[a.side]; if (!f || f.hidden) continue;
+    const f0 = game.fighters[a.side]; if (!f0 || f0.hidden) continue;
+    const zp = zmap(f0.x, f0.y), f = { x: zp.x, y: zp.y, side: f0.side, ch: Object.assign(Object.create(f0.ch), { scale: (f0.ch.scale || 1) * ZOOM.z }) };   // keep the prototype (the arcade BOSS inherits colours)
     let L = BUBBLE_CACHE.get(a.text);
     if (!L) { L = wrapWords(a.text, 15, 236); BUBBLE_CACHE.set(a.text, L); }
     const lh = 18, pad = 10;
@@ -7012,7 +7174,7 @@ const TV = {
     Net.role = 'tv'; Net.lastRole = 'tv'; Net.status = 'Starting...'; Net.error = ''; Net.diag = {};
     this.code = Array.from({ length: 4 }, () => CODE_CHARS[(Math.random() * CODE_CHARS.length) | 0]).join('');
     this.url = this.joinUrl(this.code); this.qr = makeQr(this.url);
-    this.slots = [null, null]; this.bothT = 0; this.lastSt = '';
+    this.slots = [null, null]; this.bothT = 0; this.lastSt = ''; this.hostPhone = false;
     for (let i = 0; i < 2; i++) { this.pads[i].held = {}; this.pads[i].pressed.length = 0; game.inputs[i].touch = this.pads[i]; }
     setState('tvlobby'); game.fighters = [];
     try { if (attempt === 0 && document.documentElement.requestFullscreen && !document.fullscreenElement && !navigator.webdriver) document.documentElement.requestFullscreen().catch(() => {}); } catch (e) { /* ignore */ }
@@ -7042,7 +7204,7 @@ const TV = {
   stop(quiet) {
     if (!this.on) return;
     for (const s of this.slots) if (s && s.link) { try { s.link.send({ t: 'bye' }); } catch (e) { /* ignore */ } }
-    this.on = false; game.tvMode = false; game.tvWait = false; this.slots = [null, null];
+    this.on = false; game.tvMode = false; game.tvWait = false; this.slots = [null, null]; this.hostPhone = false;
     Net.cleanup(); game.inputs[0].touch = TouchPad; game.inputs[1].touch = null;
     if (!quiet) openModeSelect();
   },
@@ -7097,7 +7259,7 @@ const TV = {
   /** Every frame on the TV. */
   tick() {
     const now = performance.now();
-    for (let i = 0; i < 2; i++) { const S = this.slots[i]; if (S && S.connected && now - S.lastRx > this.TIMEOUT) this.drop(i, 'timeout'); }
+    for (let i = 0; i < 2; i++) { const S = this.slots[i]; if (S && S.local) S.lastRx = now; if (S && S.connected && now - S.lastRx > this.TIMEOUT) this.drop(i, 'timeout'); }
     const both = this.connected(0) && this.connected(1);
     if (isFightState()) {
       if (!both) { game.tvWait = true; game.paused = true; }
@@ -7107,12 +7269,64 @@ const TV = {
     const relayTick = this.slots.some((s) => s && s.link.kind === 'relay') ? 12 : 6;
     if (st !== this.lastSt || game.frame % relayTick === 0) { this.lastSt = st; this.send(0); this.send(1); }
   },
+  /* HOST ON THIS PHONE + TV: this phone runs the match AND is player 1; its screen is Screen-Mirrored to the
+   * TV (iOS has no web API for a separate second screen), so its buttons are drawn faint to keep the TV clean.
+   * The second phone joins as the P2 controller exactly like normal TV mode. */
+  hostLocal(on = true) {
+    if (on === !!this.hostPhone) return;
+    this.hostPhone = on;
+    if (on) {
+      const old = this.slots[0];
+      if (old && !old.local) { if (!this.slots[1]) { this.slots[1] = old; try { old.link.send({ t: 'tvw', slot: 1, code: this.code }); } catch (e) { /* ignore */ } this.send(1, true); } else { try { old.link.send({ t: 'full' }); } catch (e) { /* ignore */ } } }
+      this.slots[0] = { cid: 'host', link: { kind: 'local', open: true, send() {}, close() {} }, lastRx: performance.now(), connected: true, kind: 'local', local: true };
+      this.pads[0].held = {}; this.pads[0].pressed.length = 0;
+      game.inputs[0].touch = TouchPad; game.touch = true; document.body.classList.add('touch');
+    } else { this.slots[0] = null; game.inputs[0].touch = this.pads[0]; TouchPad.stick = null; TouchPad.arrows.clear(); }
+    this.bothT = 0; Sound.play('confirm');
+  },
+  HOST_BTN: { x: 330, y: 456, w: 300, h: 56 },
+  lobbyTap(p) {
+    const b = this.hostPhone ? this.HOST_BTN : { ...this.HOST_BTN, x: 250, w: 460 };
+    if (hitBtn([b], p)) this.hostLocal(!this.hostPhone);
+  },
   lobbyStep(back) {
     if (back) { this.stop(); return; }
     if (this.connected(0) && this.connected(1)) { if (++this.bothT > 90) { Sound.play('confirm'); openSelect(); } }
     else this.bothT = 0;
   },
+  drawHostLobby(g) {
+    drawMenuBg(g);
+    txt(g, 'TV MODE  -  HOST ON THIS PHONE', 480, 30, 32, '#ffd23f', 'center', 4);
+    const q = this.qr, M = q ? q.n : 0, cell = q ? Math.max(4, Math.floor(250 / (M + 8)) & ~1) : 0, size = (M + 8) * cell, qx = 40, qy = 62;
+    if (q) {
+      g.fillStyle = '#ffffff'; g.fillRect(qx, qy, size, size); g.fillStyle = '#000000';
+      for (let r = 0; r < M; r++) for (let c = 0; c < M; c++) if (q.dark(r, c)) g.fillRect(qx + (c + 4) * cell, qy + (r + 4) * cell, cell, cell);
+      txt(g, 'P2: SCAN TO JOIN', qx + size / 2, qy + size + 16, 15, '#7ff', 'center', 0);
+    }
+    const rx = 610, ready = Net.status === 'waiting' || this.connected(1);
+    txt(g, 'CODE', rx, 72, 16, '#fff', 'center', 3);
+    txt(g, ready ? this.code : '....', rx, 118, 64, '#7dff7a', 'center', 5);
+    const steps = [
+      ['1. MIRROR THIS PHONE TO THE TV:', '#ffd23f'], ['   SWIPE DOWN FROM THE TOP-RIGHT CORNER,', '#fff'], ['   TAP SCREEN MIRRORING, PICK YOUR APPLE TV', '#fff'],
+      ['2. ROTATION LOCK OFF, HOLD THIS PHONE SIDEWAYS', '#ffd23f'],
+      ['3. PLAYER 2: OPEN THE GAME ON THE OTHER PHONE,', '#ffd23f'], ['   TAP JOIN AS CONTROLLER, TYPE ' + (ready ? this.code : '....') + ' (OR SCAN)', '#fff'],
+    ];
+    steps.forEach(([s, c], i) => txt(g, s, 330, 168 + i * 22, 14, c, 'left', 0, 610));
+    if (!ready) txt(g, Net.status === 'offline' ? 'NO INTERNET - THE OTHER PHONE NEEDS WI-FI OR DATA' : 'STARTING...', rx, 306, 14, '#ffd23f', 'center', 0);
+    for (let i = 0; i < 2; i++) {
+      const on = this.connected(i), x = 340 + i * 270, y = 322, col = i ? '#6aa8ff' : '#ff5252';
+      g.fillStyle = '#000'; g.fillRect(x - 4, y - 4, 258, 76); g.fillStyle = on ? shade(col, -0.55) : '#241638'; g.fillRect(x, y, 250, 68);
+      g.fillStyle = on ? col : '#4a3a6a'; g.fillRect(x, y, 250, 4); g.fillRect(x, y + 64, 250, 4);
+      txt(g, i ? 'P2' : 'P1  (THIS PHONE)', x + 125, y + 22, 20, on ? col : '#888', 'center', 3);
+      txt(g, on ? (i ? 'CONTROLLER READY' : 'HOST + PLAYER 1') : this.slots[i] ? 'RECONNECTING...' : 'WAITING...', x + 125, y + 50, 15, on ? '#7dff7a' : '#bbb', 'center', 0);
+    }
+    const both = this.connected(0) && this.connected(1);
+    txt(g, both ? 'BOTH READY - GET SET!' : 'YOUR SCREEN IS THE TV PICTURE: BUTTONS SHOW FAINTLY SO THE TV STAYS CLEAN', 480, 418, both ? 20 : 13, both ? '#7dff7a' : '#9ab', 'center', both ? 3 : 0, 900);
+    drawButton(g, { ...this.HOST_BTN, label: 'USE A SEPARATE TV SCREEN', sub: '' }, false);
+    txt(g, 'NO APPLE TV? ANY AIRPLAY TV WORKS. AUDIO PLAYS ON THE TV TOO.', 480, 528, 13, '#9ab', 'center', 0);
+  },
   drawLobby(g) {
+    if (this.hostPhone) { this.drawHostLobby(g); return; }
     drawMenuBg(g);
     txt(g, 'TV MODE', 480, 34, 40, '#ffd23f', 'center', 4);
     txt(g, 'GRAB TWO PHONES - EACH ONE BECOMES A CONTROLLER', 480, 74, 17, '#fff', 'center', 3);
@@ -7139,7 +7353,8 @@ const TV = {
       txt(g, on ? 'CONNECTED' : S ? 'RECONNECTING...' : 'WAITING...', x + 120, y + 64, 18, on ? '#7dff7a' : '#bbb', 'center', 3);
     }
     const both = this.connected(0) && this.connected(1);
-    txt(g, both ? 'BOTH CONNECTED - GET READY!' : 'ESC = BACK', rx, 456, both ? 20 : 15, both ? '#7dff7a' : '#9ab', 'center', both ? 3 : 0);
+    txt(g, both ? 'BOTH CONNECTED - GET READY!' : 'ESC = BACK', rx, 438, both ? 20 : 15, both ? '#7dff7a' : '#9ab', 'center', both ? 3 : 0);
+    if (game.touch || navigator.maxTouchPoints > 0) drawButton(g, { ...this.HOST_BTN, x: 250, w: 460, label: 'HOST ON THIS PHONE + TV', sub: 'NO LAPTOP? 2 PHONES + AIRPLAY / APPLE TV' }, true, '#7dff7a');
     txt(g, 'TIP: NO SMART-TV BROWSER? PLUG A LAPTOP IN WITH HDMI, OR AIRPLAY A LAPTOP / IPAD SCREEN.', 480, 520, 13, '#9ab', 'center', 0);
   },
   /** Small connection strip / "controller missing" banner over the TV fight screen. */
@@ -7154,12 +7369,14 @@ const TV = {
       return;
     }
     if (game.state === 'select') {
-      txt(g, 'PICK YOUR FIGHTER ON YOUR PHONE   (TV CODE ' + this.code + ')', 480, 528, 15, '#7ff', 'center', 3);
+      txt(g, this.hostPhone ? 'P1: TAP YOUR FIGHTER HERE    P2: PICK ON YOUR PHONE   (CODE ' + this.code + ')' : 'PICK YOUR FIGHTER ON YOUR PHONE   (TV CODE ' + this.code + ')', 480, 528, 15, '#7ff', 'center', 3);
     }
   },
 };
 
 /* ---------- the phone side: a controller only ---------- */
+const PAD_DIRBTN = { x: 350, y: 476, w: 260, h: 52 };   // phone controller: JOYSTICK / ARROWS switch
+const PAD_PAUSE_DIRBTN = { x: 300, y: 358, w: 360, h: 74 };
 const PAD_TOP = { moves: { x: 560, y: 18, w: 160, h: 58, label: 'MOVES' }, pause: { x: 744, y: 18, w: 180, h: 58, label: 'PAUSE' } };
 const Pad = {
   on: false, code: '', cid: '', slot: -1, link: null, tv: null, lastRx: 0, moves: false, lastHeld: '', status: '', startedAt: 0,
@@ -7257,7 +7474,7 @@ const Pad = {
   /** Read the touch pad (+ keyboard) and send it to the TV if anything changed (also a 4/s heartbeat). */
   pump(codes) {
     const v = this.view(), inp = this.inp;
-    if (v !== 'pad' && v !== 'select' && v !== 'other') { TouchPad.stick = null; for (const k in TouchPad.held) TouchPad.held[k] = false; }
+    if (v !== 'pad' && v !== 'select' && v !== 'other') { TouchPad.stick = null; TouchPad.arrows.clear(); for (const k in TouchPad.held) TouchPad.held[k] = false; }
     inp.touch = TouchPad; inp.poll(game.frame, this.moves ? [] : codes, false);
     const h = {}; if (!this.moves) for (const k of [...DIRS, ...BUTTONS]) if (inp.held[k]) h[k] = 1;
     const p = this.moves ? [] : inp.presses.map((x) => x.btn); inp.presses.length = 0;
@@ -7270,7 +7487,7 @@ const Pad = {
     const T = this.tv; if (!T || !T.ch || T.ch.length !== 2) return;
     game.fighters = T.ch.map((c, i) => { const f = new Fighter(c, i, false); f.facing = T.fc[i]; return f; });
     this.moves = true; game.movesOpen = true;
-    TouchPad.stick = null; TouchPad.fingers.clear(); for (const k in TouchPad.held) TouchPad.held[k] = false;
+    TouchPad.stick = null; TouchPad.arrows.clear(); TouchPad.fingers.clear(); for (const k in TouchPad.held) TouchPad.held[k] = false;
     Sound.play('select');
   },
   selBtns() { return [0, 1, 2, 3].map((i) => ({ id: 'ch' + i, i, x: 60 + (i % 2) * 430, y: 150 + ((i / 2) | 0) * 150, w: 410, h: 130, label: CHARACTERS[i].name })); },
@@ -7285,7 +7502,8 @@ const Pad = {
       return;
     }
     if (v === 'paused') {
-      if (hitBtn([{ x: 120, y: 220, w: 340, h: 110 }], p)) this.send({ t: 'pause' });
+      if (hitBtn([PAD_PAUSE_DIRBTN], p)) toggleDirMode();
+      else if (hitBtn([{ x: 120, y: 220, w: 340, h: 110 }], p)) this.send({ t: 'pause' });
       else if (hitBtn([{ x: 500, y: 220, w: 340, h: 110 }], p)) this.send({ t: 'quit' });
       return;
     }
@@ -7301,7 +7519,8 @@ const Pad = {
     for (const t of e.changedTouches) {
       const p = toGame(t.clientX, t.clientY);
       if (this.moves || this.view() !== 'pad' || p.y < 92) { this.tap(p); continue; }
-      if (p.x < CONFIG.WIDTH * 0.45 && !TouchPad.stick) { TouchPad.stick = { id: t.identifier, ox: p.x, oy: p.y, x: p.x, y: p.y }; updateStickHeld(); continue; }
+      if (hitBtn([PAD_DIRBTN], p)) { toggleDirMode(); continue; }
+      if (dirTouchStart(t, p)) continue;
       const b = buttonAt(p);
       if (b) { TouchPad.fingers.set(t.identifier, b.btn); TouchPad.held[b.btn] = true; TouchPad.pressed.push(b.btn); }
     }
@@ -7333,7 +7552,8 @@ const Pad = {
       }
       drawButton(g, PAD_TOP.moves, false, '#7ff'); drawButton(g, PAD_TOP.pause, false);
       drawTouchControls(g);
-      txt(g, 'MOVE', TOUCH_UI.stickBase.x, 312, 15, '#9ab', 'center', 0);
+      if (DIRCTL.mode !== 'arrows') txt(g, 'MOVE', TOUCH_UI.stickBase.x, 312, 15, '#9ab', 'center', 0);
+      drawDirToggle(g, PAD_DIRBTN);
       return;
     }
     if (v === 'lobby') {
@@ -7365,6 +7585,7 @@ const Pad = {
       if (v === 'paused') {
         drawButton(g, { x: 120, y: 220, w: 340, h: 110, label: 'RESUME' }, true, '#7dff7a');
         drawButton(g, { x: 500, y: 220, w: 340, h: 110, label: 'QUIT TO SELECT' }, false);
+        drawDirToggle(g, PAD_PAUSE_DIRBTN);
       }
       return;
     }
@@ -7382,7 +7603,7 @@ function makeQr(text) {
 canvas.addEventListener('touchend', () => { if (Pad.on) Pad.pump([]); }, { passive: true });
 canvas.addEventListener('touchcancel', () => { if (Pad.on) Pad.pump([]); }, { passive: true });
 // links: ?pad=CODE (from the TV's QR code) opens this page as a controller; ?tv=1 opens TV mode directly (handy as a TV bookmark)
-setTimeout(() => { const pc = NET_Q.get('pad'), tv = NET_Q.get('tv'); if (pc) Pad.join(pc); else if (tv) TV.start(); }, 250);
+setTimeout(() => { const pc = NET_Q.get('pad'), tv = NET_Q.get('tv'); if (pc) Pad.join(pc); else if (tv) { TV.start(); if (tv === 'host') TV.hostLocal(true); } }, 250);
 
 /* ---------------- GROK GIRL LEVEL-UP (2026-10-16): new moves, upgraded specials, AI-themed sounds and effects ----------------
  * Prompt Beam (D,F + HP)  : "thinks" for a moment, then streams a long beam of glowing tokens across the stage.
@@ -7835,6 +8056,7 @@ function lobbyButtons() {
   return [{ id: 'cancel', x: 380, y: 440, w: 200, h: 50, label: 'CANCEL' }];
 }
 function openModeSelect() { if (TV.on) TV.stop(true); if (Pad.on) Pad.stop(true); game.joinAs = null; game.arcade = null; CONFIG.CPU_LEVEL = BASE_CPU_LEVEL; hideJoinBox(); setState('mode'); game.modeSel = game.modeSel || 0; game.fighters = []; game.mode = 'cpu'; game.paused = false; }
+const MENU_DIRBTN = { x: 300, y: 452, w: 360, h: 42 };   // "settings": phone direction control
 function chooseMode(id) {
   Sound.play('confirm');
   if (id === 'arcade') { Net.cleanup(); Arcade.open(); }
@@ -7887,10 +8109,12 @@ function menuStep(codes, has) {
 }
 function beginPendingMatch() { const p = game.pending; Sound.play('confirm'); startMatch(p.p1, p.p2, p.mode); }
 function menuTap(p) {
+  if (game.state === 'mode' && hitBtn([MENU_DIRBTN], p)) { toggleDirMode(); return true; }
   if (game.state === 'mode') { const b = hitBtn(MODE_BTNS, p); if (b) { game.modeSel = MODE_BTNS.indexOf(b); chooseMode(b.id); } return true; }
   if (game.state === 'lobby') { const b = hitBtn(lobbyButtons(), p); if (b) lobbyAction(b.id); return true; }
   if (game.state === 'controls') { if (game.stateT > 12) beginPendingMatch(); return true; }
   if (game.state === 'netwait') return true;
+  if (game.state === 'tvlobby') { TV.lobbyTap(p); return true; }
   if (['ladder', 'continue', 'arcadeEnd'].includes(game.state)) { Arcade.tap(); return true; }
   return false;
 }
@@ -7912,8 +8136,9 @@ function drawModeSelect(g) {
   drawLogo(g, 480, 84, 'small');
   txt(g, 'HOW ARE YOU PLAYING?', 480, 168, 22, '#ff8a8a', 'center', 3);
   MODE_BTNS.forEach((b, i) => drawButton(g, b, game.modeSel === i));
-  txt(g, game.touch ? 'TAP A MODE' : 'W/S OR \u2191/\u2193 TO CHOOSE, ENTER TO PICK', 480, 478, 16, '#fff', 'center', 3);
-  txt(g, 'N = MUSIC ON/OFF', 480, 526, 13, '#9ab', 'center', 0);
+  drawDirToggle(g, MENU_DIRBTN);
+  txt(g, game.touch ? 'TAP A MODE' : 'W/S OR \u2191/\u2193 TO CHOOSE, ENTER TO PICK', 480, 510, 15, '#fff', 'center', 3);
+  txt(g, 'N = MUSIC ON/OFF', 480, 530, 13, '#9ab', 'center', 0);
 }
 function drawLobby(g) {
   drawMenuBg(g);
@@ -8011,6 +8236,7 @@ function render() {
 const STEP_MS = 1000 / 60;
 let lastTime = performance.now(), acc = 0;
 function frame(now) {
+  if (window.FK_HOLD) { lastTime = now; acc = 0; requestAnimationFrame(frame); return; }   // tests drive step()/render() themselves
   acc += Math.min(100, now - lastTime); lastTime = now;
   let n = 0;
   try {
@@ -8026,7 +8252,7 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 /* Small hook for automated tests / tinkering in the browser console. */
-window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown };
+window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown, ZOOM, zoomTarget, zmap, callout, CALLOUT_COL, DIRCTL, setDirMode, toggleDirMode, ARROW_UI, arrowBtnRects, arrowDirsAt, PAUSE_DIRBTN, MENU_DIRBTN, PAD_DIRBTN, PAD_PAUSE_DIRBTN, TOUCH_FADE };
 </script>
 </body>
 </html>
