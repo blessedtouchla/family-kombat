@@ -710,7 +710,7 @@ class PlayerInput {
   }
   poll(frame, codes, reversed) {
     const held = {};
-    for (const k in this.map) held[k] = this.map[k].some((c) => Keys.down.has(c));
+    for (const k in this.map) held[k] = this.map[k].some((c) => Keys.down.has(c) || GP.down.has(c));   // v8: + game controllers
     const newly = {};
     for (const code of codes) for (const k in this.map) if (this.map[k].includes(code)) newly[k] = true;
     if (this.touch) {
@@ -779,9 +779,10 @@ const TouchPad = {
   arrows: new Map(),           // ARROW mode: touch id -> current point
 };
 /* Direction control choice, remembered per device: 'stick' (slide joystick, default) or 'arrows' (4 arrow buttons). */
-// v6: fixed ARROW BUTTONS are the default (new storage key, so every phone starts on arrows once); the joystick has a fixed base.
-const DIRCTL = { mode: 'arrows', key: 'fk-dirctl2' };
-try { if (localStorage.getItem(DIRCTL.key) === 'stick') DIRCTL.mode = 'stick'; } catch (e) { /* private mode */ }
+// v8: the JOYSTICK (a real-looking thumbstick, fixed base) is the default again - new storage key, so every phone starts on it once;
+// ARROW BUTTONS stay one tap away on the switch (menu / pause / phone controller).
+const DIRCTL = { mode: 'stick', key: 'fk-dirctl3' };
+try { if (localStorage.getItem(DIRCTL.key) === 'arrows') DIRCTL.mode = 'arrows'; } catch (e) { /* private mode */ }
 function setDirMode(m) {
   DIRCTL.mode = m === 'arrows' ? 'arrows' : 'stick';
   try { localStorage.setItem(DIRCTL.key, DIRCTL.mode); } catch (e) { /* ignore */ }
@@ -865,12 +866,15 @@ function updateStickHeld() {
   const h = TouchPad.held;
   h.left = h.right = h.up = h.down = false;
   if (DIRCTL.mode === 'arrows') { for (const p of TouchPad.arrows.values()) for (const d of arrowDirsAt(p)) h[d] = true; return; }   // two fingers = diagonal
-  const s = TouchPad.stick; if (!s) return;
-  const dx = s.x - s.ox, dy = s.y - s.oy, dead = 22;
-  if (dx < -dead) h.left = true;
-  if (dx > dead) h.right = true;
-  if (dy < -dead * 1.4) h.up = true;
-  if (dy > dead) h.down = true;
+  const s = TouchPad.stick; if (!s) { TouchPad.analog = { x: 0, y: 0 }; return; }
+  const dx = s.x - s.ox, dy = s.y - s.oy, m = Math.hypot(dx, dy), R = TOUCH_UI.stickR;
+  TouchPad.analog = { x: m ? dx / m * Math.min(1, m / R) : 0, y: m ? dy / m * Math.min(1, m / R) : 0 };   // -1..1, clamped to the ring
+  if (m < 20) return;   // radial dead zone
+  const nx = dx / m, ny = dy / m;
+  if (nx < -0.38) h.left = true;
+  if (nx > 0.38) h.right = true;
+  if (ny < -0.5) h.up = true;
+  if (ny > 0.38) h.down = true;
 }
 function buttonAt(p) {
   let best = null, bd = 1e9;
@@ -2230,6 +2234,7 @@ function startWinner(result) {
 
 /* ---------------- Per-frame update ---------------- */
 function step() {
+  if (!Pad.on) GP.poll();   // v8: game controllers -> virtual keys
   const codes = Keys.queue.splice(0);
   if (codes.includes('KeyN')) Music.toggle();
   if (Pad.on) { Pad.step(codes); return; }   // TV-mode phone: controller only
@@ -4090,7 +4095,7 @@ const DPAD = {
 };
 const DPAD_PAD = { off: 50, r: 24 };
 const ARROW_COL = { '\u2191': DPAD.up.col, '\u2193': DPAD.down.col, '\u2190': DPAD.left.col, '\u2192': DPAD.right.col };
-const DPAD_PAL_EXTRA = [];   // exact palette entries so the colours survive the pixel-palette snap
+const DPAD_PAL_EXTRA = ['#0e0e10', '#1a1a1e', '#2a2a30', '#3a3a42', '#4a4a54', '#5c5c66', '#74747e', '#9a9aa4', '#c8c8d0'];   // v8: thumbstick greys + the exact entries below so colours survive the palette snap
 for (const k in DPAD) { const c = DPAD[k].col; DPAD_PAL_EXTRA.push(c, shade(c, -0.4), shade(c, 0.35)); }
 for (const b of TOUCH_UI.buttons) DPAD_PAL_EXTRA.push(b.color, shade(b.color, -0.4), shade(b.color, 0.35));
 for (const k in CALLOUT_COL) DPAD_PAL_EXTRA.push(CALLOUT_COL[k], shade(CALLOUT_COL[k], -0.6));
@@ -4202,13 +4207,48 @@ function drawTouchControls(g) {
   circle(g, pz.x, pz.y, pz.r, '#222', '#fff', 2); g.fillStyle = '#fff'; g.fillRect(pz.x - 7, pz.y - 8, 5, 16); g.fillRect(pz.x + 2, pz.y - 8, 5, 16);
   g.restore();
 }
+/* v8: PlayStation-style thumbstick. A fixed round base ring and ONE 3D knob (dark grey, concave top with a ring of grip
+ * bumps and a soft highlight) that follows the thumb inside the ring, clamped to its edge, and springs back to the
+ * centre when the thumb lifts. No arrows or coloured wedges in this mode. */
+const STICK_KNOB = { r: 38, x: 0, y: 0, init: false };
 function drawStickControls(g) {
-  const s = TouchPad.stick, bx = s ? s.ox : TOUCH_UI.stickBase.x, by = s ? s.oy : TOUCH_UI.stickBase.y;
-  g.globalAlpha = TOUCH_FADE.k * (0.45); circle(g, bx, by, TOUCH_UI.stickR, '#111111', '#fff', 3);   // darker base = more contrast for the coloured pads
-  let kx = bx, ky = by;
-  if (s) { const dx = s.x - s.ox, dy = s.y - s.oy, dd = Math.hypot(dx, dy) || 1, m = Math.min(dd, TOUCH_UI.stickR); kx = bx + dx / dd * m; ky = by + dy / dd * m; }
-  g.globalAlpha = TOUCH_FADE.k * (0.5); circle(g, kx, ky, 30, '#ddd', '#fff', 3);
-  g.globalAlpha = TOUCH_FADE.k * (1); drawDpadPads(g, bx, by);   // pads on top of the knob so a pressed one is never hidden
+  const B = TOUCH_UI.stickBase, s = TouchPad.stick, bx = s ? s.ox : B.x, by = s ? s.oy : B.y, R = TOUCH_UI.stickR, K = STICK_KNOB, kr = K.r;
+  // knob target: the thumb, clamped so the knob stays inside the ring
+  let tx = 0, ty = 0;
+  if (s) { const dx = s.x - s.ox, dy = s.y - s.oy, dd = Math.hypot(dx, dy) || 1, lim = R - kr * 0.45, m = Math.min(dd, lim); tx = dx / dd * m; ty = dy / dd * m; }
+  if (!K.init) { K.x = tx; K.y = ty; K.init = true; }
+  const f = s ? 0.75 : 0.32;   // follows the thumb tightly, springs back smoothly
+  K.x += (tx - K.x) * f; K.y += (ty - K.y) * f; if (Math.abs(K.x) < 0.3 && Math.abs(K.y) < 0.3 && !s) { K.x = 0; K.y = 0; }
+  const a = TOUCH_FADE.k, kx = bx + K.x, ky = by + K.y;
+  g.save();
+  // base: recessed well with a faint rim
+  g.globalAlpha = a * 0.5; circle(g, bx, by, R + 5, '#0e0e10', null);
+  g.globalAlpha = a * 0.55; circle(g, bx, by, R, '#1a1a1e', null);
+  g.globalAlpha = a * 0.9; circle(g, bx, by, R, null, '#74747e', 4);            // faint outer ring
+  g.globalAlpha = a * 0.7; circle(g, bx, by, R - 6, null, '#0e0e10', 3);        // inner bevel
+  g.globalAlpha = a * 0.35; circle(g, bx, by, R - 2, null, '#c8c8d0', 1.5);
+  // knob shadow on the base (leans away from the push)
+  g.globalAlpha = a * 0.45; circle(g, kx + 3, ky + 8, kr + 2, '#0e0e10', null);
+  // knob skirt (side of the stick = depth)
+  g.globalAlpha = a; circle(g, kx, ky + 5, kr, '#1a1a1e', '#0e0e10', 3);
+  // knob top: lit from the top-left
+  const gr = g.createRadialGradient(kx - kr * 0.4, ky - kr * 0.45, kr * 0.1, kx, ky, kr);
+  gr.addColorStop(0, '#74747e'); gr.addColorStop(0.55, '#4a4a54'); gr.addColorStop(1, '#2a2a30');
+  g.beginPath(); g.arc(kx, ky, kr, 0, Math.PI * 2); g.fillStyle = gr; g.fill(); g.lineWidth = 3; g.strokeStyle = '#0e0e10'; g.stroke();
+  // grip ridges: a ring of little bumps around the rim
+  for (let i = 0; i < 18; i++) {
+    const t = i / 18 * Math.PI * 2, rx = kx + Math.cos(t) * (kr - 7), ry = ky + Math.sin(t) * (kr - 7), lit = Math.cos(t + 2.3) > 0;
+    g.fillStyle = lit ? '#9a9aa4' : '#1a1a1e'; g.fillRect(Math.round(rx) - 2, Math.round(ry) - 2, 4, 4);
+  }
+  // concave thumb dish: darker at the top, lighter at the bottom (the opposite of the dome)
+  const dg = g.createLinearGradient(kx, ky - kr * 0.62, kx, ky + kr * 0.62);
+  dg.addColorStop(0, '#2a2a30'); dg.addColorStop(1, '#5c5c66');
+  g.beginPath(); g.arc(kx, ky, kr * 0.62, 0, Math.PI * 2); g.fillStyle = dg; g.fill(); g.lineWidth = 2; g.strokeStyle = '#1a1a1e'; g.stroke();
+  // soft highlight
+  g.globalAlpha = a * 0.55; g.fillStyle = '#c8c8d0';
+  g.beginPath(); g.ellipse(kx - kr * 0.42, ky - kr * 0.52, kr * 0.26, kr * 0.12, -0.6, 0, Math.PI * 2); g.fill();
+  g.restore();
+  TOUCH_FADE.k = 1;
   TOUCH_FADE.k = game.tvMode && TV.hostPhone ? 0.3 : touchOverlap(690, 210, 960, 540) ? 0.4 : 1;
   drawAttackButtons(g);
 }
@@ -4356,11 +4396,13 @@ function drawHelp(g, title, showButtons) {
   ];
   if (game.stageIdx === PLAT.stage && game.slab && game.fighters.length === 2) lines.push(['BALCONY', 'JUNGLE: JUMP UP ONTO THE BALCONY, \u2193\u2193 TO DROP. HEAVY HITS KNOCK FIGHTERS OFF.']);
   lines.push(['COMBOS', 'LP LP HP  /  LK LK HK  /  LP HP HK  (EACH HIT MUST CONNECT)']);
-  let y = 60;
-  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txtC(g, b, 160, y, 15, a === 'BALCONY' ? '#9be7ff' : a === 'COMBOS' ? '#ffd23f' : '#fff', 'left', 0, 780); y += lines.length > 5 ? 17 : 19; }
-  txtC(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 158, 20, '#ffd23f', 'center', 3);
+  lines.splice(3, 0, ['PAD', 'X/SQUARE LP  Y/TRIANGLE HP  A/CROSS LK  B/CIRCLE HK'],
+                     ['', 'BUMPER/TRIGGER ULT  START PAUSE  A OK  B BACK  2 PADS = P1+P2']);
+  let y = 56;
+  for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txtC(g, b, 160, y, 15, a === 'BALCONY' ? '#9be7ff' : a === 'COMBOS' ? '#ffd23f' : a === 'PAD' || a === '' ? '#ffb070' : '#fff', 'left', 0, 780); y += lines.length > 7 ? 15 : lines.length > 6 ? 16 : lines.length > 5 ? 17 : 19; }
+  txtC(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 177, 20, '#ffd23f', 'center', 3);   // v8: a bit lower (controller lines above)
   {   // v7: one table for the whole roster - rows = inputs (shared by everyone), columns = fighters
-    const NC = CHARACTERS.length, Ls = CHARACTERS.map((c, i) => moveListFor(i)), x0 = 16, inW = 118, cw = (928 - inW) / NC, top = 170, rowH = 34;
+    const NC = CHARACTERS.length, Ls = CHARACTERS.map((c, i) => moveListFor(i)), x0 = 16, inW = 118, cw = (928 - inW) / NC, top = 189, rowH = 31;
     const rows = Object.keys(CONFIG.SPECIAL_MOTIONS).map((slot) => ({ input: specialInput(Ls[0].specials.find((q) => q.slot === slot && !q.air), true),
       names: Ls.map((L) => (L.specials.find((q) => q.slot === slot && !q.air) || {}).name || '') }));
     rows.push({ input: 'IN THE AIR', names: Ls.map((L) => { const q = L.specials.find((s) => s.air); return q ? q.name : ''; }), sub: Ls.map((L) => { const q = L.specials.find((s) => s.air); return q ? motionText(q.motion, q.btn) : ''; }) });
@@ -4388,7 +4430,7 @@ function drawHelp(g, title, showButtons) {
     g.fillStyle = '#1f9e3a'; g.fillRect(300, 472, 170, 44); g.fillStyle = '#c0392b'; g.fillRect(490, 472, 170, 44);
     txt(g, 'RESUME', 385, 495, 22, '#fff', 'center', 3); txt(g, 'QUIT', 575, 495, 22, '#fff', 'center', 3);
     drawDirToggle(g, PAUSE_DIRBTN);
-    txt(g, 'Esc / Enter = resume     Q = quit to select     M = moves panel', 480, 528, 13, '#aaa', 'center', 0);
+    txt(g, 'Esc/Enter = resume   Q = quit   M = moves   Pad: A or START = resume, B = quit', 480, 528, 13, '#aaa', 'center', 0, 940);
   } else txt(g, 'Press any button or tap to close', 480, 500, 18, '#aaa', 'center', 0);
 }
 
@@ -8623,7 +8665,7 @@ function drawArcadeEnd(g) {
 const MODE_BTNS = [
   { id: 'arcade', x: 200, y: 180, w: 560, h: 62, label: 'ARCADE', sub: '1 player: beat all 5 fighters, then the BOSS' },
   { id: 'online', x: 200, y: 250, w: 560, h: 62, label: 'OWN DEVICES', sub: 'Each player on their own phone, tablet or PC' },
-  { id: 'shared', x: 200, y: 320, w: 560, h: 62, label: 'SHARED KEYBOARD', sub: 'Two players on one computer (works offline)' },
+  { id: 'shared', x: 200, y: 320, w: 560, h: 62, label: 'SHARED KEYBOARD', sub: 'Two players, one screen: keyboard or 2 controllers' },
   { id: 'tv', x: 200, y: 390, w: 272, h: 62, label: 'TV MODE', sub: 'Big screen + phone pads' },
   { id: 'pad', x: 488, y: 390, w: 272, h: 62, label: 'JOIN AS CONTROLLER', sub: 'This phone = a TV pad' },
 ];
@@ -8764,8 +8806,9 @@ function drawControls(g) {
   panel(50, '#ff5252', 'PLAYER 1', CHARACTERS[p.p1].name, [['W A S D', 'MOVE (W JUMP, S CROUCH)'], ['F', 'PUNCH'], ['G', 'KICK'], ['R / T', 'HEAVY PUNCH / KICK'], ['V', 'ULTIMATE (FULL METER)'], ['HOLD AWAY', 'BLOCK (+ S = LOW)'], ['ESC / M', 'PAUSE / MOVES LIST']]);
   if (cpu) panel(490, '#6aa8ff', 'CPU', CHARACTERS[p.p2].name, [['', 'THE COMPUTER PLAYS'], ['', 'THIS FIGHTER.'], ['', ''], ['TIP', 'SWITCH TO 2 PLAYERS'], ['', 'ON THE SELECT SCREEN']]);
   else panel(490, '#6aa8ff', 'PLAYER 2', CHARACTERS[p.p2].name, [['ARROWS', 'MOVE (\u2191 JUMP, \u2193 CROUCH)'], ['K', 'PUNCH'], ['L', 'KICK'], ['I / O', 'HEAVY PUNCH / KICK'], [';', 'ULTIMATE (FULL METER)'], ['HOLD AWAY', 'BLOCK (+ \u2193 = LOW)'], ['NUMPAD', '4 5 1 2 6 ALSO WORK']]);
-  txt(g, 'SPECIALS: \u2193 \u2192 + PUNCH    \u2190 \u2192 + HEAVY KICK    \u2193 \u2193 + KICK   (\u2192 = TOWARD OPPONENT)', 480, 446, 15, '#7ff', 'center', 0);
-  if (game.stateT > 12 && (game.stateT >> 4) % 2 === 0) txt(g, game.touch ? 'TAP TO FIGHT!' : 'PRESS ENTER OR PUNCH TO FIGHT!', 480, 482, 24, '#fff', 'center', 4);
+  txt(g, 'SPECIALS: \u2193 \u2192 + PUNCH    \u2190 \u2192 + HEAVY KICK    \u2193 \u2193 + KICK   (\u2192 = TOWARD OPPONENT)', 480, 438, 15, '#7ff', 'center', 0);
+  txt(g, 'CONTROLLERS: X/SQ LP  Y/TRI HP  A/CROSS LK  B/CIR HK  BUMPER ULT  START PAUSE', 480, 458, 13, '#ffb070', 'center', 0, 940);
+  if (game.stateT > 12 && (game.stateT >> 4) % 2 === 0) txt(g, game.touch ? 'TAP TO FIGHT!' : 'PRESS ENTER, PUNCH OR A TO FIGHT!', 480, 486, 24, '#fff', 'center', 4);
   txt(g, 'STAGE: ' + STAGES[game.stageIdx].name, 480, 522, 15, '#ffd23f', 'center', 3);
 }
 
@@ -8806,6 +8849,7 @@ function render() {
     case 'select': if (game.sel) drawSelect(g); else drawNetWait(g); break;
     default: if (game.fighters.length === 2) drawFight(g); else drawNetWait(g);
   }
+  GP.draw(g);   // v8: CONTROLLER CONNECTED toast
   if (game.tvMode) { g.globalAlpha = 1; TV.overlay(g); }
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
   snapCanvas(world, wctx, WORLD_PAL);              // limited palette, hard pixels
@@ -9894,7 +9938,110 @@ canvas.focus();
 requestAnimationFrame(frame);
 
 /* Small hook for automated tests / tinkering in the browser console. */
-window.FK = { Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown, ZOOM, zoomTarget, zmap, callout, CALLOUT_COL, DIRCTL, setDirMode, toggleDirMode, ARROW_UI, arrowBtnRects, arrowDirsAt, PAUSE_DIRBTN, MENU_DIRBTN, PAD_DIRBTN, PAD_PAUSE_DIRBTN, TOUCH_FADE };
+/* =====================================================================
+ * 23. v8 GAME CONTROLLERS  -  Bluetooth / USB pads through the browser Gamepad API (standard mapping):
+ *     Xbox, PlayStation, Switch Pro and generic pads. 1st controller = PLAYER 1, 2nd = PLAYER 2.
+ *     Pads are translated into the same virtual keys the keyboard uses, so every screen, move,
+ *     motion input and menu works exactly as with the keyboard (touch and online are untouched).
+ *     FIGHT:  X/Square = LP  Y/Triangle = HP  A/Cross = LK  B/Circle = HK  LB/RB/LT/RT = ULT
+ *             left stick or D-pad = move (diagonals = crouch / jump angles)  START = pause  BACK/SELECT = moves list
+ *     MENUS:  stick / D-pad = move the cursor  A/Cross (or X) = confirm  B/Circle = back
+ *             LB / RB = stage on the select screen  BACK/SELECT = help
+ *     PAUSED: A/Cross or START = resume  B/Circle = quit to select
+ * ===================================================================== */
+const GP_BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, LS: 10, RS: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
+const GP = {
+  down: new Set(),            // virtual key codes held by controllers this frame (read by PlayerInput.poll)
+  slots: [],                  // gamepad indexes in player order
+  toast: null,                // { text, t }
+  dead: 0.38,                 // stick deadzone (radius)
+  lastUsed: -9999,            // game.frame of the last controller input
+  supported() { return typeof navigator !== 'undefined' && typeof navigator.getGamepads === 'function'; },
+  list() {
+    if (!GP.supported()) return [];
+    let raw; try { raw = navigator.getGamepads() || []; } catch (e) { return []; }
+    return Array.from(raw).filter((p) => p && p.connected !== false && p.buttons && p.buttons.length);
+  },
+  pressed(p, i) { const b = p.buttons[i]; return !!b && (typeof b === 'object' ? (b.pressed || b.value > 0.5) : b > 0.5); },
+  /** Direction from the left stick (radial deadzone, 8-way) and the D-pad. */
+  dirs(p) {
+    const d = { up: GP.pressed(p, GP_BTN.UP), down: GP.pressed(p, GP_BTN.DOWN), left: GP.pressed(p, GP_BTN.LEFT), right: GP.pressed(p, GP_BTN.RIGHT) };
+    const x = +p.axes[0] || 0, y = +p.axes[1] || 0, m = Math.hypot(x, y);
+    if (m > GP.dead) {
+      const nx = x / m, ny = y / m, k = 0.38;   // ~67.5 deg sectors -> clean diagonals
+      if (nx < -k) d.left = true; if (nx > k) d.right = true; if (ny < -k) d.up = true; if (ny > k) d.down = true;
+    }
+    if (p.mapping !== 'standard' && p.axes.length > 9) {   // some generic pads report the D-pad as a hat on axis 9
+      const h = p.axes[9];
+      if (h >= -1.01 && h <= 1.01) {   // resting value is outside -1..1 (usually ~1.29)
+        const s = Math.round((h + 1) / (2 / 7));   // 0 = up, clockwise
+        if (s === 7 || s === 0 || s === 1) d.up = true; if (s >= 1 && s <= 3) d.right = true; if (s >= 3 && s <= 5) d.down = true; if (s >= 5 && s <= 7) d.left = true;
+      }
+    }
+    return d;
+  },
+  /** Which virtual keys a pad holds right now, given the screen we're on. */
+  codesFor(p, slot) {
+    const K = slot === 0 ? CONFIG.KEYS.p1 : CONFIG.KEYS.p2, out = [], B = (n) => GP.pressed(p, GP_BTN[n]);
+    const d = GP.dirs(p);
+    for (const k of ['up', 'down', 'left', 'right']) if (d[k]) out.push(K[k][0]);
+    const fight = isFightState() || game.state === 'winner';
+    const anyULT = B('LB') || B('RB') || B('LT') || B('RT');
+    if (game.paused) {
+      if (B('A') || B('X')) out.push('Enter');
+      if (B('START')) out.push('Escape');
+      if (B('B')) out.push('KeyQ');
+      if (B('BACK')) out.push('KeyM');
+    } else if (fight) {
+      if (B('X')) out.push(K.LP[0]); if (B('Y')) out.push(K.HP[0]); if (B('A')) out.push(K.LK[0]); if (B('B')) out.push(K.HK[0]);
+      if (anyULT) out.push(K.ULT[0]);
+      if (B('START')) out.push('Escape');
+      if (B('BACK')) out.push('KeyM');
+    } else {   // menus: title, mode, lobby, select, controls, ladder, continue ...
+      if (B('A') || B('X')) out.push(K.LP[0]);
+      if (B('Y')) out.push(K.HP[0]);
+      if (B('B')) { out.push(K.HK[0]); if (game.state !== 'select') out.push('Backspace'); }
+      if (game.state === 'select') { if (B('LB') || B('LT')) out.push('KeyQ'); if (B('RB') || B('RT')) out.push('KeyE'); }
+      if (B('START')) out.push(slot === 0 ? 'Enter' : K.LP[0]);
+      if (B('BACK')) out.push('Escape');
+    }
+    return out;
+  },
+  /** Once per frame, before the keyboard queue is read. */
+  poll() {
+    const pads = GP.list();
+    if (!pads.length && !GP.down.size) { GP.slots.length = 0; return; }
+    // keep player order stable: pads already in a slot keep it, new ones fill the gaps
+    const idx = pads.map((p) => p.index);
+    GP.slots = GP.slots.filter((i) => idx.includes(i));
+    for (const i of idx) if (!GP.slots.includes(i)) GP.slots.push(i);
+    const now = new Set();
+    GP.slots.slice(0, 2).forEach((i, slot) => { const p = pads.find((q) => q.index === i); if (p) for (const c of GP.codesFor(p, slot)) now.add(c); });
+    for (const c of now) if (!GP.down.has(c)) { Keys.queue.push(c); GP.lastUsed = game.frame; if (Sound.unlock) Sound.unlock(); }
+    GP.down = now;
+  },
+  say(text) { GP.toast = { text, t: 150 }; },
+  draw(g) {
+    const T = GP.toast; if (!T) return;
+    if (--T.t <= 0) { GP.toast = null; return; }
+    const w = Math.min(560, textWidth(T.text, 18) + 40), x = 480 - w / 2, y = game.paused || game.movesOpen ? 4 : game.state === 'select' || !isFightState() ? 498 : 116;
+    g.globalAlpha = Math.min(1, T.t / 20);
+    g.fillStyle = '#000'; g.fillRect(x - 3, y - 3, w + 6, 38); g.fillStyle = '#241638'; g.fillRect(x, y, w, 32);
+    g.fillStyle = '#ffd23f'; g.fillRect(x, y, w, 3); g.fillRect(x, y + 29, w, 3);
+    txt(g, T.text, 480, y + 16, 18, '#ffd23f', 'center', 3, w - 10);
+    g.globalAlpha = 1;
+  },
+};
+if (typeof window !== 'undefined') {
+  window.addEventListener('gamepadconnected', (e) => {
+    const n = GP.list().length || 1;
+    GP.say('CONTROLLER CONNECTED' + (n <= 2 ? ' - PLAYER ' + Math.min(n, 2) : ''));
+    try { Sound.unlock(); Sound.play('confirm'); } catch (err) { /* audio may still be locked until a tap */ }
+  });
+  window.addEventListener('gamepaddisconnected', () => { GP.say('CONTROLLER DISCONNECTED'); });
+}
+
+window.FK = { GP, GP_BTN, Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown, ZOOM, zoomTarget, zmap, callout, CALLOUT_COL, DIRCTL, setDirMode, toggleDirMode, ARROW_UI, arrowBtnRects, arrowDirsAt, PAUSE_DIRBTN, MENU_DIRBTN, PAD_DIRBTN, PAD_PAUSE_DIRBTN, TOUCH_FADE };
 </script>
 </body>
 </html>
