@@ -295,6 +295,55 @@ const CHARACTERS = [
     chains: [{ name: 'Quick Cuts', fx: 'razor', sfx: 'ed_cut' }, { name: 'Montage', fx: 'razor', sfx: 'ed_scrub' }, { name: "Director's Combo", fx: 'razor', sfx: 'ed_razor' }],
     ai: { far: ['s3', 's1'], mid: ['s1', 's5', 's3', 's2'], close: ['s2', 's5', 's1', 's4'] },
   },
+  {
+    id: 'clowny', name: 'CLOWNY', tagline: 'Creepy Circus Clown - Balloons, Pins & Pies',
+    // v7 (2026-10-17): circus clown - wild red/blue hair, white face paint, red nose, big grin, ruffled collar, patchwork suit,
+    // suspenders, striped sleeves, heavy boots. Pie in the Face is his LP LP HP combo ender (not a 7th special).
+    maxHp: 98, walk: 3.6, backWalk: 3.0, jump: 15.8, power: 0.92, scale: 1.04, girth: 1.0,
+    colors: { skin: '#f4f1e6', main: '#c0392b', main2: '#2a5fb8', pants: '#d8cba0', shoe: '#2a2a2e', hair: '#e8202a', hair2: '#2f6fd0',
+              accent: '#ff3b3b', glow: '#ffd23f', nose: '#ff2a2a', ruff: '#f2f2ee', strap: '#5a3a22', patch: '#e8c84a', glove: '#ffffff',
+              grin: '#b0101a', eye: '#3a1a5a', flower: '#ff8ad8' },
+    specials: {
+      // Balloon Bomb (hold LP to inflate it bigger + slower). Same motion in the AIR = Circus Cannon (hold up / forward / down to aim).
+      s1: { name: 'Balloon Bomb', type: 'clBalloon', startup: 12, active: 1, recovery: 20, pose: 'cast', sfxStart: 'cl_squeak', charge: 36, dmg: 5,
+            air: { name: 'Circus Cannon', type: 'clCannon', startup: 8, active: 40, recovery: 8, pose: 'dash', sfxStart: 'cl_boom', dmg: 10 } },
+      s2: { name: 'Unicycle Charge', type: 'clUni', startup: 8, active: 30, recovery: 16, pose: 'uni', sfxStart: 'cl_honk', speed: 9, dmg: 8,
+            box: { x: -10, y: -150, w: 70, h: 150 } },
+      s3: { name: 'Laughing Gas', type: 'clGas', startup: 12, active: 1, recovery: 18, pose: 'flower', sfxStart: 'cl_spray' },
+      s4: { name: 'Elastic Reach', type: 'clStretch', startup: 9, active: 16, recovery: 20, pose: 'cast', sfxStart: 'cl_boing', range: 520 },
+      s5: { name: 'Razor Juggle', type: 'clJuggle', startup: 10, active: 20, recovery: 16, pose: 'throw', sfxStart: 'cl_juggle' },
+    },
+    ult: { name: 'THE GRAND FINALE', type: 'clFinale', startup: 1, active: 150, recovery: 20, pose: 'victory', range: 340 },   // tent catches a grounded, non-blocking opponent within 340
+    fatality: { name: 'BALLOON ANIMAL', type: 'balloonAnimal' },
+    finisher2: { name: 'TIED UP IN KNOTS', type: 'tiedInKnots', motion: ['D', 'B'], btn: 'HP' },
+    finisher3: { name: 'HUMAN CANNONBALL', type: 'humanCannonball' },   // replaces Head Chop on the D,D+HK input for him
+    chains: [{ name: 'Pie in the Face', fx: 'pie', sfx: 'cl_splat' }, { name: 'Big Top Kicks', fx: 'confetti', sfx: 'cl_honk' }, { name: 'Honk Honk Boom', fx: 'confetti', sfx: 'cl_boom' }],
+    ai: { far: ['s1', 's5', 's1'], mid: ['s5', 's3', 's4', 's2', 's1'], close: ['s3', 's4', 's2'] },
+  },
+  {
+    id: 'takata', name: 'TAKATA JACKSON', tagline: 'Nature Wielder - Roots, Thorns & Bloom',
+    // v7 (2026-10-17): zoner / anti-air. Long dark curls, vine-and-moss armour (fully covered), glowing green eyes, flowers at her feet.
+    maxHp: 104, walk: 3.3, backWalk: 3.1, jump: 15.6, power: 1.02, scale: 1.04, girth: 0.92,
+    colors: { skin: '#6b3e1f', main: '#2f6b35', main2: '#1d4a2a', pants: '#3a7a3a', shoe: '#5a3a20', hair: '#1a1410', hairHi: '#3a2a20',
+              accent: '#5cffb4', glow: '#7dff7a', moss: '#5aa04a', flower: '#c77dff', flower2: '#ff8ad8', bark: '#7a4a1e', leaf: '#8ad04a' },
+    specials: {
+      // Root Spear (anti-zoning). Same motion in the AIR = Overgrowth (vines flood part of the stage; long cooldown).
+      s1: { name: 'Root Spear', type: 'tkRoot', startup: 13, active: 30, recovery: 18, pose: 'plant', sfxStart: 'tk_root', range: 560, speed: 15,
+            air: { name: 'Overgrowth', type: 'tkOver', startup: 6, active: 40, recovery: 14, pose: 'plant', sfxStart: 'tk_grow', cool: 660, life: 420, half: 250 } },
+      s2: { name: 'Vine Whip', type: 'tkWhip', startup: 8, active: 18, recovery: 18, pose: 'whip', sfxStart: 'tk_vine', len: 250 },
+      s3: { name: 'Thorn Bloom', type: 'tkThorn', startup: 12, active: 24, recovery: 18, pose: 'plant', sfxStart: 'tk_thorn', dx: 170, r: 72 },
+      s4: { name: 'Earth Rise', type: 'tkPillar', startup: 14, active: 18, recovery: 20, pose: 'raise', sfxStart: 'tk_rumble', range: 520 },
+      s5: { name: 'Seed Pod', type: 'tkSeed', startup: 10, active: 1, recovery: 16, pose: 'throw', sfxStart: 'tk_seed', max: 3 },
+    },
+    ult: { name: 'FOREST CAGE', type: 'tkCage', startup: 1, active: 140, recovery: 20, pose: 'raise', range: 420 },   // roots erupt under a grounded, non-blocking opponent within 420 (x1.2 in BLOOM)
+    bloomDef: { name: 'BLOOM STATE', type: 'tkBloom', startup: 1, active: 26, recovery: 6, pose: 'raise', dur: 480 },   // ULT when GROWTH is full
+    fatality: { name: 'RECLAIMED', type: 'reclaimed' },
+    finisher2: { name: "MOTHER'S WRATH", type: 'mothersWrath', motion: ['D', 'B'], btn: 'HP' },
+    finisher3: { name: 'FLYTRAP', type: 'flytrap' },   // replaces Head Chop on the D,D+HK input for her
+    chains: [{ name: 'Thorn Lash', fx: 'leaf', sfx: 'tk_vine' }, { name: 'Root Kicks', fx: 'leaf', sfx: 'tk_root' }, { name: "Nature's Fury", fx: 'leaf', sfx: 'tk_bloom' }],
+    ai: { far: ['s1', 's5', 's3', 's4'], mid: ['s2', 's3', 's5', 's4', 's1'], close: ['s2', 's4', 's3'] },
+    antiAir: 's4',
+  },
 ];
 
 /* =====================================================================
@@ -401,6 +450,8 @@ const Sound = {
     if (name.startsWith('st_')) { stinger(name.slice(3)); return; }
     if (name.startsWith('gk_')) { gkSfx(this, name); return; }
     if (name.startsWith('ed_')) { edSfx(this, name); return; }
+    if (name.startsWith('cl_')) { clSfx(this, name); return; }
+    if (name.startsWith('tk_')) { tkSfx(this, name); return; }
     switch (name) {
       case 'lp': case 'lk': this.noise(0.07, 0.25, 2200, 'bandpass'); break;
       case 'hp': case 'hk': this.noise(0.14, 0.35, 900, 'bandpass', 0, 300); break;
@@ -913,7 +964,8 @@ function chainContinues(seq) {
   return false;
 }
 /** Themed burst when a chain's launcher lands. */
-function chainBurst(f, opp, c) {
+function chainBurst(f, opp, c, res) {
+  if (typeof CX_CHAIN !== 'undefined' && CX_CHAIN[c.fx]) { CX_CHAIN[c.fx](f, opp, c, res); return; }
   const x = opp.x, y = opp.centerY();
   for (let i = 0; i < 16; i++) {
     const a = rand(0, Math.PI * 2), v = rand(2, 7);
@@ -958,6 +1010,8 @@ class Fighter {
     this.headless = false; this.skeleton = false; this.xrayView = false; this.charred = false;
     this.hidden = false; this.rot = 0; this.spinX = 1; this.forcePose = null; this.alpha = 1;
     this.aiHeld = {}; this.held = false; this.heldBy = null; this.shrink = 1;
+    this.slow = 0; this.laugh = 0; this.blind = 0; this.blindKind = ''; this.pied = 0; this.pin = 0; this.pinBy = null; this.liftY = 0;   // v7 status effects
+    this.growth = 0; this.bloom = 0; this.ogCool = 0; this.curHeld = {};   // v7: Takata's GROWTH / BLOOM / Overgrowth cooldown
     this.plat = false; this.noPlat = false; this.knockedOff = false; this.dropPend = 0; this.dropReq = false; this._dnPrev = false; this._dnAt = -99;   // balcony
   }
   get grounded() { return this.y >= (this.plat ? PLAT.y : CONFIG.GROUND_Y) - 0.01; }   // standing on the floor or on the balcony
@@ -976,7 +1030,7 @@ class Fighter {
   centerY() { return this.y - 122 * this.ch.scale; }
   isFree() { return this.hitstun <= 0 && this.blockstun <= 0 && this.trapped <= 0 && this.state !== 'ko' && this.state !== 'dizzy'; }
   /** Holding "back" on the ground while not busy = blocking. */
-  isBlocking() { return this.holdBack && this.grounded && !this.move && this.isFree(); }
+  isBlocking() { return this.holdBack && this.grounded && !this.move && this.isFree() && !(this.laugh > 0); }
 
   /** Read the controller (human input or CPU) and return an action, if any. */
   readAction(inp) {
@@ -1000,7 +1054,7 @@ class Fighter {
       return null;
     }
     for (const p of inp.presses) {
-      if (p.btn === 'ULT') { inp.takePress('ULT'); return { type: 'ult' }; }
+      if (p.btn === 'ULT') { inp.takePress('ULT'); return this.ch.bloomDef && this.growth >= 100 && !(this.bloom > 0) ? { type: 'bloom' } : { type: 'ult' }; }
       // specials are checked before plain attacks
       for (const slot of Object.keys(this.ch.specials)) {
         const sm = CONFIG.SPECIAL_MOTIONS[slot];
@@ -1016,6 +1070,9 @@ class Fighter {
   canStart(a) {
     if (!this.isFree()) return false;
     if (a.type === 'ult' && this.meter < CONFIG.METER_MAX) return false;
+    if (this.laugh > 0) return false;   // laughing gas: can't attack
+    if (a.type === 'bloom' && (!this.ch.bloomDef || !(this.growth >= 100) || this.bloom > 0)) return false;
+    if (a.type === 'special' && !this.grounded && this.ch.specials[a.slot] && this.ch.specials[a.slot].air && this.ch.specials[a.slot].air.type === 'tkOver' && this.ogCool > 0) return false;
     if (!this.grounded && a.type !== 'base' && !(a.type === 'special' && this.ch.specials[a.slot] && this.ch.specials[a.slot].air)) return false;
     if (!this.grounded && this.airAttacked) return false;
     if (!this.move) return true;
@@ -1052,6 +1109,9 @@ class Fighter {
       platPullDown(this); platPullDown(this.opp);   // ultimates happen on the floor
       startCinematic(this, def.name);
       callout(this, def.name, { top: true, size: 44, dur: 95 });
+    } else if (a.type === 'bloom') {
+      def = this.ch.bloomDef; this.crouching = false;
+      callout(this, def.name, { top: true, size: 40, dur: 80 });
     }
     if (this.grounded) this.vx = 0;
     this.move = { def, kind, btn: a.btn, slot: a.slot, frame: 0, hit: false, hits: 0, lastHit: -99, data: {} };
@@ -1082,12 +1142,16 @@ class Fighter {
     if (this.hitstun > 0) this.hitstun--;
     if (this.blockstun > 0) this.blockstun--;
     if (this.trapped > 0) { this.trapped--; }
+    if (this.slow > 0) this.slow--; if (this.laugh > 0) this.laugh--; if (this.blind > 0) this.blind--; if (this.pied > 0) this.pied--;
+    if (this.bloom > 0) this.bloom--; if (this.ogCool > 0) this.ogCool--;
+    if (this.pin > 0) cxPinTick(this);
 
     // always face the opponent when on the ground and not busy
     if (this.grounded && !this.move && this.isFree() && opp && this.state !== 'dead') {
       this.facing = opp.x >= this.x ? 1 : -1;
     }
     const held = this.isCpu ? this.aiHeld : inp.held;
+    this.curHeld = held;   // v7: hold-to-charge / aim specials read this
     const fwd = this.facing === 1 ? 'right' : 'left', back = this.facing === 1 ? 'left' : 'right';
     this.holdBack = !!held[back] && !held[fwd];
 
@@ -1137,6 +1201,8 @@ class Fighter {
         this.state = 'jump';
       }
     }
+    if (this.slow > 0 && this.grounded && !this.move && this.state === 'walk') this.vx *= 0.5;   // laughing gas / pollen / vines
+    if (!this.move && this.liftY) this.liftY = 0;
     this.physics();
   }
 
@@ -1174,7 +1240,7 @@ class Fighter {
     H.update(this, m, opp);
     if (!this.move) return;   // handler may end the move early
     const total = H.total ? H.total(m) : d.startup + d.active + d.recovery;
-    if (m.frame >= total) { this.move = null; if (this.grounded) this.vx = 0; this.spinX = 1; this.alpha = 1; }
+    if (m.frame >= total) { this.move = null; if (this.grounded) this.vx = 0; this.spinX = 1; this.alpha = 1; this.liftY = 0; }
   }
 }
 
@@ -1187,7 +1253,7 @@ function threatTo(f) {
     if (o.move.frame < (d.startup || 0) + (d.active || 30) + 2) return { low: !!d.low };
   }
   for (const e of game.entities) {
-    if (e.owner === o && (e.type === 'proj' || e.type === 'tornado') && Math.abs(e.x - f.x) < 320) return { low: false };
+    if (e.owner === o && (e.type === 'proj' || e.type === 'tornado' || e.threat) && Math.abs(e.x - f.x) < 320) return { low: false };
   }
   return false;
 }
@@ -1214,9 +1280,9 @@ const MOVE_HANDLERS = {
         if (overlap(f.worldBox(d.box), opp.hurtbox())) {
           const c = m.chain != null && f.ch.chains ? f.ch.chains[m.chain] : null;
           const FX = { toot: 'brown', flush: null, data: 'plasma', wind: 'wind', razor: 'slash' };
-          const r = c ? applyHit(f, opp, { dmg: d.dmg * CONFIG.CHAIN_DMG, hitstun: d.hitstun + 10, blockstun: d.blockstun + 4, kb: d.kb + 3, kbY: -8, low: d.low, heavy: true, fx: FX[c.fx] })
+          const r = c ? applyHit(f, opp, { dmg: d.dmg * CONFIG.CHAIN_DMG, hitstun: d.hitstun + 10, blockstun: d.blockstun + 4, kb: d.kb + 3, kbY: -8, low: d.low, heavy: true, fx: FX[c.fx], noBlood: !!CX_CHAIN[c.fx], plant: c.fx === 'leaf' })
                       : applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: d.blockstun, kb: d.kb, kbY: d.kbY, low: d.low, heavy: d.heavy });
-          if (r) { m.hit = true; if (c) chainBurst(f, opp, c); }
+          if (r) { m.hit = true; if (c) chainBurst(f, opp, c, r); }
         }
       }
     },
@@ -1540,6 +1606,7 @@ function applyHit(att, def, h) {
     def.blockstun = h.blockstun || 10;
     def.vx = dir * (h.kb || 2) * 0.7;
     def.meter = Math.min(CONFIG.METER_MAX, def.meter + 2);
+    if (h.plant) cxGrow(att, 1.5);
     for (let i = 0; i < 6; i++) spawnParticle({ x: def.x - dir * 20, y: def.centerY() + rand(-30, 20), vx: -dir * rand(1, 5), vy: rand(-4, 2), life: 14, size: rand(2, 4), color: '#9fe8ff', type: 'spark' });
     Sound.play('block');
     game.hitstop = 3;
@@ -1549,7 +1616,8 @@ function applyHit(att, def, h) {
   const comboing = def.hitstun > 0 || def.trapped > 0 || !def.grounded || def.state === 'ko';
   att.combo = comboing ? att.combo + 1 : 1;
   const scaling = h.noScale ? 1 : Math.max(0.45, 1 - (att.combo - 1) * 0.08);   // long combos do less per hit
-  const dmg = h.dmg * att.ch.power * scaling;
+  const dmg = h.dmg * att.ch.power * scaling * (def.pied > 0 ? 1.25 : 1) * (h.plant && att.bloom > 0 ? 1.3 : 1);   // v7: pie = +25%, BLOOM = +30% plant damage
+  if (h.plant) cxGrow(att, dmg * 2.6);
   def.hp = Math.max(0, def.hp - dmg);
   if (def.move && def.move.def.armor && def.hp > 0) {   // super armour (Grok Girl's SINGULARITY): takes the damage but is not interrupted
     def.flash = 5; att.meter = Math.min(CONFIG.METER_MAX, att.meter + dmg * CONFIG.METER_GAIN_DEAL);
@@ -1557,7 +1625,7 @@ function applyHit(att, def, h) {
     Sound.play('block'); game.hitstop = 3; return 'hit';
   }
   def.hitstun = Math.max(def.hitstun, h.hitstun || 12);
-  def.move = null; def.spinX = 1; def.alpha = 1; def.crouching = false;
+  def.move = null; def.spinX = 1; def.alpha = 1; def.crouching = false; def.liftY = 0;
   def.vx = dir * (h.kb || 2);
   if (h.kbY) def.vy = h.kbY;
   else if (!def.grounded) def.vy = Math.min(def.vy, -3);   // juggle: keep them floating a bit
@@ -1620,7 +1688,9 @@ class CpuBrain {
     if (game.state !== 'fight' || !f.isFree()) { this.combo.length = 0; return; }
 
     // react to danger: block (or jump over projectiles) sometimes
-    const threat = threatTo(f);
+    const threat = f.blind > 0 && R() < 0.8 ? false : threatTo(f);   // pie / pollen in the eyes
+    if (f.ch.bloomDef && f.growth >= 100 && !(f.bloom > 0) && !f.move && !f.queued && f.grounded && R() < 0.06) { f.queued = { type: 'bloom' }; f.queuedT = 0; }
+    if (f.ch.antiAir && !f.move && f.grounded && !f.queued && !opp.grounded && dist > 40 && dist < 360 && R() < 0.05 + L * 0.1) { f.queued = { type: 'special', slot: f.ch.antiAir }; f.queuedT = 0; }
     if (threat && this.plan !== 'block' && !f.move && R() < 0.04 + L * 0.22) {
       const proj = game.entities.find((e) => e.type === 'proj' && e.owner === opp);
       if (proj && f.ch.specials.s4 && f.ch.specials.s4.type === 'reroute' && Math.abs(opp.x - f.x) < 520 && R() < 0.1 + L * 0.15) { f.queued = { type: 'special', slot: 's4' }; f.queuedT = 0; }   // Grok Girl reroutes through projectiles
@@ -1756,6 +1826,7 @@ function updateWorldObjects() {
   // ---- entities: projectiles, clouds, tornadoes, slashes ----
   for (const e of game.entities) {
     const opp = e.owner ? e.owner.opp : null;
+    if (CX_ENT[e.type]) { if (!e.dead) CX_ENT[e.type](e, opp); continue; }
     if (e.type === 'proj') {
       e.t++; e.x += e.vx; e.life--;
       if (e.x < -60 || e.x > 1020) e.dead = true;
@@ -1823,7 +1894,7 @@ function addText(text, o = {}) {
 }
 /* ---- Move-name CALLOUTS: big, bold, fighter-coloured names for specials / ultimates / finishers ----
  * They live in game.texts (kind 'callout'), so they mirror to the online guest and show on the TV. */
-const CALLOUT_COL = { mierda: '#7dff3a', grok: '#4d9dff', cyclone: '#9be7ff', editor: '#ffd23f' };
+const CALLOUT_COL = { mierda: '#7dff3a', grok: '#4d9dff', cyclone: '#9be7ff', editor: '#ffd23f', clowny: '#ff3b3b', takata: '#5cffb4' };
 function fighterCol(f) { return (f && f.ch && (CALLOUT_COL[f.ch.id] || f.ch.colors.accent)) || '#ffd23f'; }
 function callout(f, name, o = {}) {
   const T = game.texts;
@@ -2062,15 +2133,16 @@ function selectStep() {
   }
   // Player 1 cursor. In CPU mode it also picks the CPU's fighter after picking its own.
   const p1PicksCpu = game.mode === 'cpu' && s.p1Done;
-  if (i1.dirPressed.left) { if (p1PicksCpu) s.p2 = (s.p2 + 3) % 4; else if (!s.p1Done) s.p1 = (s.p1 + 3) % 4; Sound.play('select'); }
-  if (i1.dirPressed.right) { if (p1PicksCpu) s.p2 = (s.p2 + 1) % 4; else if (!s.p1Done) s.p1 = (s.p1 + 1) % 4; Sound.play('select'); }
+  const NC = CHARACTERS.length;
+  if (i1.dirPressed.left) { if (p1PicksCpu) s.p2 = (s.p2 + NC - 1) % NC; else if (!s.p1Done) s.p1 = (s.p1 + NC - 1) % NC; Sound.play('select'); }
+  if (i1.dirPressed.right) { if (p1PicksCpu) s.p2 = (s.p2 + 1) % NC; else if (!s.p1Done) s.p1 = (s.p1 + 1) % NC; Sound.play('select'); }
   if ((i1.dirPressed.up || i1.dirPressed.down) && game.mode !== 'online') toggleMode();
   if (confirm(i1)) selectConfirm(1);
   if (back(i1)) selectBack(1);
   // Player 2 cursor (2P mode, or the remote player online)
   if (game.mode !== 'cpu') {
-    if (i2.dirPressed.left && !s.p2Done) { s.p2 = (s.p2 + 3) % 4; Sound.play('select'); }
-    if (i2.dirPressed.right && !s.p2Done) { s.p2 = (s.p2 + 1) % 4; Sound.play('select'); }
+    if (i2.dirPressed.left && !s.p2Done) { s.p2 = (s.p2 + NC - 1) % NC; Sound.play('select'); }
+    if (i2.dirPressed.right && !s.p2Done) { s.p2 = (s.p2 + 1) % NC; Sound.play('select'); }
     if (confirm(i2)) selectConfirm(2);
     if (back(i2)) selectBack(2);
   }
@@ -2109,6 +2181,7 @@ function startRound() {
   game.entities = []; game.particles = []; game.heads = []; game.texts = []; game.toilets = [];
   game.decals = game.round === 1 ? [] : game.decals;   // blood stays on the floor between rounds
   game.timer = CONFIG.ROUND_TIME; game.timerSub = 0; platReset();   // the cracked slab is repaired every round
+  game.cxTent = null; game.cxGrowth = null;
   game.tint = null; game.xray = null; game.cinematic = null; game.hitstop = 0; game.slowmo = 0; game.filmStrip = 0; game.zoomPunch = null; game.edFx = null;
   game.comboText = [null, null]; game.fatal = null; game.winner = null; game.loser = null; game.result = '';
   setState('intro'); game.adlibs = [];
@@ -2139,7 +2212,7 @@ function startFinish() {
 function startFatality(w, kind) {
   if (game.state !== 'finish') return;
   const l = w.opp;
-  const type = kind === 'headChop' ? 'headChop' : kind === 'special2' && w.ch.finisher2 ? w.ch.finisher2.type : w.ch.fatality.type;
+  const type = kind === 'headChop' ? (w.ch.finisher3 ? w.ch.finisher3.type : 'headChop') : kind === 'special2' && w.ch.finisher2 ? w.ch.finisher2.type : w.ch.fatality.type;
   game.fatal = { type, w, l, t: 0 };
   setState('fatality');
   w.move = null; w.vx = 0; platPullDown(w); platPullDown(l);
@@ -2263,6 +2336,7 @@ function simStep() {
   b.update(game.inputs[1]);
   if (game.state === 'fight' || game.state === 'intro') separate(a, b);
   updateWorldObjects();
+  cxStep();
   updateToilets();
   if (game.state === 'fight' || game.state === 'finish') cameraStep();   // scroll the stage with the fighters
 
@@ -2357,7 +2431,7 @@ function handleTap(p) {
     if (p.y > 62 && p.y < 98 && p.x > 490 && p.x < 790) { cycleStage(1); return; }   // stage button
     if (p.y < 60 && p.x < 140) { if (game.mode === 'online') Net.leave(); else openModeSelect(); return; }   // back
     if (p.y > 488 && p.x > 840) { game.showHelp = true; return; }                      // help button
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < CHARACTERS.length; i++) {
       const c = cardRect(i);
       if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
         if (!s.p1Done) { s.p1 = i; selectConfirm(1); }
@@ -2367,12 +2441,12 @@ function handleTap(p) {
     }
   }
 }
-function cardRect(i) { return { x: 90 + i * 200, y: 110, w: 180, h: 300 }; }
+function cardRect(i) { const n = CHARACTERS.length, w = n > 4 ? 142 : 180, gap = n > 4 ? 12 : 20, x0 = (960 - n * w - (n - 1) * gap) / 2; return { x: x0 + i * (w + gap), y: 110, w, h: 300 }; }
 function cycleStage(d) { game.stageChoice = ((game.stageChoice + 1 + d + STAGES.length + 1) % (STAGES.length + 1)) - 1; Sound.play('select'); }
 /** The guest's taps: pick a card, or "press a button" on other screens. */
 function guestTap(p) {
   if (game.state === 'select' && game.sel && !game.sel.p2Done) {
-    for (let i = 0; i < 4; i++) { const c = cardRect(i); if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) { Net.conn.send({ t: 'pick', i }); Sound.play('confirm'); return; } }
+    for (let i = 0; i < CHARACTERS.length; i++) { const c = cardRect(i); if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) { Net.conn.send({ t: 'pick', i }); Sound.play('confirm'); return; } }
     if (p.y < 60 && p.x < 140) Net.leave();
   } else if (game.state === 'winner') Net.conn.send({ t: 'in', h: {}, p: ['LP'] });
 }
@@ -2602,15 +2676,29 @@ function drawBody(g, ch, J, d, o) {
     }
   }
 
+  if (id === 'takata') {   // long dark curls falling down her back
+    const hc = J.head, r = d.headR, sw = Math.sin(t / 260) * r * 0.08;
+    for (let i = 0; i < 10; i++) {
+      const xx = hc.x - r * (0.55 + (i % 3) * 0.32) + (i % 2 ? sw : -sw), yy = hc.y - r * 0.55 + i * r * 0.36;
+      circle(g, xx, yy, r * (0.5 - i * 0.012), i % 2 ? col('hair') : col('hairHi'), '#111', 2);
+    }
+  }
+
   // ================= back leg & back arm =================
   const legC = id === 'mierda' ? 'main' : 'pants';
   limbDraw(g, [J.hip, J.bk, J.bf], d.limbW * (id === 'mierda' ? 1.25 : 1.1), [dark(legC), dark(legC)]);
   if (id === 'grok' && !plain) along(J.bk, J.bf, 1.6 * S, dark('accent', -0.1), 2 * S);
-  if (id === 'cyclone' || id === 'grok') limbDraw(g, [lp(J.bk, J.bf, 0.55), J.bf], d.limbW * 1.2, [dark('shoe')]);
-  ellipse(g, J.bf.x + 6 * S, J.bf.y - 2 * S, (id === 'mierda' ? 13 : 11) * S, (id === 'mierda' ? 7 : 6) * S, dark('shoe'));
+  if (!plain && id === 'clowny') { const p = lp(J.hip, J.bk, 0.55); g.fillStyle = dark('main'); g.fillRect(p.x - 5 * S, p.y - 5 * S, 10 * S, 10 * S); }   // knee patch
+  if (!plain && id === 'takata') { along(J.hip, J.bk, 1.8 * S, dark('main2', -0.1), 0); along(J.bk, J.bf, 1.8 * S, dark('main2', -0.1), 0); }   // vine wraps
+  if (id === 'cyclone' || id === 'grok' || id === 'takata') limbDraw(g, [lp(J.bk, J.bf, 0.55), J.bf], d.limbW * 1.2, [dark('shoe')]);
+  if (id === 'clowny') limbDraw(g, [lp(J.bk, J.bf, 0.5), J.bf], d.limbW * 1.45, [dark('shoe')]);   // heavy boots
+  ellipse(g, J.bf.x + 6 * S, J.bf.y - 2 * S, (id === 'mierda' ? 13 : id === 'clowny' ? 16 : 11) * S, (id === 'mierda' ? 7 : id === 'clowny' ? 8 : 6) * S, dark('shoe'));
   if (id === 'mierda') circle(g, J.bk.x, J.bk.y, 6 * S, dark('trim'), '#111', 2);
-  const backArm = id === 'grok' ? 'main' : 'main2';
+  const backArm = id === 'grok' || id === 'takata' ? 'main' : 'main2';
   limbDraw(g, [J.sh, J.be, J.bh], d.limbW * (id === 'mierda' ? 1.25 : 1), [dark(backArm), dark(backArm)]);
+  if (!plain && id === 'clowny') { cxStripes(g, J.sh, J.be, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); cxStripes(g, J.be, J.bh, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); }
+  if (!plain && id === 'takata') { cxStripes(g, J.sh, J.be, d.limbW, dark('main2', -0.1), 2, 2 * S, 0.5); cxStripes(g, J.be, J.bh, d.limbW, dark('main2', -0.1), 2, 2 * S, 0.5); }
+  if (!plain && !moon && id === 'clowny') cxPinShape(g, J.bh.x, J.bh.y - 14 * S, -0.3 + J.lean, S * 0.9);   // a juggling pin in the back hand
   if (!plain && !moon && id === 'mierda') {
     // mechanical plunger staff with a glowing core
     const x = J.bh.x, top = J.bh.y - 64 * S, bot = J.bh.y + 62 * S;
@@ -2630,7 +2718,7 @@ function drawBody(g, ch, J, d, o) {
     g.fillStyle = col('shirt'); g.fillRect(3 * S, -3 * S, 18 * S, 1.6 * S); g.fillRect(3 * S, 1 * S, 12 * S, 1.6 * S); g.fillRect(3 * S, 5 * S, 15 * S, 1.6 * S);
     g.restore();
   }
-  const backFist = id === 'mierda' || id === 'grok' ? dark('main') : id === 'cyclone' ? dark('glove') : dark('skin');
+  const backFist = id === 'mierda' || id === 'grok' ? dark('main') : id === 'cyclone' || id === 'clowny' ? dark('glove') : dark('skin');
   circle(g, J.bh.x, J.bh.y, (id === 'mierda' ? 8 : 6.5) * S, backFist, '#111', 2.5);
 
   // ================= torso =================
@@ -2681,15 +2769,41 @@ function drawBody(g, ch, J, d, o) {
       const rl = lp(J.hip, J.sh, 0.14);   // film reel clipped to the belt
       circle(g, rl.x - off * 0.8, rl.y, 6.5 * S, '#9aa3b5', '#111', 2);
       for (let i = 0; i < 5; i++) { const a = i * Math.PI * 0.4 + 0.3; circle(g, rl.x - off * 0.8 + Math.cos(a) * 3.6 * S, rl.y + Math.sin(a) * 3.6 * S, 1.3 * S, '#111', null); }
+    } else if (id === 'clowny') {   // tattered patchwork suit: blue + cream patches, suspenders, pom-pom buttons, lapel flower, ruffled collar
+      const p1 = lp(J.hip, J.sh, 0.7), p2 = lp(J.hip, J.sh, 0.4);
+      poly([[p1.x - tw * 0.5, p1.y - 9 * S], [p1.x + 2 * S, p1.y - 11 * S], [p1.x + 1 * S, p1.y + 12 * S], [p1.x - tw * 0.5, p1.y + 12 * S]], col('main2'), '#111', 1.5);
+      poly([[p2.x + 2 * S, p2.y - 7 * S], [p2.x + tw * 0.48, p2.y - 9 * S], [p2.x + tw * 0.48, p2.y + 7 * S], [p2.x + 4 * S, p2.y + 8 * S]], col('pants'), '#111', 1.5);
+      g.strokeStyle = '#111'; g.lineWidth = 1.2 * S; g.beginPath();
+      for (let i = 0; i < 4; i++) { g.moveTo(p2.x + (6 + i * 4) * S, p2.y - 9 * S); g.lineTo(p2.x + (6 + i * 4) * S, p2.y - 5 * S); }
+      g.stroke();
+      g.fillStyle = '#111'; g.beginPath(); g.moveTo(J.hip.x - tw * 0.45, J.hip.y); g.lineTo(J.hip.x - tw * 0.3, J.hip.y + 7 * S); g.lineTo(J.hip.x - tw * 0.15, J.hip.y); g.fill();   // ragged hem
+      along(lp(J.hip, J.sh, 0.05), lp(J.hip, J.sh, 1.0), 2.6 * S, col('strap'), tw * 0.28);
+      along(lp(J.hip, J.sh, 0.05), lp(J.hip, J.sh, 1.0), 2.6 * S, col('strap'), -tw * 0.22);
+      for (const q of [0.28, 0.5]) { const b = lp(J.hip, J.sh, q); circle(g, b.x + off * 0.3, b.y, 3.4 * S, col('glow'), '#111', 1.5); }
+      const fl = lp(J.hip, J.sh, 0.8);
+      for (let i = 0; i < 5; i++) { const a = i * 1.257; circle(g, fl.x + off + Math.cos(a) * 3.2 * S, fl.y + Math.sin(a) * 3.2 * S, 2.5 * S, col('flower'), '#111', 1); }
+      circle(g, fl.x + off, fl.y, 1.9 * S, col('glow'), null);
+      const rc = lp(J.hip, J.sh, 1.0);
+      for (let i = -3; i <= 3; i++) circle(g, rc.x + i * 4.4 * S, rc.y - 2 * S + Math.abs(i) * 0.7 * S, 4.8 * S, i % 2 ? col('ruff') : dark('ruff', -0.1), '#111', 1.5);
+    } else if (id === 'takata') {   // vine-and-moss armour (fully covered), root belt, leaf pauldron, purple flower
+      limbDraw(g, [lp(J.hip, J.sh, 0.42), lp(J.hip, J.sh, 0.92)], tw * 0.78, [col('moss')]);
+      for (const q of [0.3, 0.55, 0.8]) { const a = lp(J.hip, J.sh, q - 0.1), b = lp(J.hip, J.sh, q + 0.08); line({ x: a.x - tw * 0.48, y: a.y }, { x: b.x + tw * 0.48, y: b.y }, 2.4 * S, col('main2')); }
+      band(0.15, 0.23, col('bark'), 0.98);
+      const shp = lp(J.hip, J.sh, 0.96); ellipse(g, shp.x - 3 * S, shp.y, 11 * S, 5 * S, col('leaf'), '#111', 1.5, -0.35);
+      cxFlower(g, shp.x + off, shp.y + 5 * S, 2.6 * S, col('flower'));
     }
   }
 
   // ================= front leg =================
   limbDraw(g, [J.hip, J.fk, J.ff], d.limbW * (id === 'mierda' ? 1.25 : 1.1), [col(legC), col(legC)]);
   if (!plain && id === 'grok') along(J.fk, J.ff, 1.6 * S, col('accent'), 2 * S);
-  if (id === 'cyclone' || id === 'grok') limbDraw(g, [lp(J.fk, J.ff, 0.55), J.ff], d.limbW * 1.2, [col('shoe')]);
+  if (!plain && id === 'clowny') { const p = lp(J.hip, J.fk, 0.45); poly([[p.x - 6 * S, p.y - 6 * S], [p.x + 6 * S, p.y - 5 * S], [p.x + 5 * S, p.y + 6 * S], [p.x - 6 * S, p.y + 5 * S]], col('main2'), '#111', 1.5); }
+  if (!plain && id === 'takata') { along(J.hip, J.fk, 1.8 * S, col('main2'), 0); along(J.fk, J.ff, 1.8 * S, col('main2'), 0); }
+  if (id === 'cyclone' || id === 'grok' || id === 'takata') limbDraw(g, [lp(J.fk, J.ff, 0.55), J.ff], d.limbW * 1.2, [col('shoe')]);
+  if (id === 'clowny') limbDraw(g, [lp(J.fk, J.ff, 0.5), J.ff], d.limbW * 1.45, [col('shoe')]);
   if (!plain && id === 'cyclone') { const cp = lp(J.hip, J.fk, 0.6); circle(g, cp.x, cp.y, 3.5 * S, col('chest'), '#111', 1.5); }
-  ellipse(g, J.ff.x + 6 * S, J.ff.y - 2 * S, (id === 'mierda' ? 13 : 11) * S, (id === 'mierda' ? 7 : 6) * S, col('shoe'));
+  ellipse(g, J.ff.x + 6 * S, J.ff.y - 2 * S, (id === 'mierda' ? 13 : id === 'clowny' ? 16 : 11) * S, (id === 'mierda' ? 7 : id === 'clowny' ? 8 : 6) * S, col('shoe'));
+  if (!plain && id === 'takata') { cxFlower(g, J.ff.x + 16 * S, J.ff.y - 2 * S, 2.4 * S, col('flower')); cxFlower(g, J.bf.x - 6 * S, J.bf.y, 2 * S, col('flower2')); line({ x: J.ff.x - 4 * S, y: J.ff.y }, { x: J.ff.x - 12 * S, y: J.ff.y + 3 * S }, 2 * S, col('bark')); }
   if (!plain && id === 'editor') { g.fillStyle = col('clipA'); g.fillRect(J.ff.x + 1 * S, J.ff.y - 5 * S, 9 * S, 2 * S); }   // sneaker stripe
   if (id === 'mierda') { circle(g, J.fk.x, J.fk.y, 6.5 * S, col('trim'), '#111', 2); circle(g, J.fk.x, J.fk.y, 2.5 * S, dark('trim'), null); }
 
@@ -2722,6 +2836,17 @@ function drawBody(g, ch, J, d, o) {
     limbDraw(g, [J.sh, J.fe, J.fh], d.limbW, [col('main2'), col('main2')]);
     if (!plain) { const cp = lp(J.sh, J.fe, 0.5); circle(g, cp.x, cp.y, 3 * S, col('chest'), '#111', 1.5); }
     circle(g, J.fh.x, J.fh.y, 7.5 * S, col('glove'), '#111', 2.5);
+  } else if (id === 'clowny') {
+    limbDraw(g, [J.sh, J.fe, J.fh], d.limbW * 1.05, [col('main2'), col('main2')]);
+    if (!plain) { cxStripes(g, J.sh, J.fe, d.limbW * 1.05, col('ruff'), 2, 2.6 * S); cxStripes(g, J.fe, J.fh, d.limbW * 1.05, col('ruff'), 2, 2.6 * S); }
+    circle(g, J.sh.x, J.sh.y, 7 * S, col('main'), '#111', 2);   // puffy shoulder
+    if (!plain) { const cuff = lp(J.fe, J.fh, 0.85); circle(g, cuff.x, cuff.y, 5 * S, col('ruff'), '#111', 1.5); }
+    circle(g, J.fh.x, J.fh.y, 8.5 * S, col('glove'), '#111', 2.5);
+  } else if (id === 'takata') {
+    limbDraw(g, [J.sh, J.fe, J.fh], d.limbW, [col('main'), col('main')]);
+    if (!plain) { cxStripes(g, J.sh, J.fe, d.limbW, col('main2'), 2, 2 * S, 0.5); cxStripes(g, J.fe, J.fh, d.limbW, col('main2'), 2, 2 * S, 0.5); ellipse(g, J.fe.x, J.fe.y, 6 * S, 3 * S, col('leaf'), '#111', 1.2, 0.6); }
+    if (!plain) { const wr = lp(J.fe, J.fh, 0.85); circle(g, wr.x, wr.y, 3.6 * S, col('glow'), '#111', 1.5); }
+    circle(g, J.fh.x, J.fh.y, 7 * S, col('skin'), '#111', 2.5);
   } else {
     limbDraw(g, [J.sh, J.fe, J.fh], d.limbW, [col('main2'), col('main2')]);
     if (!plain) { const rl = lp(J.sh, J.fe, 0.45); circle(g, rl.x, rl.y, 4 * S, col('accent'), '#111', 1.5); circle(g, rl.x, rl.y, 1.5 * S, col('main'), null);   // film-reel patch
@@ -2750,9 +2875,23 @@ function drawHead(g, ch, hc, r, o = {}) {
     }
     return;
   }
+  if (id === 'clowny') {   // wild hair: red on the back side, blue on the front side
+    for (const s of [-1, 1]) {
+      const cx0 = hc.x + s * r * 0.85, cy0 = hc.y - r * 0.25;
+      g.fillStyle = s < 0 ? col('hair') : col('hair2'); g.strokeStyle = '#111'; g.lineWidth = 2; g.beginPath();
+      for (let i = 0; i <= 14; i++) { const a = -Math.PI / 2 + s * (i / 14) * Math.PI * 1.1 - s * 0.35, rr = r * (i % 2 ? 0.55 : 1.0); g.lineTo(cx0 + Math.cos(a) * rr * (s > 0 ? 0.85 : 1), cy0 + Math.sin(a) * rr * 0.85); }
+      g.closePath(); g.fill(); g.stroke();
+    }
+  }
   circle(g, hc.x, hc.y, r, col('skin'), '#111', 3);
   if (!plain) {
-    if (id === 'grok') {
+    if (id === 'clowny') {
+      circle(g, hc.x + r * 1.0, hc.y + r * 0.1, r * 0.3, col('nose'), '#111', 2);   // red nose
+      circle(g, hc.x + r * 0.92, hc.y, r * 0.09, '#ffffff', null);
+    } else if (id === 'takata') {   // curly hair over the top + a purple flower
+      for (let i = 0; i < 9; i++) { const a = Math.PI * (0.82 + i * 0.12); circle(g, hc.x + Math.cos(a) * r * 1.0, hc.y + Math.sin(a) * r * 1.0, r * 0.38, i % 2 ? col('hair') : col('hairHi'), '#111', 1.5); }
+      cxFlower(g, hc.x - r * 0.15, hc.y - r * 1.1, r * 0.17, col('flower'));
+    } else if (id === 'grok') {
       g.fillStyle = col('hair'); g.strokeStyle = '#111'; g.lineWidth = 2.5;
       g.beginPath(); g.arc(hc.x, hc.y, r * 1.08, Math.PI * 0.85, Math.PI * 1.9);
       g.quadraticCurveTo(hc.x + r * 0.5, hc.y - r * 0.55, hc.x + r * 0.1, hc.y - r * 0.5);
@@ -2784,6 +2923,20 @@ function drawHead(g, ch, hc, r, o = {}) {
     g.strokeStyle = o.charred ? '#fff' : '#111'; g.lineWidth = 2.5; const s = r * 0.17;
     g.beginPath(); g.moveTo(ex - s, ey - s); g.lineTo(ex + s, ey + s); g.moveTo(ex + s, ey - s); g.lineTo(ex - s, ey + s); g.stroke();
     ellipse(g, hc.x + r * 0.55, hc.y + r * 0.45, r * 0.16, r * 0.2, '#5a0f12', '#111', 1.5);
+  } else if (id === 'clowny' && !plain) {   // diamond eye paint, arched brow, huge creepy grin
+    g.fillStyle = col('eye'); g.beginPath(); g.moveTo(ex, ey - r * 0.55); g.lineTo(ex + r * 0.24, ey); g.lineTo(ex, ey + r * 0.5); g.lineTo(ex - r * 0.24, ey); g.closePath(); g.fill();
+    ellipse(g, ex, ey, r * 0.16, r * 0.2, '#fff', '#111', 1.5); circle(g, ex + r * 0.06, ey + r * 0.02, r * 0.07, '#111', null);
+    g.strokeStyle = '#111'; g.lineWidth = 2; g.beginPath(); g.arc(ex, ey - r * 0.2, r * 0.3, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
+    g.fillStyle = col('grin'); g.strokeStyle = '#111'; g.lineWidth = 2; g.beginPath();
+    g.moveTo(hc.x - r * 0.05, hc.y + r * 0.28); g.quadraticCurveTo(hc.x + r * 0.55, hc.y + r * 1.0, hc.x + r * 1.02, hc.y + r * 0.32);
+    g.quadraticCurveTo(hc.x + r * 0.5, hc.y + r * 0.58, hc.x - r * 0.05, hc.y + r * 0.28); g.fill(); g.stroke();
+    g.fillStyle = '#ffffff'; for (let i = 0; i < 4; i++) g.fillRect(hc.x + r * (0.2 + i * 0.18), hc.y + r * (0.5 - Math.abs(i - 1.5) * 0.04), r * 0.12, r * 0.12);
+  } else if (id === 'takata' && !plain) {   // glowing green eyes
+    circle(g, ex + r * 0.05, ey, r * 0.26, 'rgba(125,255,122,0.35)', null);
+    circle(g, ex + r * 0.05, ey, r * 0.17, col('glow'), '#111', 1.5);
+    circle(g, ex + r * 0.08, ey - r * 0.03, r * 0.06, '#ffffff', null);
+    g.strokeStyle = '#111'; g.lineWidth = 2; g.beginPath(); g.moveTo(ex - r * 0.22, ey - r * 0.3); g.lineTo(ex + r * 0.26, ey - r * 0.34); g.stroke();
+    g.beginPath(); g.moveTo(hc.x + r * 0.42, hc.y + r * 0.5); g.quadraticCurveTo(hc.x + r * 0.6, hc.y + r * 0.58, hc.x + r * 0.8, hc.y + r * 0.46); g.stroke();
   } else if (id === 'grok' && !plain) {
     circle(g, ex + r * 0.05, ey, r * 0.19, col('glow'), '#111', 1.5);
     circle(g, ex + r * 0.05, ey, r * 0.07, '#ffffff', null);
@@ -3096,6 +3249,7 @@ function scrollWorld(d) {
   if (!d) return;
   game.camX = (game.camX ?? CAM_START) + d;
   for (const f of game.fighters) { f.x -= d; const D = f.move && f.move.data; if (D && typeof D.ox === 'number') D.ox -= d; }
+  for (const f of game.fighters) { const D = f.move && f.move.data; if (D) for (const k of ['x', 'tx']) if (typeof D[k] === 'number') D[k] -= d; }
   for (const e of game.entities) { if (typeof e.x === 'number') e.x -= d; if (typeof e.x1 === 'number') e.x1 -= d; if (typeof e.x2 === 'number') e.x2 -= d; }
   for (const L of [game.particles, game.decals, game.heads, game.toilets]) for (const o of L) o.x -= d;
   for (const t of game.texts) if (t.kind !== 'announce' && !t.top && t.x !== 480) t.x -= d;
@@ -3534,7 +3688,7 @@ function drawFighter(g, f) {
     g.filter = BOSS.filter; g.shadowColor = '#ff1a1a'; g.shadowBlur = 18 + Math.sin(game.frame * 0.15) * 8;
   }
   if (f.ghost > 0) for (const k of [-1, 1]) drawCharacter(g, f.chIdx, f.x + k * 50 * (f.ghost / 34), f.y, facing, pose, { ...o, alpha: 0.25 });
-  drawCharacter(g, f.chIdx, f.x, f.y, facing, pose, o);
+  drawCharacter(g, f.chIdx, f.x, f.y - (f.liftY || 0), facing, pose, o);
   if (f.boss) g.restore();
   const S = f.ch.scale, top = f.y - 224 * S;
   // status effects
@@ -3546,6 +3700,7 @@ function drawFighter(g, f) {
     g.moveTo(x0, y1 - L); g.lineTo(x0, y1); g.lineTo(x0 + L, y1); g.moveTo(x1 - L, y1); g.lineTo(x1, y1); g.lineTo(x1, y1 - L); g.stroke();
     g.fillStyle = '#ffffff'; g.fillRect(x1 + 6, y0 + 4, 6, 18); g.fillRect(x1 + 16, y0 + 4, 6, 18);
     g.restore();
+  } else if (f.trapped > 0 && f.trapLabel === 'ROOTED') { cxDrawRooted(g, f);
   } else if (f.trapped > 0) {
     const hb = f.hurtbox(); g.save(); g.strokeStyle = '#38e8ff'; g.shadowColor = '#38e8ff'; g.shadowBlur = 8; g.lineWidth = 2;
     for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(hb.x - 8 + i * (hb.w + 16) / 6, hb.y); g.lineTo(hb.x - 8 + (6 - i) * (hb.w + 16) / 6, hb.y + hb.h); g.stroke(); }
@@ -3558,6 +3713,7 @@ function drawFighter(g, f) {
     g.fillStyle = '#c77dff'; g.beginPath(); g.moveTo(0, -18); g.lineTo(8, -12); g.lineTo(0, -6); g.fill(); g.restore();
     txt(g, 'REVERSED', f.x, top - 34, 14, '#c77dff', 'center', 3);
   }
+  cxDrawStatus(g, f, top);
   if (f.state === 'dizzy' && !f.forcePose) {
     for (let i = 0; i < 3; i++) {
       const a = f.t * 0.12 + i * 2.1; drawStar(g, f.x + Math.cos(a) * 26, top + 2 + Math.sin(a) * 7, 6, '#ffe066');
@@ -3573,6 +3729,7 @@ function drawShadow(g, x, w, y = CONFIG.GROUND_Y) { g.fillStyle = 'rgba(0,0,0,0.
 
 function drawEntity(g, e) {
   const t = game.frame;
+  if (CX_DRAW[e.type]) { CX_DRAW[e.type](g, e); return; }
   if (e.type === 'proj') {
     g.save(); g.translate(e.x, e.y); g.scale(Math.sign(e.vx) || 1, 1);
     if (e.kind === 'butt') {
@@ -3660,6 +3817,7 @@ function drawFunnel(g, x, y, s) {
 /** Visuals for moves in progress (Diarrhea Beam, Full-System Overload). */
 function drawMoveFX(g, f) {
   const m = f.move; if (!m) return;
+  if (m.data.cx) cxDrawMoveFX(g, f, m.data.cx);
   if (m.data.gk) gkDrawFX(g, f, m);
   if (m.data.beam) {
     const b = m.data.beam, t = game.frame, cy = b.y + b.h / 2;
@@ -3734,6 +3892,7 @@ function drawHeads(g) {
 /** Extra visuals that belong to a running fatality script. */
 function drawFatalityFX(g) {
   const F = game.fatal; if (!F || game.state !== 'fatality') return;
+  cxDrawFatal(g, F);
   const { w, l, t } = F;
   if (F.laser) {
     const ey = w.y - 151 * w.ch.scale, ex = w.x + w.facing * 10;
@@ -3807,6 +3966,7 @@ function drawHUD(g) {
     const keyName = f.isCpu ? '' : game.touch || game.mode === 'online' ? '' : f.side === 0 ? ' (V)' : ' (;)';
     txt(g, full ? 'ULT READY!' + keyName : 'ULT', f.side === 0 ? x + w + 8 : x - 8, y + 6, 14, full ? '#ffd23f' : '#9ab', f.side === 0 ? 'left' : 'right', 3);
   }
+  cxDrawHUD(g);
   // combo counters
   for (let s = 0; s < 2; s++) {
     const c = game.comboText[s]; if (!c) continue;
@@ -4072,9 +4232,10 @@ function moveListFor(i) {
   }
   const finishers = [{ label: 'FATALITY', name: ch.fatality.name, motion: FN.fatality.motion, btn: FN.fatality.btn }];
   if (ch.finisher2) finishers.push({ label: 'FINISHER', name: ch.finisher2.name, motion: ch.finisher2.motion, btn: ch.finisher2.btn });
-  finishers.push({ label: 'ANYONE', name: FN.headChop.label, motion: FN.headChop.motion, btn: FN.headChop.btn });
+  if (ch.finisher3) finishers.push({ label: 'FINISHER', name: ch.finisher3.name, motion: FN.headChop.motion, btn: FN.headChop.btn });
+  else finishers.push({ label: 'ANYONE', name: FN.headChop.label, motion: FN.headChop.motion, btn: FN.headChop.btn });
   const combos = CONFIG.CHAINS.map((c, k) => ({ inputs: c, name: (ch.chains && ch.chains[k] || {}).name || c.join(' ') }));
-  return { ch, basics, specials, combos, ult: { name: ch.ult.name, btn: 'ULT' }, finishers };
+  return { ch, basics, specials, combos, ult: { name: ch.ult.name, btn: 'ULT', note: ch.bloomDef ? 'BLOOM: ULT AT FULL GROWTH' : '' }, finishers };
 }
 /** "↓ → + LP" (game notation, → = toward the opponent). Air versions get a prefix. */
 function specialInput(s, short) { return (s.air ? (short ? 'AIR ' : 'JUMP, THEN ') : '') + motionText(s.motion, s.btn); }
@@ -4169,8 +4330,10 @@ function drawMoveColumn(g, side, x, y, w, h) {
   }
   yy += 1; head('COMBOS  (EACH HIT MUST CONNECT)');
   for (const c of L.combos) { txtC(g, c.inputs.join(' '), X, yy, 15, '#7ff', 'left', 0, 132); txt(g, c.name, NX, yy, 15, '#fff', 'left', 0, w - 162); yy += 15; }
-  yy += 1; txt(g, 'ULTIMATE', X, yy, 15, '#ffd23f', 'left', 2, 132); txt(g, L.ult.name + (k ? '  (FULL METER)' : '  (FULL METER, ULT)'), NX, yy, 15, '#ffd23f', 'left', 0, k ? w - 200 : w - 180);
+  yy += 1; txt(g, 'ULTIMATE', X, yy, 15, '#ffd23f', 'left', 2, 132); { const uw = k ? w - 200 : w - 180, us = [k ? '  (FULL METER)' : '  (FULL METER, ULT)', '  (FULL METER)', ''].find((q) => textWidth(L.ult.name + q, 15) <= uw) || '';
+    txt(g, L.ult.name + us, NX, yy, 15, '#ffd23f', 'left', 0, uw); }
   if (k) txt(g, k.ULT, KX, yy, 15, '#9ab', 'right', 0, 30);
+  if (L.ult.note) { yy += 15; txt(g, L.ult.note, NX, yy, 15, '#5cffb4', 'left', 0, w - 162); }
   yy += 18; head('FINISH THEM!  (LAST ROUND)');
   for (const fin of L.finishers) {
     txtC(g, motionText(fin.motion, fin.btn), X, yy, 15, '#ff8a8a', 'left', 0, 132);
@@ -4196,24 +4359,31 @@ function drawHelp(g, title, showButtons) {
   let y = 60;
   for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txtC(g, b, 160, y, 15, a === 'BALCONY' ? '#9be7ff' : a === 'COMBOS' ? '#ffd23f' : '#fff', 'left', 0, 780); y += lines.length > 5 ? 17 : 19; }
   txtC(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 158, 20, '#ffd23f', 'center', 3);
-  for (let i = 0; i < 4; i++) {
-    const L = moveListFor(i), ch = L.ch, x = 20 + i * 232, inMatch = game.fighters.some((f) => f.chIdx === i);
-    g.fillStyle = inMatch ? 'rgba(255,210,63,0.12)' : 'rgba(255,255,255,0.05)'; g.fillRect(x, 172, 222, 280);
-    g.strokeStyle = inMatch ? '#ffd23f' : '#444'; g.lineWidth = 2; g.strokeRect(x, 172, 222, 280);
-    txt(g, ch.name, x + 111, 190, 22, ch.colors.accent, 'center', 3);
-    let yy = 207;
-    const row = (a, b, ca) => {   // v6: input line + name line, 31px per entry (6 specials + ult fit the box)
-      txtC(g, a, x + 10, yy, 15, ca, 'left', 0, 205);
-      let b2 = '';   // long names wrap onto a second line instead of spilling into the next column
-      if (textWidth(b, 15) > 205) { const cut = Math.max(b.lastIndexOf(' ', 16), b.lastIndexOf('-', 16) + 1); if (cut > 0) { b2 = b.slice(cut).trim(); b = b.slice(0, cut).trim(); } }
-      txt(g, b, x + 10, yy + 15, 15, '#fff', 'left', 0, 205);
-      if (b2) { yy += 15; txt(g, b2, x + 10, yy + 15, 15, '#fff', 'left', 0, 205); }
-      yy += 31;
-    };
-    for (const s of L.specials) row(specialInput(s), s.name, '#7ff');
-    row('ULT (full meter)', L.ult.name, '#ffd23f');
-  }   // v6: the per-fighter finisher names live in the MOVES panel; every fighter uses the same finisher inputs
-  txtC(g, 'FINISH THEM!:  ' + motionText(CONFIG.FINISHERS.fatality.motion, CONFIG.FINISHERS.fatality.btn) + ' or ' + motionText(['D', 'B'], 'HP') + ' = Fatalities    ' + motionText(CONFIG.FINISHERS.headChop.motion, CONFIG.FINISHERS.headChop.btn) + ' = Head Chop (anyone)', 480, 463, 16, '#ff5252', 'center', 3);
+  {   // v7: one table for the whole roster - rows = inputs (shared by everyone), columns = fighters
+    const NC = CHARACTERS.length, Ls = CHARACTERS.map((c, i) => moveListFor(i)), x0 = 16, inW = 118, cw = (928 - inW) / NC, top = 170, rowH = 34;
+    const rows = Object.keys(CONFIG.SPECIAL_MOTIONS).map((slot) => ({ input: specialInput(Ls[0].specials.find((q) => q.slot === slot && !q.air), true),
+      names: Ls.map((L) => (L.specials.find((q) => q.slot === slot && !q.air) || {}).name || '') }));
+    rows.push({ input: 'IN THE AIR', names: Ls.map((L) => { const q = L.specials.find((s) => s.air); return q ? q.name : ''; }), sub: Ls.map((L) => { const q = L.specials.find((s) => s.air); return q ? motionText(q.motion, q.btn) : ''; }) });
+    rows.push({ input: 'ULT', names: Ls.map((L) => L.ult.name), col: '#ffd23f' });
+    g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x0, top, 928, 26 + rows.length * rowH);
+    for (let i = 0; i < NC; i++) {
+      const x = x0 + inW + i * cw, inMatch = game.fighters.some((f) => f.chIdx === i);
+      if (inMatch) { g.fillStyle = 'rgba(255,210,63,0.12)'; g.fillRect(x, top, cw, 26 + rows.length * rowH); }
+      g.fillStyle = '#333'; g.fillRect(x, top, 1, 26 + rows.length * rowH);
+      txt(g, CHARACTERS[i].name.split(' ')[0], x + cw / 2, top + 13, 15, CHARACTERS[i].colors.accent, 'center', 3, cw - 6);
+    }
+    rows.forEach((r, k) => {
+      const y = top + 26 + k * rowH;
+      g.fillStyle = '#333'; g.fillRect(x0, y, 928, 1);
+      txtC(g, r.input, x0 + 6, y + rowH / 2, 15, r.col || '#7ff', 'left', 0, inW - 8);
+      r.names.forEach((nm, i) => {
+        const lines = r.sub ? [nm] : wrapWords(nm, 15, cw - 8).slice(0, 2), x = x0 + inW + i * cw + cw / 2;
+        lines.forEach((ln, j) => txt(g, ln, x, y + rowH / 2 + (j - (lines.length - 1) / 2) * 15 - (r.sub ? 7 : 0), 15, r.col ? '#ffd23f' : '#fff', 'center', 0, cw - 6));
+        if (r.sub) txtC(g, r.sub[i], x, y + rowH / 2 + 8, 15, '#7ff', 'center', 0, cw - 6);
+      });
+    });
+  }
+  txtC(g, 'FINISH THEM!:  ' + motionText(CONFIG.FINISHERS.fatality.motion, CONFIG.FINISHERS.fatality.btn) + ' / ' + motionText(['D', 'B'], 'HP') + ' = Fatalities    ' + motionText(CONFIG.FINISHERS.headChop.motion, CONFIG.FINISHERS.headChop.btn) + ' = Head Chop / 3rd finisher', 480, 463, 15, '#ff5252', 'center', 3);
   if (showButtons) {
     g.fillStyle = '#1f9e3a'; g.fillRect(300, 472, 170, 44); g.fillStyle = '#c0392b'; g.fillRect(490, 472, 170, 44);
     txt(g, 'RESUME', 385, 495, 22, '#fff', 'center', 3); txt(g, 'QUIT', 575, 495, 22, '#fff', 'center', 3);
@@ -4238,12 +4408,12 @@ function drawTitle(g) {
   g.restore();
   drawParticles(g);
   // the roster lines up
-  const xs = [190, 370, 590, 770];
-  for (let i = 0; i < 4; i++) {
+  const NC = CHARACTERS.length, xs = NC > 4 ? [100, 236, 372, 588, 724, 860] : [190, 370, 590, 770];
+  for (let i = 0; i < NC; i++) {
     const bob = Math.sin(t * 0.08 + i) * 1.5;
     const pose = P({ drop: 4 + bob, fa2: 1.9 + Math.sin(t * 0.08 + i) * 0.1 });
     drawShadow(g, xs[i], 40);
-    drawCharacter(g, i, xs[i], CONFIG.GROUND_Y + 40, i < 2 ? 1 : -1, pose, { mult: 1 });
+    drawCharacter(g, i, xs[i], CONFIG.GROUND_Y + 40, i < NC / 2 ? 1 : -1, pose, { mult: NC > 4 ? 0.92 : 1 });
   }
   const sh = g.createLinearGradient(0, 380, 0, 540); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.6)');
   g.fillStyle = sh; g.fillRect(0, 380, 960, 160);
@@ -4251,7 +4421,7 @@ function drawTitle(g) {
   txt(g, 'A FAMILY FEUD OF FISTS', 480, 262, 20, '#ff8a8a', 'center', 3);
   if (Math.floor(t / 30) % 2 === 0) txt(g, game.touch ? 'TAP TO START' : 'PRESS ENTER TO START', 480, 304, 26, '#fff', 'center', 4);
   txt(g, 'N = MUSIC ON/OFF', 940, 16, 13, '#9ab', 'right', 0);
-  txt(g, 'MIERDA MAN  \u2022  GROK GIRL  \u2022  CYCLONE  \u2022  EDITOR', 480, 526, 14, '#ffd23f', 'center', 3);
+  txt(g, CHARACTERS.map((c) => c.name).join('  \u2022  '), 480, 526, 14, '#ffd23f', 'center', 3);
 }
 function drawSelect(g) {
   const s = game.sel, t = game.frame;
@@ -4265,7 +4435,7 @@ function drawSelect(g) {
   txt(g, (game.mode === 'online' ? '' : '\u25C0 ') + 'MODE: ' + (game.arcade ? 'ARCADE' : game.mode === 'cpu' ? '1P VS CPU' : game.mode === 'online' ? 'ONLINE 1V1' : '2 PLAYERS') + (game.mode === 'online' ? '' : ' \u25B6'), 320, 82, 18, '#fff', 'center', 3);
   txt(g, '\u25C0 STAGE: ' + (game.stageChoice < 0 ? 'RANDOM' : STAGES[game.stageChoice].name) + ' \u25B6', 640, 82, 18, '#fff', 'center', 3, 290);
   txt(g, '\u25C0 BACK', 20, 30, 15, '#aaa', 'left', 3);
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < CHARACTERS.length; i++) {
     const c = cardRect(i), ch = CHARACTERS[i];
     const cg = g.createLinearGradient(0, c.y, 0, c.y + c.h);
     cg.addColorStop(0, shade(ch.colors.main2, 0.15)); cg.addColorStop(1, shade(ch.colors.main, -0.5));
@@ -4274,16 +4444,23 @@ function drawSelect(g) {
     const p1Here = s.p1 === i, p2Here = s.p2 === i;
     const hover = (p1Here && !s.p1Done) || (p2Here && (game.mode !== 'cpu' ? !s.p2Done : s.p1Done && !s.p2Done));
     const pose = hover ? P({ fa: 1.57, fa2: 0, lean: 0.12, drop: 4 + Math.sin(t * 0.1) * 2 }) : P({ drop: 4 + Math.sin(t * 0.06 + i) * 1.5 });
-    drawCharacter(g, i, c.x + c.w / 2 - 6, c.y + 262, 1, pose, { mult: 1.12 });
+    const narrow = c.w < 160;
+    drawCharacter(g, i, c.x + c.w / 2 - 6, c.y + (narrow ? 266 : 262), 1, pose, { mult: narrow ? 0.78 : 1.12 });
     g.restore();
-    txt(g, ch.name, c.x + c.w / 2, c.y + 280, 22, ch.colors.accent, 'center', 4, c.w);
-    ch.tagline.split(' - ').forEach((part, k) => txt(g, part, c.x + c.w / 2, c.y + 14 + k * 16, 12, '#fff', 'center', 3, c.w - 6));
+    // a name too wide for a narrow card goes on two lines (TAKATA / JACKSON)
+    const nl = narrow && textWidth(ch.name, 22) > c.w - 6 && ch.name.includes(' ') ? [ch.name.slice(0, ch.name.indexOf(' ')), ch.name.slice(ch.name.indexOf(' ') + 1)] : [ch.name];
+    nl.forEach((ln, k) => txt(g, ln, c.x + c.w / 2, c.y + 280 + (k - (nl.length - 1) / 2) * 15, 22, ch.colors.accent, 'center', 4, c.w));
+    // narrow cards (6-fighter roster): just the first tagline part, word-wrapped to 2 lines, then compact stat bars
+    const tl = narrow ? wrapWords(ch.tagline.split(' - ')[0], 12, c.w - 10).slice(0, 2) : ch.tagline.split(' - ');
+    tl.forEach((part, k) => txt(g, part, c.x + c.w / 2, c.y + (narrow ? 12 + k * 16 : 14 + k * 16), 12, '#fff', 'center', 3, c.w - 6));
     // stat pips
     const stats = [['PWR', ch.power / 1.1], ['SPD', ch.walk / 5.4], ['HP', ch.maxHp / 110]];
+    const sy = narrow ? c.y + 14 + tl.length * 16 : c.y + 48, sg = narrow ? 14 : 16;
     stats.forEach(([n, v], k) => {
-      txt(g, n, c.x + 10, c.y + 52 + k * 16, 10, '#ccc', 'left', 0);
-      g.fillStyle = '#000'; g.fillRect(c.x + 50, c.y + 48 + k * 16, 84, 8);
-      g.fillStyle = ch.colors.accent; g.fillRect(c.x + 50, c.y + 48 + k * 16, Math.round(84 * v / 2) * 2, 8);
+      txt(g, n, c.x + 10, sy + 4 + k * sg, 10, '#ccc', 'left', 0);
+      const bw = Math.min(84, c.w - 58), bh = narrow ? 6 : 8;
+      g.fillStyle = '#000'; g.fillRect(c.x + 50, sy + k * sg, bw, bh);
+      g.fillStyle = ch.colors.accent; g.fillRect(c.x + 50, sy + k * sg, Math.round(bw * Math.min(1, v) / 2) * 2, bh);
     });
     // cursors
     g.lineWidth = 5;
@@ -4299,10 +4476,14 @@ function drawSelect(g) {
   g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(40, 424, 880, 56);
   txt(g, ch.name + ':', 52, 440, 16, ch.colors.accent, 'left', 0);
   const mv = (q) => specialInput(q, true) + ' ' + q.name, grd = ML.specials.filter((q) => !q.air);
-  txtC(g, grd.slice(0, 3).map(mv).join('  '), 190, 440, 15, '#fff', 'left', 0, 720);
-  let l2 = [...grd.slice(3), ...ML.specials.filter((q) => q.air)].map(mv).concat(['ULT: ' + ML.ult.name]).join('   ');
-  if (textWidth(l2 + '    FATALITY: ' + ML.finishers[0].name, 15) <= 720) l2 += '    FATALITY: ' + ML.finishers[0].name;
-  txtC(g, l2, 190, 464, 15, '#ffd23f', 'left', 0, 720);
+  txtC(g, grd.slice(0, 3).map(mv).join('  '), Math.max(190, 52 + textWidth(ch.name + ':', 16) + 14), 440, 15, '#fff', 'left', 0, 910 - Math.max(190, 52 + textWidth(ch.name + ':', 16) + 14));
+  const mx = Math.max(190, 52 + textWidth(ch.name + ':', 16) + 14), mw = 910 - mx;
+  // v7: add items to the 2nd line only while they fit (long names used to run off the right edge)
+  let l2 = '';
+  for (const it of [...grd.slice(3), ...ML.specials.filter((q) => q.air)].map(mv).concat(['ULT: ' + ML.ult.name, 'FATALITY: ' + ML.finishers[0].name])) {
+    const t = l2 ? l2 + '   ' + it : it; if (textWidth(t, 15) > mw) break; l2 = t;
+  }
+  txtC(g, l2, mx, 464, 15, '#ffd23f', 'left', 0, mw);
   // instructions
   let hint;
   const meDone = Net.role === 'guest' ? s.p2Done : s.p1Done;
@@ -4330,14 +4511,15 @@ function drawFight(g) {
   drawStageBG(g, game.stageIdx, camNow());   // wide stage: far layer (parallax) + near layer + animated details
   for (const d of game.decals) { g.fillStyle = d.color; g.globalAlpha = 0.8; g.beginPath(); g.ellipse(d.x, d.y, d.r * 1.6, d.r * 0.5, 0, 0, Math.PI * 2); g.fill(); }
   g.globalAlpha = 1;
-  for (const e of game.entities) if (e.type === 'cloud' || e.type === 'tornado') drawEntity(g, e);
+  cxDrawGround(g);
+  for (const e of game.entities) if (e.type === 'cloud' || e.type === 'tornado' || CX_BACK.has(e.type)) drawEntity(g, e);
   for (const T of game.toilets) drawToilet(g, T, 'back');
   const fs = [...game.fighters].sort((a, b) => (a.move ? 1 : 0) - (b.move ? 1 : 0));
   for (const f of fs) if (!f.hidden) drawShadow(g, f.x, f.state === 'ko' ? 80 : 34 * f.ch.girth * f.ch.scale, shadowYFor(f));
   for (const f of fs) drawFighter(g, f);
   for (const T of game.toilets) drawToilet(g, T, 'front');
   drawHeads(g);
-  for (const e of game.entities) if (e.type !== 'cloud' && e.type !== 'tornado') drawEntity(g, e);
+  for (const e of game.entities) if (e.type !== 'cloud' && e.type !== 'tornado' && !CX_BACK.has(e.type)) drawEntity(g, e);
   for (const f of game.fighters) drawMoveFX(g, f);
   gkDrawTrap(g);
   drawParticles(g);
@@ -4349,6 +4531,7 @@ function drawFight(g) {
   if (game.fatal && game.fatal.sepia) { g.fillStyle = 'rgba(112,66,20,0.45)'; g.fillRect(0, 0, 960, 540); }
   if (game.filmStrip > 0) drawFilmStrip(g);
   if (game.edFx) drawEdFx(g);
+  cxDrawOverlay(g);
   if (game.flash > 0) { g.fillStyle = `rgba(255,255,255,${game.flash / 12})`; g.fillRect(0, 0, 960, 540); }
   if (game.cinematic) {
     const c = game.cinematic, k = Math.min(1, c.t / 8);
@@ -5159,7 +5342,7 @@ const Net = {
       RemotePad.held = m.h || {};
       for (const b of m.p || []) RemotePad.pressed.push(b);
     } else if (m.t === 'pick' && game.state === 'select') {
-      const s = game.sel; if (!s.p2Done && m.i >= 0 && m.i < 4) { s.p2 = m.i; selectConfirm(2); }
+      const s = game.sel; if (!s.p2Done && m.i >= 0 && m.i < CHARACTERS.length) { s.p2 = m.i; selectConfirm(2); }
     } else if (m.t === 'bye') this.fail('lost');
   },
   sendSnap() {
@@ -7548,7 +7731,7 @@ const TV = {
     if (!S.connected) { S.connected = true; Sound.play('confirm'); }
     const pad = this.pads[i];
     if (m.t === 'in') { pad.held = m.h || {}; for (const b of m.p || []) pad.pressed.push(b); }
-    else if (m.t === 'pick' && game.state === 'select' && game.sel && m.i >= 0 && m.i < 4) {
+    else if (m.t === 'pick' && game.state === 'select' && game.sel && m.i >= 0 && m.i < CHARACTERS.length) {
       const s = game.sel; if (i === 0 && !s.p1Done) { s.p1 = m.i; selectConfirm(1); } else if (i === 1 && !s.p2Done) { s.p2 = m.i; selectConfirm(2); }
       this.send(i, true);
     } else if (m.t === 'unpick' && game.state === 'select') { selectBack(i + 1); this.send(i, true); }
@@ -7821,7 +8004,8 @@ const Pad = {
     TouchPad.stick = null; TouchPad.arrows.clear(); TouchPad.fingers.clear(); for (const k in TouchPad.held) TouchPad.held[k] = false;
     Sound.play('select');
   },
-  selBtns() { return [0, 1, 2, 3].map((i) => ({ id: 'ch' + i, i, x: 60 + (i % 2) * 430, y: 150 + ((i / 2) | 0) * 150, w: 410, h: 130, label: CHARACTERS[i].name })); },
+  selBtns() { const n = CHARACTERS.length, rows = Math.ceil(n / 2), h = rows > 2 ? 92 : 130, step = rows > 2 ? 104 : 150, y0 = rows > 2 ? 124 : 150;
+    return CHARACTERS.map((c, i) => ({ id: 'ch' + i, i, x: 60 + (i % 2) * 430, y: y0 + ((i / 2) | 0) * step, w: 410, h, label: c.name })); },
   tap(p) {
     const v = this.view(), T = this.tv;
     if (this.moves) { if (p.y > 470) { this.moves = false; game.movesOpen = false; } return; }
@@ -7905,8 +8089,8 @@ const Pad = {
       for (const b of this.selBtns()) {
         const ch = CHARACTERS[b.i];
         drawButton(g, { ...b, label: '' }, b.i === cur, ch.colors.accent);
-        txt(g, ch.name, b.x + b.w / 2, b.y + 50, 34, ch.colors.accent, 'center', 4, b.w - 20);
-        const ML = moveListFor(b.i); txtC(g, 'ULT: ' + ML.ult.name, b.x + b.w / 2, b.y + 96, 15, '#ddd', 'center', 0, b.w - 24);
+        txt(g, ch.name, b.x + b.w / 2, b.y + (b.h < 120 ? 34 : 50), b.h < 120 ? 30 : 34, ch.colors.accent, 'center', 4, b.w - 20);
+        const ML = moveListFor(b.i); txtC(g, 'ULT: ' + ML.ult.name, b.x + b.w / 2, b.y + (b.h < 120 ? 70 : 96), 15, '#ddd', 'center', 0, b.w - 24);
       }
       txt(g, 'OR USE \u2190 \u2192 AND LP', 480, 525, 15, '#9ab', 'center', 0);
       return;
@@ -8202,7 +8386,7 @@ function gkDrawTrap(g) {
 }
 
 /* ---------- state snapshots ---------- */
-const SNAP_SKIP_F = new Set(['ch', 'brain', 'dims', 'aiHeld', 'queued', 'move', 'hist', 'lastBase', 'chainSeq']);
+const SNAP_SKIP_F = new Set(['ch', 'brain', 'dims', 'aiHeld', 'queued', 'move', 'hist', 'lastBase', 'chainSeq', 'curHeld']);
 function encVal(v, depth = 0) {
   if (v === null || v === undefined) return v;
   if (typeof v === 'number') return Number.isInteger(v) ? v : Math.round(v * 100) / 100;
@@ -8221,12 +8405,12 @@ function decVal(v) {
   if ('$c' in v) return CHARACTERS[v.$c];
   const o = {}; for (const k in v) o[k] = decVal(v[k]); return o;
 }
-const SNAP_KEYS = ['camX', 'slab', 'toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'zoomPunch', 'edFx', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
+const SNAP_KEYS = ['camX', 'slab', 'toilets', 'adlibs', 'state', 'stateT', 'mode', 'sel', 'round', 'wins', 'timer', 'entities', 'decals', 'heads', 'texts', 'comboText', 'flash', 'tint', 'xray', 'cinematic', 'filmStrip', 'zoomPunch', 'edFx', 'cxTent', 'cxGrowth', 'winner', 'loser', 'fatal', 'result', 'titleT', 'stageIdx'];
 function encodeSnapshot() {
   const s = { t: 'snap', fr: game.frame, sfx: Net.sfx.slice(), voice: Net.voice.slice(), shake: Math.round(game.shake) };
   s.F = game.fighters.map((f) => {
     const o = {}; for (const k in f) if (!SNAP_SKIP_F.has(k)) { const e = encVal(f[k]); if (e !== undefined) o[k] = e; }
-    if (f.move) { const m = f.move, d = m.def; o.move = { def: { pose: d.pose, type: d.type, startup: d.startup, active: d.active, recovery: d.recovery, radius: d.radius }, kind: m.kind, btn: m.btn, frame: m.frame, hit: m.hit, data: encVal({ beam: m.data.beam, arc: m.data.arc, landedAt: m.data.landedAt, gk: m.data.gk }) }; }
+    if (f.move) { const m = f.move, d = m.def; o.move = { def: { pose: d.pose, type: d.type, startup: d.startup, active: d.active, recovery: d.recovery, radius: d.radius }, kind: m.kind, btn: m.btn, frame: m.frame, hit: m.hit, data: encVal({ beam: m.data.beam, arc: m.data.arc, landedAt: m.data.landedAt, cx: m.data.cx, gk: m.data.gk }) }; }
     else o.move = null;
     return o;
   });
@@ -8308,7 +8492,9 @@ function submitJoin() {
  *     three CPU fighters (each one tougher), then the final BOSS.
  *     Lose a fight and you can CONTINUE (retry the same opponent).
  * ===================================================================== */
-const ARCADE_LEVELS = [0.32, 0.55, 0.78];
+const ARCADE_LEVELS = [0.28, 0.42, 0.55, 0.67, 0.8];
+const ARCADE_LABELS = ['EASY', 'EASY+', 'MEDIUM', 'HARD', 'HARDER'];
+const BOSS_STAGE = 3;   // the boss always fights on the STUDIO BACKLOT
 const BOSS = { name: 'SHADOW KING', hp: 1.75, power: 1.35, scale: 1.3, walk: 1.1, level: 0.95, filter: 'hue-rotate(165deg) saturate(1.7) contrast(1.2) brightness(0.85)' };
 const BASE_CPU_LEVEL = CONFIG.CPU_LEVEL;
 const Arcade = {
@@ -8316,7 +8502,7 @@ const Arcade = {
   open() { game.arcade = { started: false, idx: 0, ladder: [], continues: 0, p1: 0, won: false, cd: 0 }; game.mode = 'cpu'; openSelect(); },
   active() { return !!(game.arcade && game.arcade.started); },
   begin(p1) {
-    const others = [0, 1, 2, 3].filter((i) => i !== p1);
+    const others = CHARACTERS.map((c, i) => i).filter((i) => i !== p1);
     for (let i = others.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [others[i], others[j]] = [others[j], others[i]]; }
     const A = game.arcade;
     A.started = true; A.p1 = p1; A.idx = 0; A.continues = 0; A.won = false;
@@ -8328,7 +8514,7 @@ const Arcade = {
   fight() {
     const A = game.arcade, r = Arcade.current();
     CONFIG.CPU_LEVEL = r.level;
-    game.stageIdx = r.boss ? STAGES.length - 1 : (Math.random() * STAGES.length) | 0;
+    game.stageIdx = r.boss ? BOSS_STAGE : (Math.random() * STAGES.length) | 0;
     startMatch(A.p1, r.ch, 'cpu');
     if (r.boss) {
       const f = game.fighters[1], base = CHARACTERS[r.ch];
@@ -8382,18 +8568,18 @@ function drawLadder(g) {
   txt(g, 'ARCADE', 480, 40, 40, '#ffd23f', 'center', 5);
   txt(g, 'FIGHT ' + (A.idx + 1) + ' OF ' + A.ladder.length + (A.continues ? '   \u2022   CONTINUES USED: ' + A.continues : ''), 480, 76, 16, '#fff', 'center', 3);
   // the tower: first opponent at the bottom, boss on top
-  const n = A.ladder.length, tx = 560, tw = 330, rh = 84, top = 100;
+  const n = A.ladder.length, tx = 560, tw = 330, rh = n > 4 ? 60 : 84, top = 100;
   for (let i = 0; i < n; i++) {
     const rung = A.ladder[i], y = top + (n - 1 - i) * (rh + 2), done = i < A.idx, cur = i === A.idx;
     g.fillStyle = '#000'; g.fillRect(tx - 3, y - 3, tw + 6, rh + 6);
     g.fillStyle = cur ? (rung.boss ? '#4a0a0a' : '#5a2a10') : done ? '#1a2a1a' : '#241638'; g.fillRect(tx, y, tw, rh);
     if (cur) { g.fillStyle = rung.boss ? '#ff2a2a' : '#ffd23f'; g.fillRect(tx, y, tw, 4); g.fillRect(tx, y + rh - 4, tw, 4); }
     g.save(); g.beginPath(); g.rect(tx, y, 110, rh); g.clip();
-    if (rung.boss) drawBossPortrait(g, rung.ch, tx + 55, y + 235, 1.25);
-    else drawCharacter(g, rung.ch, tx + 55, y + 200, -1, P({ drop: 4 }), { mult: 1.05 });
+    if (rung.boss) drawBossPortrait(g, rung.ch, tx + 55, y + rh * (rh < 70 ? 2.62 : 2.8), 1.25 * rh / 84);
+    else drawCharacter(g, rung.ch, tx + 55, y + rh * (rh < 70 ? 2.2 : 2.38), -1, P({ drop: 4 }), { mult: 1.05 * rh / 84 });
     g.restore();
-    txt(g, rung.boss ? BOSS.name : CHARACTERS[rung.ch].name, tx + 220, y + 34, 22, rung.boss ? '#ff5252' : '#fff', 'center', 3, 200);
-    txt(g, done ? 'DEFEATED \u2714' : rung.boss ? 'FINAL BOSS' : ['EASY', 'MEDIUM', 'HARD'][i] || '', tx + 220, y + 62, 14, done ? '#7dff7a' : rung.boss ? '#ff8a8a' : '#bbb', 'center', 0);
+    txt(g, rung.boss ? BOSS.name : CHARACTERS[rung.ch].name, tx + 220, y + rh * 0.4, rh < 70 ? 20 : 22, rung.boss ? '#ff5252' : '#fff', 'center', 3, 200);
+    txt(g, done ? 'DEFEATED \u2714' : rung.boss ? 'FINAL BOSS' : ARCADE_LABELS[i] || '', tx + 220, y + rh * 0.74, 14, done ? '#7dff7a' : rung.boss ? '#ff8a8a' : '#bbb', 'center', 0);
     if (cur && (t >> 4) % 2 === 0) txt(g, '\u25B6', tx - 22, y + rh / 2, 28, '#ffd23f', 'center', 3);
   }
   // you vs them
@@ -8435,7 +8621,7 @@ function drawArcadeEnd(g) {
 
 /* ---------- mode select / lobby / controls screens ---------- */
 const MODE_BTNS = [
-  { id: 'arcade', x: 200, y: 180, w: 560, h: 62, label: 'ARCADE', sub: '1 player: beat all 3 fighters, then the BOSS' },
+  { id: 'arcade', x: 200, y: 180, w: 560, h: 62, label: 'ARCADE', sub: '1 player: beat all 5 fighters, then the BOSS' },
   { id: 'online', x: 200, y: 250, w: 560, h: 62, label: 'OWN DEVICES', sub: 'Each player on their own phone, tablet or PC' },
   { id: 'shared', x: 200, y: 320, w: 560, h: 62, label: 'SHARED KEYBOARD', sub: 'Two players on one computer (works offline)' },
   { id: 'tv', x: 200, y: 390, w: 272, h: 62, label: 'TV MODE', sub: 'Big screen + phone pads' },
@@ -8638,6 +8824,1069 @@ function frame(now) {
   } catch (err) { console.error(err); acc = 0; }
   requestAnimationFrame(frame);
 }
+/* =====================================================================
+ * 22. v7 FIGHTERS: CLOWNY (creepy-fun circus clown) and TAKATA JACKSON (nature wielder)
+ *     Move handlers, world objects, status effects, finishers, sounds, HUD bits and the BIG TOP stage.
+ *     Everything here is cartoony: confetti, stars, sparks, petals and leaves (no blood, no bones).
+ * ===================================================================== */
+const CX_CONFETTI = ['#ff3b3b', '#ffd23f', '#3d8ff0', '#7dff7a', '#ff8ad8', '#ffffff'];
+const CX_LEAF = ['#2f6b35', '#5aa04a', '#8ad04a', '#1d4a2a'];
+const CX_PETAL = ['#c77dff', '#ff8ad8', '#e8b0ff', '#ffffff'];
+const CX_PAL = [...CX_CONFETTI, ...CX_LEAF, ...CX_PETAL, '#fff3d6', '#f2d8a0', '#c8945a', '#e8202a', '#2f6fd0', '#c0392b', '#f3e9c6', '#8a1a1a',
+  '#2a0f1a', '#120a1a', '#3a1420', '#5a1622', '#7a2030', '#c77dff', '#e8ff6b', '#7a4a1e', '#5a3a20', '#3a2414', '#7a7660', '#a29e80', '#4a4838', '#9aa0a8',
+  '#5cffb4', '#2a5fb8', '#d8cba0', '#f4f1e6', '#b0101a', '#3a1a5a', '#6b3e1f', '#2f6b35', '#3a7a3a', '#a8784a', '#8a5a34', '#ffe9a8'];
+DPAD_PAL_EXTRA.push(...CX_PAL);
+let cxSeedFlip = false;
+
+/* ---------- small helpers ---------- */
+function cxConfetti(x, y, n = 24, spread = 7) {
+  for (let i = 0; i < n; i++) { const a = rand(0, Math.PI * 2), v = rand(1, spread); spawnParticle({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: rand(30, 60) | 0, size: rand(3, 6), color: pick(CX_CONFETTI), grav: 0.18, type: 'pixel' }); }
+}
+function cxLeaves(x, y, n = 14, spread = 5, cols = CX_LEAF) {
+  for (let i = 0; i < n; i++) { const a = rand(0, Math.PI * 2), v = rand(1, spread); spawnParticle({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, life: rand(26, 50) | 0, size: rand(3, 6), color: pick(cols), grav: 0.12, type: 'pixel' }); }
+}
+function cxStars(x, y, n = 6) { for (let i = 0; i < n; i++) spawnParticle({ x, y, vx: rand(-4, 4), vy: rand(-5, 1), life: 18, size: rand(2, 4), color: pick(['#ffd23f', '#ffffff', '#ffe9a8']), type: 'spark' }); }
+/** Damage over time (stuck pin, thorn patch, laughing gas, vines): no hit-stun, no blood, just sparks/stars. */
+function cxDot(att, def, dmg) {
+  if (game.state !== 'fight' || !def || def.state === 'ko' || def.hp <= 0 || def.invuln > 0) return;
+  const d = dmg * att.ch.power * (def.pied > 0 ? 1.25 : 1);
+  def.hp = Math.max(0, def.hp - d); def.flash = 2;
+  att.meter = Math.min(CONFIG.METER_MAX, att.meter + d * CONFIG.METER_GAIN_DEAL);
+  cxStars(def.x, def.centerY() - 30, 4);
+  if (def.hp <= 0) onKO(att, def);
+}
+/** Takata's GROWTH meter (fills on plant hits and while the opponent stands in her vines / thorns). */
+function cxGrow(f, n) {
+  if (!f || !f.ch.bloomDef || f.bloom > 0 || f.growth >= 100) return;
+  f.growth = Math.min(100, (f.growth || 0) + n);
+  if (f.growth >= 100) { addText('BLOOM READY!', { x: f.x, y: f.y - 250 * f.ch.scale, size: 22, color: '#5cffb4', dur: 60, rise: 0.5 }); Sound.play('tk_bloom'); }
+}
+function cxInOver(f) { return game.entities.some((e) => e.type === 'tkover' && e.owner === f && Math.abs(f.x - e.x) < e.half); }
+function cxPinTick(f) {
+  f.pin--;
+  if (f.pin % 30 === 0) { const by = f.pinBy || f.opp; if (by) cxDot(by, f, 1); Sound.play('cl_juggle'); }
+}
+
+/* ---------- MOVE HANDLERS ---------- */
+Object.assign(MOVE_HANDLERS, {
+  /** CLOWNY - Balloon Bomb: hold LP to blow it up bigger (slower, longer fuse); pops into a cluster of mini balloon bombs. */
+  clBalloon: {
+    update(f, m) {
+      const d = m.def, S = f.ch.scale;
+      if (m.frame === 1) { m.data.ch = 0; m.data.cpuCh = f.isCpu ? (Math.random() < 0.45 ? 0 : (Math.random() * d.charge) | 0) : 0; }
+      const holding = f.isCpu ? m.data.ch < m.data.cpuCh : !!(f.curHeld && f.curHeld.LP);
+      if (m.frame === d.startup - 1 && holding && m.data.ch < d.charge) { m.data.ch++; m.frame--; if (m.data.ch % 7 === 0) Sound.play('cl_squeak'); }
+      const k = m.data.ch / d.charge;
+      m.data.cx = m.frame < d.startup ? { kind: 'inflate', s: (0.35 + 0.65 * m.frame / d.startup) * (1 + k * 0.7) } : null;
+      if (m.frame === d.startup) {
+        game.entities.push({ type: 'clballoon', owner: f, x: f.x + f.facing * 64 * S, y: f.y - 170 * S, vx: f.facing * (4.4 - k * 1.8), vy: -0.25,
+                             size: 1 + k * 0.7, fuse: 62 + Math.round(k * 46), t: 0, threat: true, dmg: d.dmg });
+        Sound.play('cl_squeak');
+      }
+    },
+  },
+  /** CLOWNY (air) - Circus Cannon: a mini cannon fires him UP, FORWARD or DOWN (hold the direction); down homes onto their head. */
+  clCannon: {
+    total(m) { return m.data.landedAt ? m.data.landedAt + m.def.recovery : 9999; },
+    update(f, m, opp) {
+      const d = m.def, S = f.ch.scale, h = f.curHeld || {};
+      if (m.frame < d.startup) { f.vy = Math.min(f.vy, 0) * 0.3; f.vx *= 0.5; m.data.cx = { kind: 'cannon', t: m.frame }; }
+      if (m.frame === d.startup) {
+        const aim = f.isCpu ? (Math.abs(opp.x - f.x) < 260 ? 'down' : 'fwd') : h.up ? 'up' : h.down ? 'down' : 'fwd';
+        m.data.aim = aim; m.data.cx = null;
+        if (aim === 'up') { f.vx = f.facing * 3.5; f.vy = -15; }
+        else if (aim === 'down') { f.vx = clamp((opp.x - f.x) / 20, -10, 10); f.vy = -5; }
+        else { f.vx = f.facing * 11; f.vy = -5.5; }
+        Sound.play('cl_cannon'); smokePuff(f.x - f.facing * 30, f.y - 60 * S); game.shake = Math.max(game.shake, 5);
+      }
+      if (m.frame >= d.startup && !m.data.landedAt) {
+        f.spinX = m.hit ? 1 : Math.cos(m.frame * 0.7);
+        if (m.frame % 2 === 0) spawnParticle({ x: f.x + rand(-14, 14), y: f.y - rand(30, 120) * S, vx: -f.vx * 0.3, vy: -f.vy * 0.2, life: 18, size: rand(10, 18), color: 'rgba(200,200,210,0.6)', type: 'smoke' });
+        const box = { x: f.x - 36 * S, y: f.y - 170 * S, w: 72 * S, h: 170 * S };
+        if (!m.hit && opp.invuln <= 0 && overlap(box, opp.hurtbox())) {
+          const onHead = f.vy > 0 && f.y < opp.y - 140 * opp.ch.scale;
+          const r = applyHit(f, opp, { dmg: onHead ? d.dmg + 3 : d.dmg, hitstun: onHead ? 34 : 20, blockstun: 12, kb: onHead ? 2 : 7, kbY: onHead ? 0 : -4, chip: true, heavy: true, noBlood: true });
+          if (r) {
+            m.hit = true; f.spinX = 1;
+            if (onHead) { f.vy = -11; f.vx = -f.facing * 2; if (r === 'hit') { addText('BONK!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 30, color: '#ffd23f', dur: 40, rise: 0.6 }); Sound.play('cl_honk'); cxStars(opp.x, opp.y - 210 * opp.ch.scale, 10); } }
+            else { f.vx = -f.facing * 3; f.vy = -6; }
+          }
+        }
+        if (f.grounded && f.vy >= 0 && m.frame > d.startup) { m.data.landedAt = m.frame; f.vx = 0; f.spinX = 1; }
+      }
+    },
+  },
+  /** CLOWNY - Unicycle Charge: a dash on a unicycle. Press UP to hop off into a jump, or a KICK for a spinning kick (launcher). */
+  clUni: {
+    total(m) { return m.data.spin ? m.data.spin + 21 : m.def.startup + m.def.active + m.def.recovery; },
+    update(f, m, opp) {
+      const d = m.def, S = f.ch.scale, h = f.curHeld || {};
+      if (m.frame === 1) m.data.prevKick = true;
+      if (m.data.spin) {
+        const k = m.frame - m.data.spin;
+        f.spinX = Math.cos(k * 0.9); f.vx *= 0.85; f.liftY = Math.max(0, (f.liftY || 0) - 6); m.data.cx = null;
+        if (!m.data.spunHit && k > 3 && k < 14 && opp.invuln <= 0 && overlap(f.worldBox({ x: -24, y: -200, w: 130, h: 150 }), opp.hurtbox())) {
+          const r = applyHit(f, opp, { dmg: 6, hitstun: 30, blockstun: 12, kb: 6, kbY: -10, chip: true, heavy: true, noBlood: true });
+          if (r) { m.data.spunHit = true; cxConfetti(opp.x, opp.centerY(), 12); }
+        }
+        if (k >= 20) { f.move = null; f.spinX = 1; f.liftY = 0; }
+        return;
+      }
+      if (m.frame <= d.startup) { f.liftY = Math.min(46, m.frame * 8); m.data.cx = { kind: 'uni' }; return; }
+      if (inActive(m)) {
+        m.data.cx = { kind: 'uni', roll: m.frame };
+        f.vx = m.hit ? f.vx * 0.7 : f.facing * d.speed; f.liftY = 46;
+        const kick = !!(h.LK || h.HK), newKick = kick && !m.data.prevKick; m.data.prevKick = kick;
+        if (f.isCpu && !m.data.cpuPlan) m.data.cpuPlan = 1;
+        if (f.isCpu && m.hit && m.data.cpuPlan === 1) m.data.cpuPlan = Math.random() < 0.55 ? 'spin' : 2;
+        if ((h.up && !f.isCpu && m.frame > d.startup + 3) || (f.isCpu && !m.hit && m.frame === d.startup + d.active - 2 && Math.random() < 0.2)) {
+          f.move = null; f.liftY = 0; f.vy = -f.ch.jump; f.vx = f.facing * 6; f.state = 'jump'; Sound.play('jump');
+          addText('HOP!', { x: f.x, y: f.y - 230 * S, size: 20, color: '#ffd23f', dur: 30, rise: 0.6 }); return;
+        }
+        if ((newKick && !f.isCpu) || m.data.cpuPlan === 'spin') { m.data.spin = m.frame; Sound.play('whoosh'); return; }
+        if (!m.hit && opp.invuln <= 0 && overlap(f.worldBox(d.box), opp.hurtbox())) {
+          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: 24, blockstun: 14, kb: 7, kbY: -4, chip: true, heavy: true, noBlood: true });
+          if (r) { m.hit = true; Sound.play('cl_honk'); }
+        }
+      } else { f.liftY = Math.max(0, (f.liftY || 0) - 8); m.data.cx = f.liftY > 0 ? { kind: 'uni' } : null; f.vx *= 0.8; }
+    },
+  },
+  /** CLOWNY - Laughing Gas: sprayed from his lapel flower; slows, may reverse a player's controls, or makes them laugh (can't attack or block). */
+  clGas: {
+    update(f, m) {
+      const d = m.def, S = f.ch.scale;
+      if (m.frame < d.startup && m.frame > 3) for (let i = 0; i < 2; i++) spawnParticle({ x: f.x + f.facing * 22 * S, y: f.y - 156 * S, vx: f.facing * rand(4, 9), vy: rand(-1.5, 1.5), life: 22, size: rand(8, 14), color: pick(['rgba(255,138,216,0.55)', 'rgba(199,125,255,0.55)']), type: 'smoke' });
+      if (m.frame === d.startup) {
+        game.entities.push({ type: 'clgas', owner: f, x: clamp(f.x + f.facing * 150, 40, 920), y: CONFIG.GROUND_Y - 105, r: 100, life: 200, max: 200, tick: 0, got: false });
+        Sound.play('cl_spray');
+      }
+    },
+  },
+  /** CLOWNY - Elastic Reach: a stretchy arm; yanks them in (or hold DOWN to slam them into the floor). */
+  clStretch: {
+    total(m) { return m.data.done ? m.data.done + 14 : m.def.startup + m.def.active + m.def.recovery; },
+    update(f, m, opp) {
+      const d = m.def, S = f.ch.scale, h = f.curHeld || {};
+      const sx = f.x + f.facing * 14 * S, sy = f.y - 168 * S;
+      if (m.frame === 1) { m.data.len = 0; m.data.slam = f.isCpu ? Math.random() < 0.45 : false; }
+      if (!f.isCpu && h.down) m.data.slam = true;
+      let ex = sx + f.facing * m.data.len, ey = sy;
+      if (m.data.grab) {
+        const k = m.frame - m.data.grab;
+        opp.hitstun = Math.max(opp.hitstun, 10); opp.vx = 0;
+        if (!m.data.slam) {
+          opp.x = lerp(opp.x, clamp(f.x + f.facing * 96, 40, 920), 0.3);
+          if (k === 12 && !m.data.done) { applyHit(f, opp, { dmg: 5, hitstun: 26, kb: 1, kbY: -2, unblockable: true, noBlood: true }); addText('YOINK!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 26, color: '#ff3b3b', dur: 36, rise: 0.6 }); m.data.done = m.frame; }
+        } else {
+          if (k < 14) { opp.y = Math.max(CONFIG.GROUND_Y - 170, opp.y - 13); opp.vy = 0; opp.x = lerp(opp.x, clamp(f.x + f.facing * 150, 40, 920), 0.15); }
+          else if (!m.data.slammed) opp.vy = 24;
+          if (!m.data.slammed && k >= 14 && (opp.grounded || k >= 22)) {
+            m.data.slammed = true; opp.y = CONFIG.GROUND_Y;
+            applyHit(f, opp, { dmg: 9, hitstun: 36, kb: 3, kbY: -7, unblockable: true, heavy: true, noBlood: true });
+            game.shake = Math.max(game.shake, 14); Sound.play('bonk'); cxStars(opp.x, CONFIG.GROUND_Y - 20, 12);
+            addText('SLAM!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 30, color: '#ff3b3b', dur: 36, rise: 0.6 }); m.data.done = m.frame;
+          }
+        }
+        ex = opp.x - f.facing * 14; ey = opp.y - 150 * opp.ch.scale;
+        if (m.data.done && m.frame > m.data.done) { ex = lerp(ex, sx, Math.min(1, (m.frame - m.data.done) / 8)); ey = lerp(ey, sy, Math.min(1, (m.frame - m.data.done) / 8)); }
+      } else if (inActive(m) && !m.data.back) {
+        m.data.len = Math.min(d.range, (m.frame - d.startup) * 36); ex = sx + f.facing * m.data.len;
+        if (opp.invuln <= 0 && opp.state !== 'ko' && overlap({ x: ex - 26, y: ey - 34, w: 52, h: 84 }, opp.hurtbox())) {
+          const r = applyHit(f, opp, { dmg: 3, hitstun: 30, blockstun: 12, kb: 0, chip: true, noBlood: true });
+          if (r === 'hit') { m.hit = true; m.data.grab = m.frame; Sound.play('cl_boing'); }
+          else if (r) { m.hit = true; m.data.back = true; }
+        }
+      } else { m.data.len = Math.max(0, m.data.len - 44); ex = sx + f.facing * m.data.len; }
+      m.data.cx = { kind: 'arm', sx, sy, ex, ey };
+    },
+  },
+  /** CLOWNY - Razor Juggle: three spinning pins thrown in a triangle (multi-hit). All three landing leaves a pin stuck in them: damage over time as stars. */
+  clJuggle: {
+    update(f, m) {
+      const d = m.def, S = f.ch.scale;
+      if (m.frame === d.startup) {
+        const vol = { hits: 0, n: 3 }, x = f.x + f.facing * 50 * S, y = f.y - 150 * S;
+        for (const [dx, dy] of [[0, -6], [-34, -48], [-34, 36]]) game.entities.push({ type: 'clpin', owner: f, x: x + f.facing * dx, y: y + dy, vx: f.facing * 12, t: 0, vol, threat: true });
+        Sound.play('cl_juggle');
+      }
+    },
+  },
+  /** CLOWNY - THE GRAND FINALE: the circus tent drops over the screen, then pins, balloon bombs, a unicycle slam and an elastic slam while the crowd cheers. */
+  clFinale: {
+    update(f, m, opp) {
+      const k = m.frame, S = f.ch.scale;
+      if (k === 1) { game.cxTent = { t: 0, dur: 178 }; f.invuln = 20; Sound.play('cl_drum'); Sound.play('cl_crowd'); m.data.caught = false; }
+      if (k === 18) {   // the tent drops: only an opponent in front of him who isn't blocking (or jumping clear) is caught
+        const dx = (opp.x - f.x) * f.facing;
+        if (dx > -30 && dx < (m.def.range || 420) && opp.y > CONFIG.GROUND_Y - 110 && opp.invuln <= 0 && opp.state !== 'ko') {
+          const r = applyHit(f, opp, { dmg: 3, hitstun: 40, blockstun: 18, kb: 0, kbY: 0, chip: true, noBlood: true, noScale: true });
+          m.data.caught = r === 'hit';
+        }
+        if (m.data.caught) { opp.move = null; f.invuln = 165; Sound.play('cl_honk'); }
+        else if (game.cxTent) game.cxTent.dur = game.cxTent.t + 28;   // missed / blocked: the tent lifts again
+      }
+      if (!m.data.caught) return;
+      opp.hitstun = Math.max(opp.hitstun, 14); opp.vx = 0;
+      const hit = (dmg, ex = {}) => applyHit(f, opp, Object.assign({ dmg, hitstun: 44, kb: 0, kbY: 0, unblockable: true, noScale: true, noBlood: true }, ex));
+      if (k < 32) { opp.x = lerp(opp.x, clamp(f.x + f.facing * 180, 90, 870), 0.15); if (opp.y < CONFIG.GROUND_Y) opp.y = Math.min(CONFIG.GROUND_Y, opp.y + 10); }
+      if (k === 30 || k === 37 || k === 44) {   // juggling pins
+        game.entities.push({ type: 'clpin', owner: f, x: f.x + f.facing * 40, y: opp.y - (130 + (k - 30) * 3) * opp.ch.scale, vx: (opp.x - f.x) / 7, t: 0, vol: { hits: 0, n: 99 }, fake: true, life: 7 });
+        hit(2); cxStars(opp.x, opp.centerY() - 30, 8); Sound.play('cl_juggle');
+      }
+      if (k === 60 || k === 68 || k === 76) { cxConfetti(opp.x + rand(-30, 30), opp.centerY() + rand(-50, 30), 30); hit(2); Sound.play('cl_pop'); smokePuff(opp.x, opp.centerY()); }
+      if (k === 64) Sound.play('cl_crowd');
+      if (k >= 86 && k < 104) {   // unicycle slam
+        f.liftY = 46; m.data.cx = { kind: 'uni', roll: k };
+        f.vx = Math.abs(opp.x - f.x) > 92 ? f.facing * 12 : 0;
+        if (!m.data.uni && Math.abs(opp.x - f.x) <= 96) { m.data.uni = true; hit(4, { kbY: -13, kb: 1 }); Sound.play('cl_honk'); cxConfetti(opp.x, opp.centerY(), 20); }
+      }
+      if (k === 104) { f.liftY = 0; f.vx = 0; m.data.cx = null; }
+      if (k >= 108 && k < 124) {   // elastic grab in mid-air ...
+        opp.y = lerp(opp.y, CONFIG.GROUND_Y - 170, 0.25); opp.vy = 0; opp.x = lerp(opp.x, clamp(f.x + f.facing * 150, 60, 900), 0.2);
+        m.data.cx = { kind: 'arm', sx: f.x + f.facing * 14 * S, sy: f.y - 168 * S, ex: opp.x - f.facing * 14, ey: opp.y - 150 * opp.ch.scale };
+        if (k === 108) Sound.play('cl_boing');
+      }
+      if (k >= 124 && k < 130) { opp.vy = 26; m.data.cx = { kind: 'arm', sx: f.x + f.facing * 14 * S, sy: f.y - 168 * S, ex: opp.x - f.facing * 14, ey: opp.y - 150 * opp.ch.scale }; }
+      if (k === 130) {   // ... and SLAM
+        opp.y = CONFIG.GROUND_Y; m.data.cx = null;
+        hit(7, { kb: 9, kbY: -8, hitstun: 56, heavy: true });
+        game.shake = Math.max(game.shake, 20); game.flash = Math.max(game.flash, 6); Sound.play('bonk'); Sound.play('cl_crowd');
+        cxConfetti(opp.x, CONFIG.GROUND_Y - 40, 60, 10);
+        addText('TA-DA!', { x: 480, y: 170, size: 64, color: '#ffd23f', dur: 60, kind: 'announce' });
+      }
+    },
+  },
+  /** TAKATA - Root Spear: a root races along the floor (in BLOOM STATE it bursts through projectiles), wraps the opponent and yanks them in - or into a planted Seed Pod. */
+  tkRoot: {
+    total(m) { return m.data.done ? m.data.done + 10 : m.def.startup + m.def.active + m.def.recovery; },
+    update(f, m, opp) {
+      const d = m.def, B = f.bloom > 0, sp = d.speed * (cxInOver(f) ? 1.3 : 1), range = d.range * (B ? 1.25 : 1);
+      if (m.frame === d.startup) { m.data.tip = 30; Sound.play('tk_root'); }
+      if (m.frame < d.startup) return;
+      if (!m.data.wrap && !m.data.miss && inActive(m)) {
+        m.data.tip += sp; const tx = f.x + f.facing * m.data.tip;
+        if (B) for (const e of game.entities) if (e.type === 'proj' && e.owner === opp && !e.dead && Math.abs(e.x - tx) < 34) { e.dead = true; smokePuff(e.x, e.y); cxLeaves(e.x, e.y, 10); Sound.play('tk_vine'); }
+        if (m.frame % 2 === 0) spawnParticle({ x: tx, y: CONFIG.GROUND_Y - 4, vx: rand(-2, 2), vy: rand(-4, -1), life: 18, size: rand(3, 5), color: pick(['#7a4a1e', '#5a3a20', '#5aa04a']), grav: 0.25, type: 'pixel' });
+        if (Math.abs(opp.x - tx) < 30 && opp.y > CONFIG.GROUND_Y - 90 && opp.invuln <= 0 && opp.state !== 'ko') {
+          const r = applyHit(f, opp, { dmg: 5, hitstun: 30, blockstun: 12, kb: 0, low: true, chip: true, noBlood: true, plant: true });
+          if (r === 'hit') {
+            m.data.wrap = m.frame;
+            const seed = game.entities.find((e) => e.type === 'tkseed' && e.owner === f && e.stuck === 'ground' && !e.dead && (e.x - f.x) * f.facing > 50 && (opp.x - e.x) * f.facing > 0);
+            m.data.tx = seed ? seed.x : clamp(f.x + f.facing * 110, 40, 920); m.data.seed = seed || null;
+            addText('ROOTED!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 24, color: '#5cffb4', dur: 40, rise: 0.6 });
+          } else if (r) { m.data.miss = true; }
+        }
+        if (m.data.tip > range) m.data.miss = true;
+      } else if (!m.data.wrap && (m.data.miss || m.frame > d.startup + d.active)) { m.data.miss = true; m.data.tip = Math.max(0, (m.data.tip || 0) - 40); }
+      if (m.data.wrap) {
+        const k = m.frame - m.data.wrap;
+        opp.hitstun = Math.max(opp.hitstun, 14); opp.vx = 0; opp.x = lerp(opp.x, m.data.tx, 0.2);
+        m.data.tip = Math.abs(opp.x - f.x);
+        if (k === 16 && !m.data.done) { if (m.data.seed && !m.data.seed.dead) tkSeedBurst(m.data.seed, true); m.data.done = m.frame; }
+      }
+      m.data.cx = { kind: 'root', x0: f.x + f.facing * 26, x1: f.x + f.facing * (m.data.tip || 0), wrap: !!m.data.wrap && !m.data.done, ox: opp.x, oy: opp.y };
+    },
+  },
+  /** TAKATA - Vine Whip: three lashes; hold UP for a high (anti-air) angle or DOWN for a low one (crouch-block it). */
+  tkWhip: {
+    update(f, m, opp) {
+      const d = m.def, S = f.ch.scale, h = f.curHeld || {};
+      if (m.frame === 1) m.data.ang = f.isCpu ? (!opp.grounded ? -0.55 : pick([0, 0, 0.35, -0.3])) : h.up ? -0.55 : h.down ? 0.35 : 0;
+      const L = d.len * (f.bloom > 0 ? 1.25 : 1), sx = f.x + f.facing * 30 * S, sy = f.y - 160 * S;
+      const ext = m.frame <= d.startup ? 0 : inActive(m) ? Math.min(1, (m.frame - d.startup) / 4) : Math.max(0, 1 - (m.frame - d.startup - d.active) / 6);
+      const a = m.data.ang + Math.sin(m.frame * 0.9) * 0.06, ex = sx + f.facing * Math.cos(a) * L * ext, ey = sy + Math.sin(a) * L * ext;
+      m.data.cx = ext > 0 ? { kind: 'whip', sx, sy, ex, ey, t: m.frame } : null;
+      if (inActive(m) && ext >= 0.6 && m.frame - m.lastHit >= 6 && m.hits < 3 && opp.invuln <= 0) {
+        let touch = false; const hb = opp.hurtbox();
+        for (let q = 0.4; q <= 1.001; q += 0.15) if (overlap({ x: lerp(sx, ex, q) - 16, y: lerp(sy, ey, q) - 16, w: 32, h: 32 }, hb)) touch = true;
+        if (touch) {
+          m.lastHit = m.frame; m.hits++; const last = m.hits === 3;
+          const r = applyHit(f, opp, { dmg: last ? 4 : 2.5, hitstun: last ? 24 : 14, blockstun: 10, kb: last ? 7 : 1, kbY: last && m.data.ang < 0 ? -9 : 0, low: m.data.ang > 0.2, chip: true, noBlood: true, plant: true });
+          if (r) { Sound.play('tk_vine'); cxLeaves(ex, ey, 5); }
+        }
+      }
+    },
+  },
+  /** TAKATA - Thorn Bloom: a ring of thorns bursts up in front of her (low hits, then a launcher at full bloom) and leaves a damaging thorn patch. */
+  tkThorn: {
+    update(f, m, opp) {
+      const d = m.def, B = f.bloom > 0, R = d.r * (B ? 1.35 : 1);
+      if (m.frame === 1) m.data.x = clamp(f.x + f.facing * d.dx, 40, 920);
+      const k = m.frame - (d.startup - (cxInOver(f) ? 4 : 0));
+      if (k < 0) { m.data.cx = { kind: 'crack', x: m.data.x, r: R }; return; }
+      if (k > d.active) { m.data.cx = null; return; }
+      m.data.cx = { kind: 'thorn', x: m.data.x, r: R, k };
+      const inside = Math.abs(opp.x - m.data.x) < R + 20 && opp.y > CONFIG.GROUND_Y - 130 && opp.invuln <= 0;
+      if (k < 10 && k % 4 === 0 && inside && m.hits < 2) { m.hits++; applyHit(f, opp, { dmg: 2, hitstun: 14, blockstun: 8, kb: 0.5, low: true, chip: true, noBlood: true, plant: true }); Sound.play('tk_thorn'); }
+      if (k === 10) {
+        Sound.play('tk_thorn'); cxLeaves(m.data.x, CONFIG.GROUND_Y - 30, 12, 6, [...CX_LEAF, ...CX_PETAL]);
+        if (inside) applyHit(f, opp, { dmg: 6, hitstun: 32, blockstun: 12, kb: 2, kbY: -12, chip: true, heavy: true, noBlood: true, plant: true });
+        game.entities.push({ type: 'tkpatch', owner: f, x: m.data.x, r: R, life: B ? 360 : 240, max: B ? 360 : 240, tick: 0 });
+      }
+    },
+  },
+  /** TAKATA - Earth Rise: a rock-and-root pillar erupts under the opponent (anti-air launcher; telegraphed by a ground crack). */
+  tkPillar: {
+    update(f, m, opp) {
+      const d = m.def, B = f.bloom > 0, su = d.startup - (cxInOver(f) ? 4 : 0), H = B ? 260 : 210;
+      if (m.frame <= 8) m.data.x = clamp(Math.abs(opp.x - f.x) < d.range ? opp.x : f.x + f.facing * d.range, 40, 920);
+      if (m.frame < su) { m.data.cx = { kind: 'crack', x: m.data.x, r: 40 }; return; }
+      const k = m.frame - su;
+      if (k < d.active) {
+        m.data.cx = { kind: 'pillar', x: m.data.x, h: Math.min(1, (k + 1) / 4) * H };
+        if (k === 0) { Sound.play('tk_rumble'); game.shake = Math.max(game.shake, 6); smokePuff(m.data.x, CONFIG.GROUND_Y - 20); }
+        if (!m.hit && k <= 6 && Math.abs(opp.x - m.data.x) < 48 && opp.y > CONFIG.GROUND_Y - m.data.cx.h - 60 && opp.invuln <= 0 && opp.state !== 'ko') {
+          const air = !opp.grounded;
+          const r = applyHit(f, opp, { dmg: air ? 11 : 8, hitstun: 34, blockstun: 12, kb: 2, kbY: -14, chip: true, heavy: true, noBlood: true, plant: true });
+          if (r) m.hit = true;
+        }
+      } else m.data.cx = { kind: 'pillar', x: m.data.x, h: Math.max(0, 1 - (k - d.active) / 8) * H };
+    },
+  },
+  /** TAKATA - Seed Pod: a sticky glowing seed (sticks to the floor or the opponent); after a delay it bursts into vines (entangle) or a pollen cloud (slow + blind). Up to 3 at once. */
+  tkSeed: {
+    update(f, m) {
+      const d = m.def, S = f.ch.scale;
+      if (m.frame === d.startup) {
+        const mine = game.entities.filter((e) => e.type === 'tkseed' && e.owner === f && !e.dead);
+        if (mine.length >= d.max) tkSeedBurst(mine[0]);
+        game.entities.push({ type: 'tkseed', owner: f, x: f.x + f.facing * 44 * S, y: f.y - 150 * S, vx: f.facing * 7.5, vy: -6, t: 0, stuck: null, fuse: 0, threat: true });
+        Sound.play('tk_seed');
+      }
+    },
+  },
+  /** TAKATA (air) - Overgrowth: slams down and floods part of the stage with vines (chip damage, slows, fills GROWTH, speeds up her plant attacks). Long cooldown. */
+  tkOver: {
+    total(m) { return m.data.landedAt ? m.data.landedAt + m.def.recovery : 9999; },
+    update(f, m) {
+      const d = m.def;
+      if (m.frame === 1) f.ogCool = d.cool;
+      if (m.frame < d.startup) { f.vy = Math.min(f.vy, 0) * 0.3; f.vx *= 0.5; }
+      if (m.frame === d.startup) { f.vy = 16; f.vx = 0; }
+      if (m.frame >= d.startup && !m.data.landedAt) {
+        cxLeaves(f.x, f.y - 60, 2, 3);
+        if (f.grounded && f.vy >= 0) {
+          m.data.landedAt = m.frame;
+          const B = f.bloom > 0;
+          game.entities = game.entities.filter((e) => !(e.type === 'tkover' && e.owner === f));
+          game.entities.push({ type: 'tkover', owner: f, x: f.x, half: d.half * (B ? 1.3 : 1), life: Math.round(d.life * (B ? 1.4 : 1)), max: Math.round(d.life * (B ? 1.4 : 1)), tick: 0 });
+          Sound.play('tk_grow'); game.shake = Math.max(game.shake, 8); cxLeaves(f.x, CONFIG.GROUND_Y - 20, 30, 8);
+        }
+      }
+    },
+  },
+  /** TAKATA - BLOOM STATE (ULT when GROWTH is full): bigger, longer, stronger plant attacks for 8 seconds. */
+  tkBloom: {
+    update(f, m) {
+      if (m.frame === 1) { f.bloom = f.ch.bloomDef.dur; f.growth = 0; Sound.play('tk_bloom'); game.flash = Math.max(game.flash, 4); cxLeaves(f.x, f.centerY(), 40, 8, [...CX_PETAL, ...CX_LEAF]); }
+    },
+  },
+  /** TAKATA - FOREST CAGE: roots trap the opponent in a cage, then a thorn-and-root barrage (stronger in BLOOM STATE). */
+  tkCage: {
+    update(f, m, opp) {
+      const k = m.frame, B = f.bloom > 0;
+      if (k === 1) {
+        f.invuln = 18; m.data.caught = false; m.data.B = B;
+        game.tint = { r: 12, g: 52, b: 18, a: 0.38, t: 40, label: '' }; Sound.play('tk_rumble');
+      }
+      if (k < 16 && k % 3 === 0) cxLeaves(clamp(opp.x, 70, 890) + rand(-40, 40), CONFIG.GROUND_Y - 6, 3, 3);   // the ground cracks under them: jump or block!
+      if (k === 16) {   // roots erupt under a GROUNDED opponent in range - block it or jump clear
+        const dx = (opp.x - f.x) * f.facing, rng = (m.def.range || 540) * (B ? 1.2 : 1);
+        if (dx > -40 && dx < rng && opp.y > CONFIG.GROUND_Y - 60 && opp.invuln <= 0 && opp.state !== 'ko') {
+          const r = applyHit(f, opp, { dmg: 3, hitstun: 40, blockstun: 18, kb: 0, kbY: 0, chip: true, noBlood: true, noScale: true, plant: true });
+          m.data.caught = r === 'hit';
+        }
+        if (m.data.caught) { opp.move = null; f.invuln = 150; m.data.x = clamp(opp.x, 70, 890); game.tint = { r: 12, g: 52, b: 18, a: 0.38, t: 150, label: '' }; }
+        else for (let i = 0; i < 4; i++) cxLeaves(clamp(opp.x, 70, 890) + rand(-50, 50), CONFIG.GROUND_Y - 20, 8, 6);
+      }
+      if (!m.data.caught) return;
+      opp.hitstun = Math.max(opp.hitstun, 14); opp.vx = 0; opp.x = lerp(opp.x, m.data.x, 0.3);
+      if (opp.y < CONFIG.GROUND_Y) { opp.y = Math.min(CONFIG.GROUND_Y, opp.y + 9); opp.vy = 0; }
+      m.data.cx = { kind: 'cage', x: m.data.x, k, B: m.data.B };
+      const hit = (dmg, ex = {}) => applyHit(f, opp, Object.assign({ dmg, hitstun: 34, kb: 0, kbY: 0, unblockable: true, noScale: true, noBlood: true }, ex));
+      if (k === 22) { Sound.play('tk_root'); addText('CAGED!', { x: opp.x, y: opp.y - 250 * opp.ch.scale, size: 30, color: '#5cffb4', dur: 40, rise: 0.5 }); }
+      if (k >= 34 && k <= 106 && (k - 34) % 8 === 0) { hit(1.4 * (m.data.B ? 1.25 : 1)); Sound.play((k / 8) % 2 ? 'tk_thorn' : 'tk_vine'); cxLeaves(opp.x + rand(-30, 30), opp.centerY() + rand(-60, 40), 6); }
+      if (k === 124) {
+        hit(m.data.B ? 10 : 8, { kb: 8, kbY: -10, hitstun: 50, heavy: true });
+        game.shake = Math.max(game.shake, 18); game.flash = Math.max(game.flash, 6); Sound.play('tk_bloom'); Sound.play('tk_rumble');
+        cxLeaves(opp.x, opp.centerY(), 50, 10, [...CX_PETAL, ...CX_LEAF]);
+        addText(m.data.B ? 'FULL BLOOM!' : 'RECLAIMED BY THE FOREST!', { x: 480, y: 170, size: m.data.B ? 56 : 40, color: '#5cffb4', dur: 60, kind: 'announce' });
+      }
+    },
+  },
+});
+
+/** Seed Pod burst: vines (entangle) or pollen (slow + blind), alternating. Bigger in BLOOM STATE or when a Root Spear yanks them into it. */
+function tkSeedBurst(e, big) {
+  if (e.dead) return; e.dead = true;
+  const f = e.owner, opp = f && f.opp, B = f && f.bloom > 0, R = (big ? 105 : 82) * (B ? 1.35 : 1);
+  const pollen = (cxSeedFlip = !cxSeedFlip);
+  Sound.play('tk_bloom');
+  game.entities.push({ type: 'tkburst', x: e.x, y: e.y, r: R, life: 26, max: 26, pollen });
+  if (pollen) for (let i = 0; i < 16; i++) spawnParticle({ x: e.x + rand(-R, R) * 0.6, y: e.y + rand(-R, R) * 0.5, vx: rand(-1, 1), vy: rand(-1, 0.3), life: 50, size: rand(14, 26), color: pick(['rgba(232,255,107,0.45)', 'rgba(255,233,168,0.45)']), type: 'smoke' });
+  else cxLeaves(e.x, e.y, 22, 7);
+  if (opp && game.state === 'fight' && opp.state !== 'ko' && Math.abs(opp.x - e.x) < R && Math.abs(opp.centerY() - e.y) < R + 70) {
+    const r = applyHit(f, opp, { dmg: big ? 7 : 6, hitstun: 22, blockstun: 10, kb: 3, kbY: -3, chip: true, noBlood: true, plant: true, unblockable: e.stuck === 'opp' });
+    if (r === 'hit') {
+      if (pollen) { opp.slow = Math.max(opp.slow, 100); opp.blind = Math.max(opp.blind, 80); opp.blindKind = 'pollen'; addText('POLLEN!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 22, color: '#e8ff6b', dur: 40, rise: 0.6 }); }
+      else { opp.trapped = Math.max(opp.trapped, B ? 40 : 28); opp.trapLabel = 'ROOTED'; opp.gkBuf = 0; addText('ENTANGLED!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 22, color: '#5cffb4', dur: 40, rise: 0.6 }); }
+    }
+  }
+}
+/** Pie in the Face (Clowny's LP LP HP combo ender): splat! Blinds them (screen splat for a player) and they take +25% damage for a few seconds. */
+function clPie(f, opp, r) {
+  cxConfetti(opp.x, opp.y - 170 * opp.ch.scale, 10, 4);
+  for (let i = 0; i < 14; i++) spawnParticle({ x: opp.x, y: opp.y - 180 * opp.ch.scale, vx: rand(-5, 5), vy: rand(-6, 1), life: 34, size: rand(3, 7), color: pick(['#fff3d6', '#f2d8a0', '#ffffff']), grav: 0.3, type: 'blob' });
+  if (r !== 'hit') return;
+  opp.blind = Math.max(opp.blind, 150); opp.blindKind = 'pie'; opp.pied = Math.max(opp.pied, 150);
+  addText('SPLAT!', { x: opp.x, y: opp.y - 250 * opp.ch.scale, size: 30, color: '#fff3d6', dur: 44, rise: 0.6 });
+}
+const CX_CHAIN = {
+  pie(f, opp, c, r) { clPie(f, opp, r); },
+  confetti(f, opp) { cxConfetti(opp.x, opp.centerY(), 30, 8); },
+  leaf(f, opp) { cxLeaves(opp.x, opp.centerY(), 24, 7, [...CX_LEAF, ...CX_PETAL]); },
+};
+
+/* ---------- world objects (balloons, pins, gas, seeds, thorn patches, vines) ---------- */
+function clPop(e) {
+  e.dead = true; Sound.play('cl_pop'); cxConfetti(e.x, e.y, 20);
+  const n = 5 + Math.round(e.size * 2);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rand(-0.2, 0.2), v = rand(2.5, 4.5) * e.size;
+    game.entities.push({ type: 'clmini', owner: e.owner, x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, fuse: 12 + i * 3, size: e.size, threat: true, dmg: e.dmg });
+  }
+}
+const CX_ENT = {
+  clballoon(e, opp) {
+    e.t++; e.x += e.vx; e.y += e.vy + Math.sin(e.t * 0.12) * 0.5; e.vx *= 0.994;
+    const r = 24 * e.size;
+    if (opp && e.t > 4 && opp.invuln <= 0 && opp.state !== 'ko' && overlap({ x: e.x - r, y: e.y - r, w: 2 * r, h: 2 * r }, opp.hurtbox())) {
+      applyHit(e.owner, opp, { dmg: 3.2 * e.size, hitstun: 18, blockstun: 10, kb: 3, chip: true, noBlood: true }); clPop(e);
+    } else if (e.t >= e.fuse || e.x < -40 || e.x > 1000) clPop(e);
+  },
+  clmini(e, opp) {
+    e.t++; e.x += e.vx; e.y += e.vy; e.vx *= 0.9; e.vy = e.vy * 0.9 + 0.15;
+    if (e.t >= e.fuse) {
+      e.dead = true; Sound.play('cl_pop'); cxConfetti(e.x, e.y, 8, 4);
+      const R = 44 * Math.sqrt(e.size);
+      if (opp && opp.invuln <= 0 && opp.state !== 'ko' && overlap({ x: e.x - R, y: e.y - R, w: 2 * R, h: 2 * R }, opp.hurtbox()))
+        applyHit(e.owner, opp, { dmg: e.dmg * 0.3 * e.size, hitstun: 12, blockstun: 6, kb: 1.5, chip: true, noBlood: true });
+    }
+  },
+  clpin(e, opp) {
+    e.t++; e.x += e.vx;
+    if (e.fake) { if (--e.life <= 0) e.dead = true; return; }
+    if (e.x < -40 || e.x > 1000) { e.dead = true; return; }
+    if (opp && opp.invuln <= 0 && opp.state !== 'ko' && overlap({ x: e.x - 15, y: e.y - 18, w: 30, h: 36 }, opp.hurtbox())) {
+      const r = applyHit(e.owner, opp, { dmg: 3, hitstun: 16, blockstun: 8, kb: 1.5, chip: true, noBlood: true });
+      e.dead = true; cxStars(e.x, e.y, 6);
+      if (r === 'hit' && ++e.vol.hits === e.vol.n) {
+        opp.pin = 181; opp.pinBy = e.owner; Sound.play('cl_juggle');
+        addText('PINNED!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 24, color: '#ffd23f', dur: 40, rise: 0.6 });
+      }
+    }
+  },
+  clgas(e, opp) {
+    e.life--; e.tick++; if (e.life <= 0) e.dead = true;
+    if (e.tick % 3 === 0) spawnParticle({ x: e.x + rand(-e.r, e.r) * 0.8, y: e.y + rand(-e.r, e.r) * 0.6, vx: rand(-0.5, 0.5), vy: rand(-0.6, 0), life: 40, size: rand(16, 30), color: pick(['rgba(255,138,216,0.32)', 'rgba(199,125,255,0.32)', 'rgba(232,176,255,0.3)']), type: 'smoke' });
+    if (!opp || game.state !== 'fight' || opp.state === 'ko') return;
+    if (Math.abs(opp.x - e.x) < e.r && Math.abs(opp.centerY() - e.y) < e.r * 1.3) {
+      opp.slow = Math.max(opp.slow, 45);
+      if (e.tick % 24 === 0) cxDot(e.owner, opp, 1);
+      if (!e.got && opp.invuln <= 0) {
+        e.got = true;
+        if (!opp.isCpu && Math.random() < 0.5) { opp.reversed = Math.max(opp.reversed, 100); addText('CONTROLS REVERSED!', { x: opp.x, y: opp.y - 230, size: 22, color: '#c77dff', dur: 60 }); }
+        else {
+          opp.laugh = 42; if (opp.move && opp.move.kind === 'base') opp.move = null;   // laughs and whiffs
+          addText('HA HA HA!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 26, color: '#ff8ad8', dur: 44, rise: 0.6 }); Sound.play('cl_laugh');
+        }
+      }
+    }
+  },
+  tkseed(e, opp) {
+    e.t++;
+    if (!e.stuck) {
+      e.x += e.vx; e.y += e.vy; e.vy += 0.42;
+      if (opp && opp.invuln <= 0 && opp.state !== 'ko' && overlap({ x: e.x - 12, y: e.y - 12, w: 24, h: 24 }, opp.hurtbox())) {
+        if (opp.isBlocking()) { e.dead = true; cxLeaves(e.x, e.y, 6); Sound.play('block'); return; }
+        e.stuck = 'opp'; e.tgt = opp; e.ox = e.x - opp.x; e.oy = e.y - opp.y; e.fuse = 70; Sound.play('tk_seed');
+        addText('SEEDED!', { x: opp.x, y: opp.y - 240 * opp.ch.scale, size: 22, color: '#5cffb4', dur: 36, rise: 0.6 });
+      } else if (e.y >= CONFIG.GROUND_Y - 4) { e.y = CONFIG.GROUND_Y - 4; e.stuck = 'ground'; e.fuse = 150; }
+    } else if (e.stuck === 'opp' && e.tgt) { e.x = e.tgt.x + e.ox; e.y = e.tgt.y + e.oy; }
+    if (e.stuck) {
+      e.fuse--;
+      if (e.stuck === 'ground' && opp && opp.grounded && opp.state !== 'ko' && Math.abs(opp.x - e.x) < 34 && e.t > 24) e.fuse = 0;   // stepped on it
+      if (e.fuse <= 0) tkSeedBurst(e);
+    }
+    if (e.x < -40 || e.x > 1000) e.dead = true;
+  },
+  tkburst(e) { if (--e.life <= 0) e.dead = true; },
+  tkpatch(e, opp) {
+    e.life--; e.tick++; if (e.life <= 0) e.dead = true;
+    if (opp && opp.grounded && Math.abs(opp.x - e.x) < e.r && e.tick % 30 === 0) { cxDot(e.owner, opp, 1); cxGrow(e.owner, 3); opp.slow = Math.max(opp.slow, 20); }
+  },
+  tkover(e, opp) {
+    e.life--; e.tick++; if (e.life <= 0) e.dead = true;
+    if (e.tick % 9 === 0) cxLeaves(e.x + rand(-e.half, e.half), CONFIG.GROUND_Y - 6, 1, 2);
+    if (opp && opp.grounded && Math.abs(opp.x - e.x) < e.half && e.tick % 30 === 0) { cxDot(e.owner, opp, 0.6); cxGrow(e.owner, 4); opp.slow = Math.max(opp.slow, 35); }
+  },
+};
+const CX_BACK = new Set(['clgas', 'tkpatch', 'tkover']);
+
+/** Per-frame game-level bits (tent, round resets). */
+function cxStep() {
+  if (game.cxTent && ++game.cxTent.t >= game.cxTent.dur) game.cxTent = null;
+}
+/** Bands across a limb segment (Clowny's striped sleeves, Takata's vine wraps). slant tilts the bands. */
+function cxStripes(g, a, b, w, color, n, lw, slant = 0) {
+  const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+  g.lineCap = 'butt'; g.strokeStyle = color; g.lineWidth = lw;
+  for (let i = 1; i <= n; i++) {
+    const q = i / (n + 1), px = a.x + dx * q, py = a.y + dy * q, h = w * 0.5, sx = dx / L * slant * h, sy = dy / L * slant * h;
+    g.beginPath(); g.moveTo(px - nx * h - sx, py - ny * h - sy); g.lineTo(px + nx * h + sx, py + ny * h + sy); g.stroke();
+  }
+  g.lineCap = 'round';
+}
+
+/* ---------- finishers (cartoony, no gore) ---------- */
+Object.assign(FATALITIES, {
+  /** CLOWNY: inflates them, twists them into a balloon animal... POP! Confetti. */
+  balloonAnimal: {
+    name: 'BALLOON ANIMAL',
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1;
+      if (t === 1) { w.facing = dir; w.x = clamp(l.x - dir * 140, 40, 920); Sound.play('cl_honk'); }
+      w.forcePose = t < 60 ? (t % 16 < 8 ? 'cast' : 'flower') : t < 150 ? (t % 14 < 7 ? 'cast' : 'cross') : 'victory';
+      if (t < 60) { l.forcePose = 'trapped'; l.shrink = 1 + (t / 60) * 0.18; if (t % 12 === 0) Sound.play('cl_squeak'); if (t % 4 === 0) spawnParticle({ x: lerp(w.x, l.x, 0.5), y: w.y - 150, vx: dir * 4, vy: 0, life: 10, size: 14, color: '#ffffff', type: 'streak' }); }
+      if (t === 60) { l.hidden = true; F.balloon = { x: l.x, y: l.y - 110, col: l.ch.colors.main, stage: 0, s: l.ch.scale }; Sound.play('cl_squeak'); smokePuff(l.x, l.y - 100); addText('*SQUEAK*', { x: l.x, y: l.y - 260, size: 22, color: '#ffffff', dur: 36, rise: 0.6 }); }
+      if (F.balloon) {
+        const B = F.balloon;
+        B.stage = t < 82 ? 0 : t < 104 ? 1 : 2;
+        if (t === 82 || t === 94 || t === 104 || t === 116) { Sound.play('cl_twist'); addText('*TWIST*', { x: B.x + rand(-40, 40), y: B.y - 120, size: 18, color: '#ffd23f', dur: 26, rise: 0.8 }); }
+        if (t > 150) B.y -= 1.4;
+        B.wob = Math.sin(t * 0.3) * 0.08;
+      }
+      if (t === 130) Sound.play('cl_crowd');
+      if (t === 196 && F.balloon) {
+        const B = F.balloon; F.balloon = null;
+        Sound.play('cl_pop'); Sound.play('boom'); game.flash = 6; game.shake = 10;
+        cxConfetti(B.x, B.y, 120, 11);
+        addText('POP!', { x: B.x, y: B.y - 40, size: 60, color: '#ffd23f', dur: 50 });
+      }
+      if (t === 222) fatalityTitle();
+      return t >= 370;
+    },
+  },
+  /** CLOWNY: ties them in a knot with a bow, then walks off while they slowly deflate. */
+  tiedInKnots: {
+    name: 'TIED UP IN KNOTS',
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1;
+      if (t === 1) { w.facing = dir; w.x = clamp(l.x - dir * 96, 40, 920); Sound.play('cl_boing'); }
+      if (t < 80) { w.forcePose = t % 12 < 6 ? 'cast' : 'cross'; l.forcePose = 'knot'; l.rot = Math.sin(t * 0.3) * 0.35; l.spinX = Math.cos(t * 0.22); if (t % 12 === 0) Sound.play('cl_twist'); }
+      if (t === 80) { l.rot = 0; l.spinX = 1; F.bow = true; addText('TIED UP!', { x: l.x, y: l.y - 260, size: 30, color: '#ff3b3b', dur: 50, rise: 0.4 }); Sound.play('cl_honk'); }
+      if (t >= 90) {
+        l.forcePose = 'knot';
+        if (t < 220) { w.forcePose = null; w.state = 'walk'; w.facing = -dir; w.walkPh += 0.22; w.x = clamp(w.x - dir * 2.6, CONFIG.STAGE_LEFT, CONFIG.STAGE_RIGHT); }
+        else { w.forcePose = 'victory'; w.facing = dir; }
+        if (t === 100) Sound.play('cl_deflate');
+        if (t < 210) { l.shrink = 1 - ((t - 90) / 120) * 0.62; if (t % 5 === 0) spawnParticle({ x: l.x + rand(-10, 10), y: l.y - 90 * l.shrink, vx: rand(-3, 3), vy: rand(-3, -1), life: 18, size: rand(8, 14), color: 'rgba(240,240,245,0.7)', type: 'smoke' }); }
+        if (t === 210) addText('PFFFFT...', { x: l.x, y: l.y - 120, size: 24, color: '#ffffff', dur: 50, rise: 0.5 });
+      }
+      if (t === 228) fatalityTitle();
+      return t >= 370;
+    },
+  },
+  /** CLOWNY: stuffs them into a circus cannon and fires them over the horizon. TA-DA! */
+  humanCannonball: {
+    name: 'HUMAN CANNONBALL',
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1;
+      if (t === 1) { w.facing = dir; w.x = clamp(l.x - dir * 170, 40, 920); F.cannon = { x: dir > 0 ? 1010 : -50, y: CONFIG.GROUND_Y, dir, tx: l.x }; Sound.play('cl_drum'); }
+      w.forcePose = t < 60 ? 'flower' : 'victory';
+      if (F.cannon && t < 40) F.cannon.x = lerp(F.cannon.x, F.cannon.tx + dir * 10, 0.12);
+      if (t === 50) { l.hidden = true; smokePuff(l.x, l.y - 80); Sound.play('cl_boing'); addText('IN YOU GO!', { x: l.x, y: l.y - 240, size: 24, color: '#ffd23f', dur: 40, rise: 0.6 }); }
+      if (t > 60 && t < 112) { if (t === 62) Sound.play('cl_fuse'); spawnParticle({ x: F.cannon.x - dir * 52, y: F.cannon.y - 30, vx: rand(-2, 2), vy: rand(-3, -1), life: 14, size: rand(2, 4), color: pick(['#ffd23f', '#ff7a1a', '#ffffff']), type: 'spark' }); }
+      if (t === 112) {
+        Sound.play('cl_cannon'); Sound.play('boom'); game.shake = 18; game.flash = 6;
+        const mx = F.cannon.x + dir * 70, my = F.cannon.y - 95;
+        smokePuff(mx, my); cxConfetti(mx, my, 40, 9);
+        F.flyer = { x: mx, y: my, vx: dir * 9, vy: -17, rot: 0, ch: l.chIdx };
+      }
+      if (F.flyer) {
+        const q = F.flyer; q.x += q.vx; q.y += q.vy; q.vy += 0.35; q.rot += 0.35;
+        if (t % 2 === 0) cxStars(q.x, q.y, 1);
+        if (q.y < -120 || q.x < -120 || q.x > 1080) F.flyer = null;
+      }
+      if (t === 170) { addText('TA-DA!', { x: dir > 0 ? 800 : 160, y: 120, size: 44, color: '#ffd23f', dur: 60 }); Sound.play('cl_crowd'); cxConfetti(dir > 0 ? 800 : 160, 120, 40, 6); }
+      if (t === 190) fatalityTitle();
+      return t >= 340;
+    },
+  },
+  /** TAKATA: a seed on their chest grows into a tree that swallows them; flowers bloom and new growth covers the stage. */
+  reclaimed: {
+    name: 'RECLAIMED',
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1;
+      if (t === 1) { w.facing = dir; w.x = clamp(l.x - dir * 170, 40, 920); F.seedFly = { x0: w.x + dir * 40, y0: w.y - 160, x: w.x + dir * 40, y: w.y - 160 }; Sound.play('tk_seed'); }
+      w.forcePose = t < 24 ? 'throw' : t < 200 ? 'raise' : 'victory';
+      if (F.seedFly) {
+        const k = Math.min(1, t / 20); F.seedFly.x = lerp(F.seedFly.x0, l.x, k); F.seedFly.y = lerp(F.seedFly.y0, l.y - 140 * l.ch.scale, k) - Math.sin(k * Math.PI) * 30;
+        if (t === 20) { F.seedFly = null; F.tree = { x: l.x, y: l.y, g: 0, bloom: 0, s: l.ch.scale }; addText('PLANTED.', { x: l.x, y: l.y - 250, size: 22, color: '#5cffb4', dur: 40, rise: 0.5 }); Sound.play('tk_seed'); }
+      }
+      if (t >= 20) l.forcePose = 'trapped';
+      if (F.tree) {
+        F.tree.g = clamp((t - 20) / 120, 0, 1); F.tree.bloom = clamp((t - 140) / 40, 0, 1);
+        if (t === 34 || t === 70 || t === 104) Sound.play('tk_grow');
+        if (t % 6 === 0 && t < 140) cxLeaves(l.x + rand(-40, 40), l.y - rand(20, 220), 2, 2);
+      }
+      if (t === 112) l.hidden = true;
+      if (t === 140) { Sound.play('tk_bloom'); cxLeaves(l.x, l.y - 260, 30, 6, CX_PETAL); }
+      if (t >= 150) game.cxGrowth = { k: clamp((t - 150) / 60, 0, 1) };
+      if (t === 205) fatalityTitle();
+      return t >= 370;
+    },
+  },
+  /** TAKATA: the jungle answers - giant roots lift them and slam them three times, then a giant flower swallows them. */
+  mothersWrath: {
+    name: "MOTHER'S WRATH",
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1, G = CONFIG.GROUND_Y;
+      if (t === 1) { w.facing = dir; w.x = clamp(l.x - dir * 200, 40, 920); game.tint = { r: 10, g: 40, b: 12, a: 0.42, t: 250, label: '' }; Sound.play('tk_rumble'); F.roots = { x: l.x, k: 0 }; }
+      w.forcePose = t < 210 ? 'raise' : 'victory';
+      if (F.roots) F.roots.k = clamp((t - 10) / 20, 0, 1);
+      if (t >= 20 && t < 165) l.forcePose = 'trapped';
+      if (t === 20) { Sound.play('tk_root'); addText('MOTHER NATURE IS ANGRY', { x: 480, y: 120, size: 26, color: '#5cffb4', dur: 70 }); }
+      const lift = (a, b) => { if (t >= a && t < b) l.y = lerp(l.y, G - 160, 0.2); };
+      lift(30, 82); lift(96, 112); lift(126, 142);
+      for (const s of [88, 118, 148]) if (t >= s - 6 && t < s) l.y = Math.min(G, l.y + 30);
+      if (t === 88 || t === 118 || t === 148) { l.y = G; game.shake = 18 + (t === 148 ? 8 : 0); Sound.play('bonk'); Sound.play('tk_root'); cxLeaves(l.x, G - 10, 20, 7); game.flash = t === 148 ? 6 : 2; addText(t === 148 ? 'WRATH!' : 'SLAM!', { x: l.x, y: G - 270, size: t === 148 ? 44 : 30, color: '#5cffb4', dur: 30, rise: 0.6 }); }
+      if (t >= 160 && !F.flower) { F.flower = { x: l.x, k: 0 }; Sound.play('tk_bloom'); }
+      if (F.flower) { F.flower.k = clamp((t - 160) / 40, 0, 1); F.flower.sink = clamp((t - 210) / 40, 0, 1); }
+      if (t === 192) { l.hidden = true; Sound.play('tk_chomp'); }
+      if (t >= 210 && F.roots) F.roots.k = Math.max(0, 1 - (t - 210) / 30);
+      if (t === 250) { F.roots = null; game.cxGrowth = { k: 0.6 }; cxLeaves(l.x, G - 20, 40, 6, CX_PETAL); }
+      if (t === 222) fatalityTitle();
+      return t >= 380;
+    },
+  },
+  /** TAKATA: a giant flytrap pops up under them, CHOMPS, chews... BURP. */
+  flytrap: {
+    name: 'FLYTRAP',
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1;
+      if (t === 1) { w.facing = dir; w.x = clamp(l.x - dir * 180, 40, 920); F.trap = { x: l.x, rise: 0, open: 1, chew: 0, dir }; Sound.play('tk_rumble'); game.shake = 8; }
+      w.forcePose = t < 60 ? 'plant' : 'victory';
+      const T = F.trap;
+      if (t < 50) { T.rise = clamp((t - 8) / 36, 0, 1); T.open = 1; l.forcePose = t > 20 ? 'hit' : null; }
+      if (t >= 50 && t < 58) T.open = 1 - (t - 50) / 8;
+      if (t === 56) { l.hidden = true; Sound.play('tk_chomp'); game.shake = 14; addText('CHOMP!', { x: T.x, y: CONFIG.GROUND_Y - 300, size: 46, color: '#5cffb4', dur: 40, rise: 0.5 }); }
+      if (t >= 58 && t < 130) { T.open = 0; T.chew = Math.sin(t * 0.5); if (t % 15 === 0) Sound.play('tk_chomp'); }
+      if (t === 134) { T.open = 0.35; Sound.play('tk_burp'); addText('BURP!', { x: T.x, y: CONFIG.GROUND_Y - 300, size: 40, color: '#e8ff6b', dur: 46, rise: 0.6 }); cxLeaves(T.x + dir * 30, CONFIG.GROUND_Y - 230, 20, 5); }
+      if (t === 150) T.open = 0;
+      if (t > 160) T.rise = Math.max(0, 1 - (t - 160) / 30);
+      if (t === 178) fatalityTitle();
+      return t >= 340;
+    },
+  },
+});
+
+/* ---------- drawing: entities ---------- */
+function cxBalloon(g, x, y, r, color, spiky, face = true) {
+  if (spiky) { g.fillStyle = '#111'; for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 + 0.3; g.beginPath(); g.moveTo(x + Math.cos(a - 0.18) * r * 0.92, y + Math.sin(a - 0.18) * r * 1.05); g.lineTo(x + Math.cos(a) * r * 1.4, y + Math.sin(a) * r * 1.5); g.lineTo(x + Math.cos(a + 0.18) * r * 0.92, y + Math.sin(a + 0.18) * r * 1.05); g.fill(); } }
+  ellipse(g, x, y, r, r * 1.12, color, '#111', 2.5);
+  circle(g, x - r * 0.35, y - r * 0.45, r * 0.22, 'rgba(255,255,255,0.7)', null);
+  g.fillStyle = color; g.beginPath(); g.moveTo(x - r * 0.18, y + r * 1.25); g.lineTo(x + r * 0.18, y + r * 1.25); g.lineTo(x, y + r * 1.05); g.fill();
+  if (face) {   // creepy-fun smiley
+    circle(g, x - r * 0.32, y - r * 0.1, r * 0.11, '#111', null); circle(g, x + r * 0.32, y - r * 0.1, r * 0.11, '#111', null);
+    g.strokeStyle = '#111'; g.lineWidth = 2.5; g.beginPath(); g.arc(x, y + r * 0.05, r * 0.5, 0.2, Math.PI - 0.2); g.stroke();
+  }
+}
+function cxPinShape(g, x, y, rot, s = 1) {
+  g.save(); g.translate(x, y); g.rotate(rot); g.scale(s, s);
+  g.fillStyle = '#111'; g.beginPath(); g.ellipse(0, 6, 8, 12, 0, 0, Math.PI * 2); g.fill(); g.fillRect(-4, -18, 8, 20);
+  g.fillStyle = '#f4f1e6'; g.beginPath(); g.ellipse(0, 6, 6, 10, 0, 0, Math.PI * 2); g.fill(); g.fillRect(-2.5, -17, 5, 18);
+  g.fillStyle = '#e8202a'; g.fillRect(-6, 2, 12, 3); g.fillRect(-2.5, -12, 5, 3);
+  g.fillStyle = '#9aa0a8'; g.beginPath(); g.moveTo(-3, -18); g.lineTo(0, -26); g.lineTo(3, -18); g.fill();   // little blade tip (sparks, not cuts)
+  g.restore();
+}
+function cxSeedShape(g, x, y, t) {
+  const p = 0.6 + Math.sin(t * 0.3) * 0.4;
+  circle(g, x, y, 13, `rgba(125,255,122,${0.25 * p})`, null);
+  ellipse(g, x, y, 8, 10, '#3f8a3a', '#111', 2); circle(g, x, y, 4 + p * 2, '#7dff7a', null);
+  g.strokeStyle = '#5aa04a'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - 10); g.quadraticCurveTo(x + 6, y - 18, x + 10, y - 14); g.stroke();
+}
+function cxFlower(g, x, y, r, col = '#c77dff') {
+  for (let i = 0; i < 5; i++) { const a = i * Math.PI * 0.4; circle(g, x + Math.cos(a) * r, y + Math.sin(a) * r, r * 0.8, col, '#111', 1.5); }
+  circle(g, x, y, r * 0.6, '#ffd23f', '#111', 1.5);
+}
+function cxVineLine(g, x0, y0, x1, y1, w, t, thorns = true) {
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, n = Math.max(2, Math.round(L / 18));
+  const pts = []; for (let i = 0; i <= n; i++) { const q = i / n, wv = Math.sin(q * 9 + t * 0.4) * 6 * Math.sin(q * Math.PI); pts.push([x0 + dx * q + nx * wv, y0 + dy * q + ny * wv]); }
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = '#111'; g.lineWidth = w + 4; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
+  g.strokeStyle = '#2f6b35'; g.lineWidth = w; g.stroke();
+  g.strokeStyle = '#5aa04a'; g.lineWidth = Math.max(1, w * 0.3); g.stroke();
+  if (thorns) for (let i = 1; i < pts.length; i += 2) { const [px, py] = pts[i]; g.fillStyle = '#d8cba0'; g.beginPath(); g.moveTo(px - 3, py); g.lineTo(px + nx * 9, py + ny * 9); g.lineTo(px + 3, py); g.fill(); }
+  for (let i = 2; i < pts.length; i += 3) { const [px, py] = pts[i]; ellipse(g, px - nx * 7, py - ny * 7, 6, 3, '#5aa04a', '#111', 1.2, Math.atan2(dy, dx) + 0.6); }
+}
+const CX_DRAW = {
+  clballoon(g, e) { g.save(); g.translate(e.x, e.y); const s = 1 + Math.sin(e.t * 0.25) * 0.03; cxBalloon(g, 0, 0, 22 * e.size * s, e.t > e.fuse - 20 && e.t % 6 < 3 ? '#ffffff' : '#e8202a', true); g.strokeStyle = '#ddd'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(0, 28 * e.size); g.quadraticCurveTo(8, 44 * e.size, 0, 60 * e.size); g.stroke(); g.restore(); },
+  clmini(g, e) { cxBalloon(g, e.x, e.y, 9 * Math.sqrt(e.size), ['#e8202a', '#2f6fd0', '#ffd23f', '#ff8ad8'][e.fuse % 4], true, false); },
+  clpin(g, e) { cxPinShape(g, e.x, e.y, e.t * 0.6 * Math.sign(e.vx || 1)); },
+  clgas(g, e) {
+    const k = Math.min(1, e.life / 40, (e.max - e.life + 6) / 14);
+    g.save(); g.globalAlpha = 0.35 * k;
+    for (let i = 0; i < 7; i++) circle(g, e.x + Math.cos(i * 0.9 + e.tick * 0.02) * e.r * 0.55, e.y + Math.sin(i * 1.7 + e.tick * 0.03) * e.r * 0.45, e.r * 0.5, i % 2 ? '#ff8ad8' : '#c77dff', null);
+    g.globalAlpha = 0.85 * k; if ((e.tick >> 4) % 2 === 0) txt(g, 'HA', e.x - 30 + Math.sin(e.tick * 0.1) * 10, e.y - 30, 18, '#ffffff', 'center', 0); else txt(g, 'HE', e.x + 30, e.y + 10 + Math.sin(e.tick * 0.1) * 6, 18, '#ffffff', 'center', 0);
+    g.restore();
+  },
+  tkseed(g, e) { cxSeedShape(g, e.x, e.y, e.t); if (e.stuck && e.fuse < 30 && e.fuse % 6 < 3) circle(g, e.x, e.y, 16, 'rgba(255,255,255,0.5)', null); },
+  tkburst(g, e) {
+    const k = 1 - e.life / e.max, R = e.r * (0.4 + k * 0.6);
+    g.save(); g.globalAlpha = 1 - k * 0.7;
+    if (e.pollen) { for (let i = 0; i < 9; i++) circle(g, e.x + Math.cos(i * 0.7) * R * 0.6, e.y + Math.sin(i * 1.3) * R * 0.5, R * 0.35, i % 2 ? '#e8ff6b' : '#ffe9a8', null); }
+    else for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + 0.2; cxVineLine(g, e.x, e.y, e.x + Math.cos(a) * R, e.y + Math.sin(a) * R * 0.8, 6, game.frame, true); }
+    g.restore();
+  },
+  tkpatch(g, e) {
+    const k = Math.min(1, e.life / 40), G = CONFIG.GROUND_Y;
+    g.save(); g.globalAlpha = k;
+    for (let x = -e.r; x <= e.r; x += 14) { const h = 14 + ((x * 7 + 100) % 11); g.fillStyle = '#111'; g.beginPath(); g.moveTo(e.x + x - 5, G + 4); g.lineTo(e.x + x, G - h - 2); g.lineTo(e.x + x + 5, G + 4); g.fill(); g.fillStyle = (x / 14) % 2 ? '#2f6b35' : '#5aa04a'; g.beginPath(); g.moveTo(e.x + x - 3, G + 2); g.lineTo(e.x + x, G - h); g.lineTo(e.x + x + 3, G + 2); g.fill(); }
+    cxFlower(g, e.x - e.r * 0.4, G - 6, 3, '#c77dff'); cxFlower(g, e.x + e.r * 0.5, G - 4, 3, '#ff8ad8');
+    g.restore();
+  },
+  tkover(g, e) {
+    const k = Math.min(1, e.life / 40, (e.max - e.life + 4) / 16), G = CONFIG.GROUND_Y, x0 = e.x - e.half * Math.min(1, (e.max - e.life + 1) / 12), x1 = e.x + e.half * Math.min(1, (e.max - e.life + 1) / 12);
+    g.save(); g.globalAlpha = 0.9 * k;
+    g.fillStyle = '#1d4a2a'; g.fillRect(x0, G - 4, x1 - x0, 14); g.fillStyle = '#2f6b35'; g.fillRect(x0, G - 4, x1 - x0, 5);
+    for (let x = x0; x < x1; x += 22) { const ph = Math.sin(x * 0.07 + e.tick * 0.05); g.strokeStyle = '#2f6b35'; g.lineWidth = 4; g.beginPath(); g.moveTo(x, G); g.quadraticCurveTo(x + 6 + ph * 6, G - 22, x + 12, G - 30 - ph * 6); g.stroke(); ellipse(g, x + 12, G - 30 - ph * 6, 6, 3, '#5aa04a', '#111', 1, 0.5); }
+    for (let x = x0 + 30; x < x1; x += 70) cxFlower(g, x, G - 8, 3, (x | 0) % 3 ? '#c77dff' : '#ff8ad8');
+    g.restore();
+  },
+};
+
+/* ---------- drawing: moves in progress ---------- */
+function cxDrawMoveFX(g, f, c) {
+  const S = f.ch.scale, G = CONFIG.GROUND_Y, t = game.frame;
+  if (c.kind === 'inflate') { const hx = f.x + f.facing * 60 * S, hy = f.y - 175 * S; cxBalloon(g, hx, hy - 10 * c.s, 20 * c.s, '#e8202a', c.s > 0.9); }
+  else if (c.kind === 'uni') {
+    const wx = f.x, wy = G - 22, sy = f.y - (f.liftY || 0) - 60 * S, a = (c.roll || 0) * 0.5;
+    g.strokeStyle = '#111'; g.lineWidth = 7; g.beginPath(); g.moveTo(wx, wy); g.lineTo(wx, sy); g.stroke(); g.strokeStyle = '#9aa0a8'; g.lineWidth = 3; g.stroke();
+    ellipse(g, wx, sy - 2, 14, 5, '#e8202a', '#111', 2);
+    circle(g, wx, wy, 22, null, '#111', 7); circle(g, wx, wy, 22, null, '#2a2a2e', 4);
+    g.strokeStyle = '#ffd23f'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { const b = a + i * Math.PI / 4; g.beginPath(); g.moveTo(wx - Math.cos(b) * 19, wy - Math.sin(b) * 19); g.lineTo(wx + Math.cos(b) * 19, wy + Math.sin(b) * 19); g.stroke(); }
+    circle(g, wx, wy, 4, '#e8202a', '#111', 1.5);
+  } else if (c.kind === 'cannon') {
+    const cx = f.x - f.facing * 20, cy = f.y - 40 * S;
+    g.save(); g.translate(cx, cy); g.scale(f.facing, 1); g.rotate(0.5);
+    g.fillStyle = '#111'; g.fillRect(-34, -16, 62, 32); g.fillStyle = '#c0392b'; g.fillRect(-32, -14, 58, 28); g.fillStyle = '#ffd23f'; g.fillRect(-10, -14, 6, 28); g.fillRect(18, -16, 8, 32);
+    g.restore();
+  } else if (c.kind === 'arm') {
+    const dx = c.ex - c.sx, dy = c.ey - c.sy, L = Math.hypot(dx, dy); if (L < 6) return;
+    const n = Math.max(3, Math.round(L / 22)), pts = [];
+    for (let i = 0; i <= n; i++) { const q = i / n, w = Math.sin(q * Math.PI * 3 + t * 0.6) * 5 * Math.sin(q * Math.PI); pts.push([c.sx + dx * q - dy / L * w, c.sy + dy * q + dx / L * w]); }
+    g.lineCap = 'round'; g.strokeStyle = '#111'; g.lineWidth = 15; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
+    for (let i = 0; i < n; i++) { g.strokeStyle = i % 2 ? '#f4f1e6' : '#2a5fb8'; g.lineWidth = 10; g.beginPath(); g.moveTo(pts[i][0], pts[i][1]); g.lineTo(pts[i + 1][0], pts[i + 1][1]); g.stroke(); }
+    circle(g, c.ex, c.ey, 11, '#ffffff', '#111', 2.5); circle(g, c.ex + Math.sign(dx || 1) * 6, c.ey - 5, 5, '#ffffff', '#111', 2);
+  } else if (c.kind === 'root') {
+    const y = G - 6, x0 = c.x0, x1 = c.x1; if (Math.abs(x1 - x0) < 4) return;
+    g.lineCap = 'round'; g.strokeStyle = '#111'; g.lineWidth = 13; g.beginPath(); g.moveTo(x0, y); for (let x = x0; Math.sign(x1 - x) === Math.sign(x1 - x0) && Math.abs(x1 - x) > 1; x += Math.sign(x1 - x0) * 12) g.lineTo(x, y - Math.abs(Math.sin(x * 0.05)) * 8); g.lineTo(x1, y); g.stroke();
+    g.strokeStyle = '#7a4a1e'; g.lineWidth = 8; g.stroke(); g.strokeStyle = '#a8784a'; g.lineWidth = 2; g.stroke();
+    g.fillStyle = '#5a3a20'; g.beginPath(); g.moveTo(x1, y - 26); g.lineTo(x1 + Math.sign(x1 - x0) * 16, y + 2); g.lineTo(x1 - Math.sign(x1 - x0) * 8, y + 2); g.fill();
+    if (c.wrap) { for (let i = 0; i < 3; i++) { const yy = c.oy - 50 - i * 46; cxVineLine(g, c.ox - 30, yy + 14, c.ox + 30, yy - 10, 6, t + i * 5, true); } }
+  } else if (c.kind === 'whip') { cxVineLine(g, c.sx, c.sy, c.ex, c.ey, 7, c.t, true); cxFlower(g, c.ex, c.ey, 4, '#c77dff'); }
+  else if (c.kind === 'crack') {
+    g.strokeStyle = '#3a2414'; g.lineWidth = 3; g.beginPath();
+    for (let i = -2; i <= 2; i++) { g.moveTo(c.x + i * c.r * 0.3, G + 2); g.lineTo(c.x + i * c.r * 0.45 + 6, G + 10); }
+    g.stroke(); if (t % 6 < 3) cxLeaves(c.x + rand(-c.r, c.r), G - 2, 1, 2, ['#7a4a1e', '#5aa04a']);
+  } else if (c.kind === 'thorn') {
+    const grow = Math.min(1, (c.k + 1) / 10), fade = c.k > 18 ? Math.max(0, 1 - (c.k - 18) / 6) : 1;
+    for (let i = 0; i < 9; i++) {
+      const x = c.x + (i - 4) / 4 * c.r, h = (i % 2 ? 60 : 90) * grow * fade * (c.k >= 10 ? 1.2 : 0.6), lean = (i - 4) * 0.08;
+      g.fillStyle = '#111'; g.beginPath(); g.moveTo(x - 9, G + 4); g.lineTo(x + lean * h, G - h - 3); g.lineTo(x + 9, G + 4); g.fill();
+      g.fillStyle = i % 2 ? '#2f6b35' : '#5aa04a'; g.beginPath(); g.moveTo(x - 6, G + 2); g.lineTo(x + lean * h, G - h); g.lineTo(x + 6, G + 2); g.fill();
+      if (c.k >= 10 && i % 2 === 0) cxFlower(g, x + lean * h, G - h, 4, i % 4 ? '#ff8ad8' : '#c77dff');
+    }
+  } else if (c.kind === 'pillar') {
+    const h = c.h; if (h < 2) return;
+    g.fillStyle = '#111'; g.fillRect(c.x - 36, G - h - 4, 72, h + 8);
+    g.fillStyle = '#7a7660'; g.fillRect(c.x - 33, G - h, 66, h); g.fillStyle = '#a29e80'; g.fillRect(c.x - 33, G - h, 66, 8); g.fillStyle = '#4a4838'; g.fillRect(c.x + 18, G - h, 15, h);
+    for (let y = G - h + 22; y < G; y += 26) { g.fillStyle = '#4a4838'; g.fillRect(c.x - 33, y, 66, 3); }
+    for (let i = 0; i < 2; i++) { g.strokeStyle = '#7a4a1e'; g.lineWidth = 6; g.beginPath(); g.moveTo(c.x - 34 + i * 68, G); g.quadraticCurveTo(c.x + (i ? -40 : 40), G - h * 0.5, c.x - 30 + i * 60, G - h + 4); g.stroke(); }
+    ellipse(g, c.x - 20, G - h, 10, 5, '#5aa04a', '#111', 1.5); cxFlower(g, c.x + 14, G - h - 2, 4, '#c77dff');
+  } else if (c.kind === 'cage') {
+    const grow = Math.min(1, c.k / 20), bars = 9, R = 70;
+    for (let i = 0; i < bars; i++) {
+      const q = i / (bars - 1), x = c.x - R + q * 2 * R, top = G - 250 * grow;
+      cxVineLine(g, x, G + 4, c.x + (x - c.x) * 0.25, top, 9, t + i * 7, true);
+    }
+    if (grow >= 1) { cxVineLine(g, c.x - R, G - 120, c.x + R, G - 150, 7, t, true); cxFlower(g, c.x, G - 252, 7, c.B ? '#ff8ad8' : '#c77dff'); }
+    if (c.k >= 34 && c.k <= 110 && c.k % 8 < 4) { for (let i = 0; i < 3; i++) { const a = rand(0, Math.PI * 2); g.fillStyle = '#d8cba0'; g.beginPath(); const px = c.x + Math.cos(a) * 40, py = G - 110 + Math.sin(a) * 70; g.moveTo(px, py); g.lineTo(px - Math.cos(a) * 30 - 3, py - Math.sin(a) * 30); g.lineTo(px - Math.cos(a) * 30 + 3, py - Math.sin(a) * 30 + 3); g.fill(); } }
+  }
+}
+
+/* ---------- drawing: status effects on fighters ---------- */
+function cxDrawRooted(g, f) {
+  const hb = f.hurtbox();
+  for (let i = 0; i < 4; i++) { const y = hb.y + hb.h - 20 - i * hb.h / 4.2; cxVineLine(g, hb.x - 16, y + 12, hb.x + hb.w + 16, y - 12, 6, game.frame + i * 9, true); }
+}
+function cxDrawStatus(g, f, top) {
+  const S = f.ch.scale, t = game.frame;
+  if (f.laugh > 0) txt(g, (t >> 3) % 2 ? 'HA HA!' : 'HA HA HA!', f.x, top - 20 + Math.sin(t * 0.4) * 4, 16, '#ff8ad8', 'center', 3);
+  if (f.slow > 0 && f.laugh <= 0) { g.strokeStyle = '#c77dff'; g.lineWidth = 2.5; g.beginPath(); g.arc(f.x - 30, f.y - 20, 8, 0, Math.PI * 1.6); g.stroke(); g.beginPath(); g.arc(f.x - 30, f.y - 20, 4, Math.PI, Math.PI * 2.4); g.stroke(); }
+  if (f.blind > 0) {
+    const hx = f.x + f.facing * 6 * S, hy = f.y - 185 * S;
+    if (f.blindKind === 'pie') { for (const [dx, dy, r] of [[0, 0, 14], [10, 6, 9], [-9, 7, 8], [6, -9, 8]]) circle(g, hx + dx * S, hy + dy * S, r * S, '#fff3d6', null); circle(g, hx + 4, hy + 2, 3, '#e8202a', null); }
+    else for (let i = 0; i < 5; i++) circle(g, hx + Math.cos(t * 0.1 + i) * 16, hy + Math.sin(t * 0.13 + i * 2) * 12, 4, '#e8ff6b', null);
+  }
+  if (f.pin > 0) {   // a juggling pin stuck on the shoulder, fizzing stars (no blood)
+    const px = f.x - f.facing * 8 * S, py = f.y - 168 * S;
+    cxPinShape(g, px, py, f.facing * 0.9, 0.8);
+    if (t % 6 < 3) drawStar(g, px + rand(-10, 10), py + rand(-14, 4), 4, '#ffd23f');
+  }
+  if (f.bloom > 0) {
+    for (let i = 0; i < 6; i++) { const a = t * 0.06 + i * Math.PI / 3; cxFlower(g, f.x + Math.cos(a) * 44 * S, f.y - 110 * S + Math.sin(a) * 90 * S * 0.6, 4, i % 2 ? '#c77dff' : '#ff8ad8'); }
+    if (t % 4 === 0) spawnParticle({ x: f.x + rand(-30, 30), y: f.y - rand(10, 200) * S, vx: rand(-0.5, 0.5), vy: rand(-2, -0.5), life: 26, size: rand(3, 6), color: '#7dff7a', type: 'glow' });
+  } else if (f.ch.bloomDef && f.growth >= 100 && t % 8 === 0) spawnParticle({ x: f.x + rand(-26, 26), y: f.y - rand(10, 190) * S, vx: 0, vy: -1, life: 20, size: 4, color: '#5cffb4', type: 'glow' });
+}
+
+/* ---------- screen overlays: THE GRAND FINALE tent, pie splat / pollen for a player who got hit ---------- */
+function cxDrawOverlay(g) {
+  const T = game.cxTent;
+  if (T) {
+    const drop = Math.min(1, T.t / 22), lift = T.t > T.dur - 22 ? (T.dur - T.t) / 22 : 1, k = Math.min(drop, lift), t = game.frame;
+    g.fillStyle = `rgba(20,6,14,${0.45 * k})`; g.fillRect(0, 0, 960, 540);
+    g.fillStyle = 'rgba(255,233,168,0.12)';
+    for (const [x, ph] of [[300, 0], [660, 2]]) { const a = Math.sin(t / 30 + ph) * 0.25; g.beginPath(); g.moveTo(480, 0); g.lineTo(x - 90 + a * 400, 540); g.lineTo(x + 90 + a * 400, 540); g.fill(); }
+    const top = -150 + 150 * k;
+    for (let i = 0; i < 12; i++) {   // striped canopy
+      g.fillStyle = i % 2 ? '#f3e9c6' : '#c0392b'; g.beginPath(); g.moveTo(480, top - 60); g.lineTo(i * 80, top + 110); g.lineTo(i * 80 + 80, top + 110); g.fill();
+    }
+    g.fillStyle = '#111'; for (let x = 0; x < 960; x += 40) { g.beginPath(); g.arc(x + 20, top + 110, 21, 0, Math.PI); g.fill(); }
+    for (let x = 0; x < 960; x += 40) { g.fillStyle = (x / 40) % 2 ? '#c0392b' : '#f3e9c6'; g.beginPath(); g.arc(x + 20, top + 110, 18, 0, Math.PI); g.fill(); }
+    const cw = 70 * k;   // side curtains
+    for (const [x0, s] of [[0, 1], [960, -1]]) { g.fillStyle = '#8a1a1a'; g.fillRect(s > 0 ? 0 : 960 - cw, 0, cw, 540); g.fillStyle = '#c0392b'; for (let y = 0; y < 540; y += 60) g.fillRect(s > 0 ? cw - 10 : 960 - cw, y, 10, 30); }
+    const cy = 540 - 46 * k;   // the crowd
+    for (let x = 6; x < 960; x += 22) { const b = Math.abs(Math.sin(t * 0.25 + x)) * 6; circle(g, x, cy + 10 - b, 9, '#1a0a14', null); g.fillStyle = '#1a0a14'; g.fillRect(x - 10, cy + 16 - b, 20, 40); if ((x / 22 | 0) % 5 === (t >> 4) % 5) { g.fillRect(x - 12, cy - 12 - b, 4, 18); g.fillRect(x + 8, cy - 12 - b, 4, 18); } }
+    if (T.t > 20 && T.t < 60) txt(g, 'THE GRAND FINALE!', 480, 110 + top * 0.3, 40, '#ffd23f', 'center', 5);
+  }
+  for (const f of game.fighters) {
+    if (!(f.blind > 0) || f.isCpu) continue;
+    const local = game.mode === 'online' ? f.side === (Net.role === 'guest' ? 1 : 0) : true;
+    if (!local) continue;
+    const both = game.fighters.every((q) => !q.isCpu) && game.mode !== 'online';
+    const x0 = both ? (f.side === 0 ? 0 : 480) : 0, w = both ? 480 : 960, a = Math.min(1, f.blind / 40);
+    g.save(); g.globalAlpha = a * (f.blindKind === 'pie' ? 0.85 : 0.5);
+    if (f.blindKind === 'pie') {
+      const blobs = [[0.3, 0.35, 90], [0.55, 0.5, 120], [0.75, 0.3, 70], [0.2, 0.7, 60], [0.8, 0.72, 80], [0.5, 0.2, 50]];
+      for (const [px, py, r] of blobs) { circle(g, x0 + px * w, py * 540, r * (w / 960 + 0.4), '#fff3d6', null); circle(g, x0 + px * w + 14, py * 540 + 18, r * 0.5 * (w / 960 + 0.4), '#f2d8a0', null); }
+      for (let i = 0; i < 8; i++) { const px = x0 + ((i * 131) % w), py = 160 + ((i * 97) % 300) + (40 - Math.min(40, f.blind / 4)) * 2; g.fillStyle = '#fff3d6'; g.fillRect(px, py - 50, 10, 60); circle(g, px + 5, py + 10, 6, '#fff3d6', null); }
+      circle(g, x0 + 0.55 * w, 0.5 * 540 - 30, 12, '#e8202a', '#111', 2);
+    } else for (let i = 0; i < 40; i++) circle(g, x0 + ((i * 89 + game.frame) % w), (i * 53 + game.frame * 0.5) % 540, 10 + (i % 3) * 6, i % 2 ? '#e8ff6b' : '#ffe9a8', null);
+    g.restore();
+  }
+}
+/** New growth covering the floor after RECLAIMED / MOTHER'S WRATH (world layer). */
+function cxDrawGround(g) {
+  const C = game.cxGrowth; if (!C) return;
+  const G = CONFIG.GROUND_Y, w = 960 * C.k, x0 = 480 - w / 2;
+  g.fillStyle = '#2f6b35'; g.fillRect(x0, G - 2, w, 30); g.fillStyle = '#5aa04a'; g.fillRect(x0, G - 2, w, 6);
+  for (let x = x0; x < x0 + w; x += 16) { g.strokeStyle = '#3f8a3a'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, G); g.lineTo(x + 4, G - 14 - ((x * 13) % 9)); g.stroke(); }
+  for (let x = x0 + 20; x < x0 + w; x += 46) cxFlower(g, x, G - 10 - ((x * 7) % 8), 4, ((x / 46) | 0) % 2 ? '#c77dff' : '#ff8ad8');
+}
+
+/* ---------- drawing: finisher props ---------- */
+function cxDrawFatal(g, F) {
+  const G = CONFIG.GROUND_Y, t = F.t;
+  if (F.balloon) {   // the balloon animal
+    const B = F.balloon, c = B.col, s = B.s;
+    g.save(); g.translate(B.x, B.y); g.rotate(B.wob || 0); g.scale(s, s);
+    if (B.stage === 0) { cxBalloon(g, 0, 20, 52, c, false, false); cxBalloon(g, 0, -60, 30, c, false, true); }
+    else if (B.stage === 1) { for (const [x, y, rx, ry] of [[0, 30, 30, 46], [0, -40, 26, 26], [-34, 60, 12, 30], [34, 60, 12, 30], [-38, -6, 12, 28], [38, -6, 12, 28]]) ellipse(g, x, y, rx, ry, c, '#111', 2.5); circle(g, 8, -44, 3, '#111', null); }
+    else {   // balloon dog
+      ellipse(g, 0, 0, 52, 18, c, '#111', 2.5);
+      for (const x of [-34, -18, 26, 42]) ellipse(g, x, 30, 9, 22, c, '#111', 2.5);
+      ellipse(g, 62, -26, 24, 18, c, '#111', 2.5); ellipse(g, 88, -22, 14, 10, c, '#111', 2.5);
+      ellipse(g, 56, -54, 9, 20, c, '#111', 2.5, -0.3); ellipse(g, 70, -54, 9, 20, c, '#111', 2.5, 0.3);
+      ellipse(g, -62, -14, 16, 7, c, '#111', 2.5, -0.6);
+      circle(g, 64, -30, 3, '#111', null); circle(g, 98, -22, 4, '#111', null);
+      circle(g, -10, -6, 6, 'rgba(255,255,255,0.6)', null);
+    }
+    g.restore();
+  }
+  if (F.bow && game.fatal) { const l = F.l, sz = (l.shrink || 1) * l.ch.scale; const bx = l.x, by = l.y - 120 * sz; g.fillStyle = '#e8202a'; g.strokeStyle = '#111'; g.lineWidth = 2; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + s * 22 * sz, by - 12 * sz); g.lineTo(bx + s * 22 * sz, by + 12 * sz); g.closePath(); g.fill(); g.stroke(); } circle(g, bx, by, 6 * sz, '#ffd23f', '#111', 2); }
+  if (F.cannon) {
+    const C = F.cannon;
+    g.save(); g.translate(C.x, C.y); g.scale(C.dir, 1);
+    circle(g, -20, -22, 22, '#5a3a20', '#111', 3); circle(g, 26, -22, 22, '#5a3a20', '#111', 3);
+    g.rotate(-0.75); g.fillStyle = '#111'; g.fillRect(-60, -64, 150, 52); g.fillStyle = '#c0392b'; g.fillRect(-56, -60, 142, 44);
+    g.fillStyle = '#ffd23f'; for (const x of [-30, 10, 50]) g.fillRect(x, -60, 8, 44); g.fillStyle = '#f3e9c6'; g.fillRect(78, -66, 14, 56);
+    g.restore();
+    if (t > 40 && t < 112) txt(g, 'CIRCUS CANNON', C.x, C.y - 170, 16, '#ffd23f', 'center', 3);
+  }
+  if (F.flyer) { const q = F.flyer; drawCharacter(g, q.ch, q.x, q.y + 60, 1, POSES.trapped, { mult: 0.55, rot: q.rot }); }
+  if (F.seedFly) cxSeedShape(g, F.seedFly.x, F.seedFly.y, t);
+  if (F.tree) {   // RECLAIMED: the tree
+    const T = F.tree, k = T.g, s = T.s, H = 300 * k * s, W = (24 + 40 * k) * s;
+    if (k > 0) {
+      for (let i = 0; i < 4; i++) { const sx = (i - 1.5) * 30 * s; g.strokeStyle = '#111'; g.lineWidth = 12; g.beginPath(); g.moveTo(T.x + sx * 0.3, G - 10); g.quadraticCurveTo(T.x + sx, G - 2, T.x + sx * 2.4 * k, G + 8); g.stroke(); g.strokeStyle = '#7a4a1e'; g.lineWidth = 8; g.stroke(); }
+      g.fillStyle = '#111'; g.fillRect(T.x - W / 2 - 3, G - H - 3, W + 6, H + 6);
+      g.fillStyle = '#7a4a1e'; g.fillRect(T.x - W / 2, G - H, W, H); g.fillStyle = '#a8784a'; g.fillRect(T.x - W / 2, G - H, W * 0.25, H); g.fillStyle = '#5a3a20'; g.fillRect(T.x + W * 0.25, G - H, W * 0.25, H);
+      for (let y = G - H + 20; y < G; y += 34) { g.strokeStyle = '#5a3a20'; g.lineWidth = 2; g.beginPath(); g.moveTo(T.x - W / 3, y); g.quadraticCurveTo(T.x, y - 8, T.x + W / 3, y); g.stroke(); }
+      if (k < 1) cxVineLine(g, T.x - 50 * s, G - H * 0.4, T.x + 50 * s, G - H * 0.6, 6, t, false);
+      if (k > 0.45) {
+        const c = (k - 0.45) / 0.55, cy = G - H;
+        for (const [dx, dy, r] of [[0, -40, 80], [-70, -10, 60], [70, -10, 60], [-40, -80, 55], [40, -80, 55], [0, -110, 50]]) circle(g, T.x + dx * c * s, cy + dy * c * s, r * c * s, (dx + dy) % 3 ? '#2f6b35' : '#3f8a3a', '#111', 3);
+        if (T.bloom > 0) for (let i = 0; i < 14; i++) { const a = i * 2.4, rr = 90 * c * s * ((i % 3) / 3 + 0.4); cxFlower(g, T.x + Math.cos(a) * rr, cy - 50 * s + Math.sin(a) * rr * 0.6, 5 * T.bloom * s, i % 2 ? '#c77dff' : '#ff8ad8'); }
+      }
+    }
+  }
+  if (F.roots) {   // MOTHER'S WRATH: giant roots
+    const R = F.roots, l = F.l, k = R.k;
+    for (let i = 0; i < 5; i++) { const sx = R.x + (i - 2) * 70, top = l.hidden ? G - 120 * k : l.y - 40 - i * 30; cxVineLine(g, sx, G + 6, lerp(sx, l.x, 0.8), lerp(G, top, k), 12, t + i * 11, true); }
+  }
+  if (F.flower) {   // MOTHER'S WRATH: the giant flower closing over them
+    const Fl = F.flower, k = Fl.k, sink = Fl.sink || 0, y = G - 60 + sink * 220;
+    g.save(); g.beginPath(); g.rect(0, 0, 960, G + 30); g.clip();
+    cxVineLine(g, Fl.x, G + 10, Fl.x, y + 40, 18, t, false);
+    for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i - 2.5) * (0.55 - 0.4 * k); g.save(); g.translate(Fl.x, y); g.rotate(a + Math.PI / 2); ellipse(g, 0, -90, 34, 90, i % 2 ? '#c77dff' : '#ff8ad8', '#111', 3); g.restore(); }
+    circle(g, Fl.x, y, 26, '#ffd23f', '#111', 3);
+    g.restore();
+  }
+  if (F.trap) {   // FLYTRAP
+    const T = F.trap; if (T.rise <= 0) return;
+    const y = G + 20 - 250 * T.rise, o = T.open * 0.9, d = T.dir;
+    g.save(); g.beginPath(); g.rect(0, 0, 960, G + 26); g.clip();
+    g.strokeStyle = '#111'; g.lineWidth = 22; g.beginPath(); g.moveTo(T.x, G + 30); g.quadraticCurveTo(T.x + 30, y + 160, T.x, y + 90); g.stroke(); g.strokeStyle = '#3f8a3a'; g.lineWidth = 16; g.stroke();
+    for (const s of [-1, 1]) { ellipse(g, T.x + s * 50, G - 10 - 30 * T.rise, 40, 14, '#5aa04a', '#111', 2.5, s * 0.3); }
+    g.translate(T.x, y + 70 + (T.chew || 0) * 4); g.scale(1 + (T.chew || 0) * 0.05, 1 - (T.chew || 0) * 0.05);
+    for (const s of [-1, 1]) {
+      g.save(); g.rotate(s * (0.15 + o));
+      g.fillStyle = '#111'; g.beginPath(); g.ellipse(0, s * -2, 92, 52, 0, s > 0 ? Math.PI : 0, s > 0 ? Math.PI * 2 : Math.PI); g.fill();
+      g.fillStyle = '#3f8a3a'; g.beginPath(); g.ellipse(0, s * -2, 88, 48, 0, s > 0 ? Math.PI : 0, s > 0 ? Math.PI * 2 : Math.PI); g.fill();
+      g.fillStyle = '#c0392b'; g.beginPath(); g.ellipse(0, s * -2, 74, 34, 0, s > 0 ? Math.PI : 0, s > 0 ? Math.PI * 2 : Math.PI); g.fill();
+      g.fillStyle = '#f3e9c6'; for (let i = -6; i <= 6; i++) { g.beginPath(); g.moveTo(i * 13 - 4, s * -2); g.lineTo(i * 13, s * -18); g.lineTo(i * 13 + 4, s * -2); g.fill(); }
+      g.restore();
+    }
+    g.restore();
+  }
+}
+
+/* ---------- HUD: Takata's GROWTH meter + Overgrowth cooldown ---------- */
+function cxDrawHUD(g) {
+  for (const f of game.fighters) {
+    if (!f.ch.bloomDef) continue;
+    const w = 160, x = f.side === 0 ? 30 : 930 - w, y = 84, B = f.bloom > 0, k = B ? f.bloom / f.ch.bloomDef.dur : (f.growth || 0) / 100, full = !B && k >= 1;
+    g.fillStyle = '#000'; g.fillRect(x - 2, y - 2, w + 4, 12); g.fillStyle = '#10261a'; g.fillRect(x, y, w, 8);
+    g.fillStyle = B ? (game.frame % 10 < 5 ? '#ff8ad8' : '#c77dff') : full ? (game.frame % 16 < 8 ? '#5cffb4' : '#ffffff') : '#3f8a3a';
+    g.fillRect(f.side === 0 ? x : x + w - w * k, y, w * k, 8);
+    const label = B ? 'BLOOM STATE!' : full ? 'BLOOM READY: ULT' : 'GROWTH';
+    txt(g, label + (f.ogCool > 0 ? '  VINES ' + Math.ceil(f.ogCool / 60) + 'S' : ''), f.side === 0 ? x : x + w, y + 19, 13, B ? '#ff8ad8' : full ? '#5cffb4' : '#8ad04a', f.side === 0 ? 'left' : 'right', 3);
+  }
+}
+
+/* ---------- sounds ---------- */
+function clSfx(S, name) {
+  switch (name) {
+    case 'cl_honk': S.tone(392, 370, 0.12, 'square', 0.2); S.tone(330, 310, 0.16, 'square', 0.2, 0.16); break;
+    case 'cl_squeak': S.tone(900, 1400, 0.08, 'sine', 0.15); S.tone(1300, 800, 0.07, 'sine', 0.12, 0.08); break;
+    case 'cl_pop': S.noise(0.08, 0.6, 2500, 'bandpass'); S.tone(600, 80, 0.06, 'square', 0.15); break;
+    case 'cl_spray': S.noise(0.5, 0.22, 3200, 'highpass'); S.tone(700, 500, 0.4, 'sine', 0.04); break;
+    case 'cl_laugh': for (let i = 0; i < 5; i++) S.tone(540 - i * 25, 380 - i * 25, 0.09, 'sawtooth', 0.13, i * 0.12); break;
+    case 'cl_boing': S.tone(160, 720, 0.28, 'triangle', 0.24); S.tone(720, 300, 0.2, 'triangle', 0.12, 0.26); break;
+    case 'cl_juggle': for (let i = 0; i < 3; i++) S.noise(0.05, 0.25, 2600 + i * 400, 'bandpass', i * 0.06); break;
+    case 'cl_cannon': S.noise(0.5, 0.7, 500, 'lowpass', 0, 80); S.tone(120, 40, 0.4, 'square', 0.3); break;
+    case 'cl_crowd': S.noise(1.5, 0.2, 1200, 'bandpass', 0, 800); for (let i = 0; i < 4; i++) S.tone(500 + i * 90, 800 + i * 60, 0.3, 'sine', 0.04, 0.1 + i * 0.15); break;
+    case 'cl_splat': S.noise(0.16, 0.6, 700, 'lowpass', 0, 200); S.tone(220, 60, 0.12, 'sine', 0.25); break;
+    case 'cl_twist': S.tone(700, 1100, 0.1, 'sawtooth', 0.08); S.tone(1100, 600, 0.1, 'sawtooth', 0.08, 0.1); break;
+    case 'cl_deflate': S.tone(1200, 200, 1.3, 'sine', 0.12); S.noise(1.3, 0.12, 2000, 'bandpass', 0, 400); break;
+    case 'cl_fuse': S.noise(0.9, 0.15, 5000, 'highpass'); break;
+    case 'cl_drum': for (let i = 0; i < 16; i++) S.noise(0.04, 0.22, 900, 'bandpass', i * 0.05); S.noise(0.3, 0.4, 600, 'lowpass', 0.82); break;
+    case 'cl_boom': S.noise(0.4, 0.6, 600, 'lowpass', 0, 120); S.tone(330, 300, 0.1, 'square', 0.15); break;
+    default: break;
+  }
+}
+function tkSfx(S, name) {
+  switch (name) {
+    case 'tk_vine': S.noise(0.1, 0.45, 4500, 'highpass', 0, 1500); S.tone(1400, 300, 0.08, 'sawtooth', 0.06); break;
+    case 'tk_root': S.noise(0.35, 0.5, 300, 'lowpass', 0, 120); S.noise(0.06, 0.4, 2000, 'bandpass', 0.05); break;
+    case 'tk_thorn': for (let i = 0; i < 3; i++) S.noise(0.04, 0.35, 5000, 'highpass', i * 0.05); break;
+    case 'tk_rumble': S.noise(0.6, 0.55, 140, 'lowpass'); S.tone(60, 40, 0.5, 'sine', 0.3); break;
+    case 'tk_seed': S.tone(300, 700, 0.07, 'sine', 0.18); break;
+    case 'tk_bloom': [523, 659, 784, 1047].forEach((f, i) => S.tone(f, null, 0.2, 'triangle', 0.1, i * 0.06)); break;
+    case 'tk_grow': S.tone(90, 160, 0.5, 'sawtooth', 0.08); S.noise(0.5, 0.15, 600, 'bandpass', 0, 1800); break;
+    case 'tk_chomp': S.noise(0.08, 0.6, 900, 'bandpass'); S.tone(160, 60, 0.1, 'square', 0.25); break;
+    case 'tk_burp': S.tone(110, 70, 0.45, 'sawtooth', 0.22); S.noise(0.4, 0.12, 300, 'lowpass'); break;
+    default: break;
+  }
+}
+
+/* ---------- BIG TOP CIRCUS stage (wide: far = tent interior + crowd, near = ring, props) ---------- */
+function buildCircusWide() {
+  const F = new Raster(FAR_AW, ART_H), N = new Raster(NEAR_AW, ART_H), rnd = seeded(23);
+  F.grad(0, 0, FAR_AW, 200, ['#120a1a', '#2a0f1a', '#3a1420']);
+  const mid = FAR_AW / 2;
+  for (let i = 0; i * 26 < FAR_AW + 26; i++) { const x = i * 26; F.poly([[x, 200], [x + 13, 200], [mid + (x + 13 - mid) * 0.25, 0], [mid + (x - mid) * 0.25, 0]], i % 2 ? '#5a1622' : '#3a1420'); }
+  for (let x = 0; x < FAR_AW; x += 3) F.px(x, 36 + Math.round(Math.sin(x / 9) * 3), '#ffd23f');
+  for (let row = 0; row < 5; row++) {
+    const y = 112 + row * 15;
+    F.rect(0, y, FAR_AW, 13, row % 2 ? '#2a1a30' : '#231a40'); F.rect(0, y + 12, FAR_AW, 1, '#120a1a');
+    for (let x = 2; x < FAR_AW; x += 7) if (rnd() < 0.85) { F.circle(x + 3, y + 3, 2, ['#f0c4a0', '#d9a273', '#8a5a3a', '#6b3e1f'][(rnd() * 4) | 0]); F.rect(x + 1, y + 6, 5, 6, ['#c0392b', '#2f6fd0', '#ffd23f', '#3f8a3a', '#c77dff'][(rnd() * 5) | 0]); }
+  }
+  F.rect(0, 187, FAR_AW, 83, '#1a1238');
+  for (const px of [40, mid - 60, mid + 60, FAR_AW - 40]) { F.rect(px - 2, 20, 4, 170, '#7a7660'); F.rect(px - 1, 20, 1, 170, '#a29e80'); }
+  // near layer: ring curb, pedestals, banner, bunting, cannon + balloons + ticket booth
+  N.rect(80, 52, 800, 22, '#8a1a1a'); N.rect(80, 52, 800, 2, '#ffd23f'); N.rect(80, 72, 800, 2, '#ffd23f');
+  N.text('FAMILY KOMBAT BIG TOP', 480, 59, '#ffd23f', 1, true);
+  for (let x = 84; x < 878; x += 12) N.px(x, 56, (x / 12) % 2 ? '#ffffff' : '#ffd23f');
+  for (let s = 0; s < 3; s++) for (let x = 0; x < NEAR_AW; x += 1) { const y = 90 + s * 28 + Math.round(Math.sin((x - s * 140) / 76) * 10); N.px(x, y, '#2a2a2e'); if (x % 16 === 0) N.poly([[x, y], [x + 10, y], [x + 5, y + 10]], ['#c0392b', '#ffd23f', '#2f6fd0', '#3f8a3a'][(x / 16 + s) % 4]); }
+  const ped = (x, w, h, c) => { N.rect(x, GY - h, w, h, c); N.rect(x, GY - h, w, 3, '#ffd23f'); N.rect(x, GY - 4, w, 4, '#2a0f1a'); for (let k = 0; k < 3; k++) N.rect(x + 4 + k * (w - 8) / 3, GY - h + 8, 2, h - 14, '#ffffff'); };
+  ped(150, 40, 26, '#2f6fd0'); ped(196, 30, 18, '#c0392b'); ped(720, 44, 30, '#c0392b'); ped(770, 30, 20, '#2f6fd0');
+  N.rect(40, 168, 60, 67, '#c0392b'); N.rect(40, 168, 60, 3, '#ffd23f'); N.poly([[36, 168], [70, 146], [104, 168]], '#f3e9c6'); N.rect(52, 180, 36, 16, '#2a0f1a'); N.text('TICKETS', 70, 185, '#ffd23f', 1, true);
+  for (const [bx, by, c] of [[880, 140, '#e8202a'], [894, 130, '#2f6fd0'], [906, 144, '#ffd23f'], [888, 120, '#ff8ad8']]) { N.circle(bx, by, 7, c); N.px(bx - 2, by - 3, '#ffffff'); N.line(bx, by + 7, 896, 200, '#d8cba0'); }
+  N.rect(880, 200, 32, 35, '#5a3a20'); N.rect(880, 200, 32, 3, '#a8784a');
+  N.circle(600, 222, 9, '#5a3a20'); N.circle(628, 222, 9, '#5a3a20'); N.poly([[586, 214], [640, 190], [648, 206], [594, 230]], '#c0392b'); N.rect(624, 196, 4, 20, '#ffd23f');
+  N.grad(0, GY, NEAR_AW, 35, ['#c8945a', '#a8784a', '#8a5a34']);
+  N.rect(0, GY, NEAR_AW, 2, '#c0392b'); for (let x = 0; x < NEAR_AW; x += 24) N.rect(x, GY, 12, 2, '#f3e9c6');
+  for (let i = 0; i < 380; i++) N.px(rnd() * NEAR_AW, GY + 3 + rnd() * 32, rnd() < 0.5 ? '#d0a060' : '#8a5a34');
+  for (let i = 0; i < 40; i++) N.px(rnd() * NEAR_AW, GY + 4 + rnd() * 30, ['#ff3b3b', '#ffd23f', '#3d8ff0', '#ffffff'][(rnd() * 4) | 0]);
+  return { far: F.toCanvas(), near: N.toCanvas() };
+}
+function animCircusWide(g, t, ca) {
+  g.fillStyle = 'rgba(255,233,168,0.14)';
+  for (const [bx, ph] of [[240, 0], [480, 2.1], [720, 4.2]]) {
+    const a = Math.sin(t / 60 + ph) * 0.45 + Math.PI / 2;
+    g.beginPath(); g.moveTo(bx, 0); g.lineTo(bx + Math.cos(a - 0.09) * 300, Math.sin(a - 0.09) * 300); g.lineTo(bx + Math.cos(a + 0.09) * 300, Math.sin(a + 0.09) * 300); g.fill();
+  }
+  for (let x = 86; x < 876; x += 24) { g.fillStyle = ((x / 24 + (t >> 4)) | 0) % 2 ? '#ffd23f' : '#ff7a1a'; g.fillRect(x, 75, 2, 2); }
+  const sw = Math.sin(t / 40) * 14;   // swinging trapeze
+  g.strokeStyle = '#d8cba0'; g.lineWidth = 1; g.beginPath(); g.moveTo(470, 0); g.lineTo(470 + sw, 40); g.moveTo(490, 0); g.lineTo(490 + sw, 40); g.stroke();
+  g.fillStyle = '#ffd23f'; g.fillRect(468 + sw, 40, 24, 2);
+}
+STAGES.push({ id: 'circus', name: 'BIG TOP CIRCUS', build: null, anim: null, song: 'circus', buildWide: buildCircusWide, animWide: animCircusWide });
+SONGS.circus = { bpm: 164, chords: ['C', 'G', 'C', 'G', 'F', 'C', 'G', 'C'], drums: 'K.h.S.h.K.h.S.hS', bass: 'R.5.R.5.R.5.R.5.',
+  lead: ['7 6 7 . 4 3 4 . 0 . 4 . 7 - - .', '9 8 9 . 7 6 7 . 4 . 7 . 12 - - .', '12 11 12 . 9 8 9 . 7 . 5 . 4 - - .', '5 4 5 . 2 1 2 . 7 - 4 - 0 - - -'], seq: [0, 1, 0, 2, 0, 1, 3, 3] };
+DPAD_PAL_EXTRA.push('#231a40', '#2a1a30', '#1a1238', '#2a2a2e', '#d0a060', '#8a5a34', '#c8945a', '#ff7a1a', '#ffe9a8');
+
+/* ---------- poses ---------- */
+POSES.uni = P({ drop: 22, ft: 1.25, fs: -1.4, bt: 0.55, bs: -1.0, fa: 2.4, fa2: 0.4, ba: -2.2, ba2: -0.3, lean: 0.12 });
+POSES.flower = P({ fa: 0.55, fa2: 2.3, ba: 1.2, ba2: 0.3, lean: 0.1 });
+POSES.whip = P({ fa: 1.6, fa2: -0.1, lean: 0.25, ba: -0.6, ba2: 1.0, ft: 0.6, fs: -0.4, bt: -0.5, bs: 0.2, drop: 8 });
+POSES.plant = P({ drop: 34, lean: 0.55, ft: 1.4, fs: -1.7, bt: -0.4, bs: -1.2, fa: 0.25, fa2: 0.15, ba: 1.0, ba2: 0.8 });
+POSES.raise = P({ fa: 2.7, fa2: 0.3, ba: 2.5, ba2: 0.4, lean: -0.1, drop: 6 });
+POSES.knot = P({ fa: -0.8, fa2: 2.6, ba: 0.9, ba2: -2.4, ft: -0.5, fs: 1.0, bt: 0.6, bs: -1.1, lean: 0.1, drop: 12 });
+
+/* ---------- voice-free ad-libs ---------- */
+ADLIBS.clowny = {
+  pre: ['Wanna see a magic trick? You disappear!', 'Step right up! Get your beating here!', "Why so serious? Oh right, you're losing.", "Honk honk! That's the sound of your doom."],
+  win: ['And the crowd goes wild!', "Thank you, thank you! I'm here all week!", 'The greatest show on earth!'],
+};
+ADLIBS.takata = {
+  pre: ['The forest remembers everything.', 'Nature always wins.', 'Root yourself. Or I will.', "Let's see how deep your roots go."],
+  win: ['Back to the earth with you.', 'Everything grows back. Even you.', 'The jungle reclaims its own.'],
+};
+
 buildPalettes();
 resize();
 
