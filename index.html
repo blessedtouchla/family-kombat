@@ -7,10 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
-<title>FAMILY KOMBAT</title>
+<title>FIGHTER SUPREME</title>
 <!--
   =====================================================================
-   FAMILY KOMBAT  -  a 16-bit pixel-art beat-'em-up for the whole family
+   FIGHTER SUPREME  -  a 16-bit pixel-art beat-'em-up for the whole family
   =====================================================================
    One self-contained file: no images, no fonts, no libraries, no CDNs.
    Everything is drawn on a <canvas> with code, all sounds are made
@@ -69,7 +69,7 @@
 </head>
 <body>
 <canvas id="game" width="960" height="540" tabindex="0"></canvas>
-<div id="rotate"><div class="icon">&#9647;</div><div style="margin-top:18px">ROTATE YOUR PHONE</div><div style="font-size:16px;color:#fff;margin-top:8px">Family Kombat plays in landscape</div></div>
+<div id="rotate"><div class="icon">&#9647;</div><div style="margin-top:18px">ROTATE YOUR PHONE</div><div style="font-size:16px;color:#fff;margin-top:8px">Fighter Supreme plays in landscape</div></div>
 <script>
 'use strict';
 /* =====================================================================
@@ -3077,7 +3077,7 @@ function buildNeon() {
   }
   // neon signs (lit versions; anim() blinks some of them off)
   const sign = (sx, sy, s, col, dark) => { const w = s.length * 6 + 6; R.dither(sx - 4, sy - 4, w + 8, 21, dark, 0.2); R.rect(sx, sy, w, 13, '#0a0614'); R.rect(sx, sy, w, 1, col); R.rect(sx, sy + 12, w, 1, col); R.rect(sx, sy, 1, 13, col); R.rect(sx + w - 1, sy, 1, 13, col); R.text(s, sx + 4, sy + 3, col); };
-  sign(40, 92, 'KOMBAT', '#ff3fa4', '#ff3fa4'); sign(330, 80, 'RAMEN', '#38e8ff', '#38e8ff'); sign(200, 70, '24H', '#ffd23f', '#ffd23f');
+  sign(40, 92, 'FIGHTER', '#ff3fa4', '#ff3fa4'); sign(330, 80, 'RAMEN', '#38e8ff', '#38e8ff'); sign(200, 70, '24H', '#ffd23f', '#ffd23f');
   R.rect(410, 120, 30, 50, '#0a0614'); R.text('B', 420, 124, '#c77dff'); R.text('A', 420, 133, '#c77dff'); R.text('R', 420, 142, '#c77dff');
   // street lamps
   for (const lx of [100, 380]) { R.rect(lx, 150, 2, 85, '#3a3450'); R.rect(lx, 150, 14, 2, '#3a3450'); R.rect(lx + 10, 152, 6, 3, '#fff3b0'); R.rect(lx + 11, 155, 4, 1, '#c8a43a'); }
@@ -3089,8 +3089,8 @@ function buildNeon() {
   return R.toCanvas();
 }
 function animNeon(g, t) {
-  // flickering KOMBAT sign + rain
-  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44, 95, 36, 7); }
+  // flickering FIGHTER sign + rain
+  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44, 95, 42, 7); }
   if ((t >> 5) % 2) { g.fillStyle = '#ff3fa4'; g.fillRect(410, 112, 30, 4); }
   g.fillStyle = '#6a5aa0';
   for (let i = 0; i < 40; i++) { const x = (i * 53 + t * 3) % 500 - 10, y = (i * 97 + t * 7) % 270; g.fillRect(x, y, 1, 4); }
@@ -3355,7 +3355,7 @@ function animJungleWide(g, t) {
   for (let i = 0; i < 18; i++) { if (((t >> 4) + i * 3) % 5 === 0) continue; g.fillRect((40 + i * 52 + Math.round(Math.sin(t / 40 + i) * 8)) | 0, (150 + Math.round(Math.cos(t / 33 + i * 2) * 20)) | 0, 1, 1); }
 }
 
-/* ---------------- NEON CITY: arcade row (west) - KOMBAT block (centre) - hotel & TV tower (east) ---------------- */
+/* ---------------- NEON CITY: arcade row (west) - FIGHTER block (centre) - hotel & TV tower (east) ---------------- */
 function buildNeonWide() {
   const F = new Raster(FAR_AW, ART_H), N = new Raster(NEAR_AW, ART_H), rnd = seeded(77);
   F.grad(0, 0, FAR_AW, 190, ['#05030f', '#120a2e', '#2a0f45', '#5a1658']);
@@ -3371,7 +3371,7 @@ function buildNeonWide() {
     x += w + 6;
   }
   const sign = (sx, sy, s, col) => { const w = s.length * 6 + 6; N.dither(sx - 4, sy - 4, w + 8, 21, col, 0.2); N.rect(sx, sy, w, 13, '#0a0614'); N.rect(sx, sy, w, 1, col); N.rect(sx, sy + 12, w, 1, col); N.rect(sx, sy, 1, 13, col); N.rect(sx + w - 1, sy, 1, 13, col); N.text(s, sx + 4, sy + 3, col); };
-  sign(40 + OFF_N, 92, 'KOMBAT', '#ff3fa4'); sign(330 + OFF_N, 80, 'RAMEN', '#38e8ff'); sign(200 + OFF_N, 70, '24H', '#ffd23f');
+  sign(40 + OFF_N, 92, 'FIGHTER', '#ff3fa4'); sign(330 + OFF_N, 80, 'RAMEN', '#38e8ff'); sign(200 + OFF_N, 70, '24H', '#ffd23f');
   N.rect(410 + OFF_N, 120, 30, 50, '#0a0614'); N.text('B', 420 + OFF_N, 124, '#c77dff'); N.text('A', 420 + OFF_N, 133, '#c77dff'); N.text('R', 420 + OFF_N, 142, '#c77dff');
   // west: arcade with a marquee of bulbs + pizza
   N.rect(30, 132, 150, 104, '#170f2c'); N.rect(30, 132, 150, 3, '#ff3fa4'); N.rect(56, 170, 98, 66, '#0a0614');
@@ -3389,7 +3389,7 @@ function buildNeonWide() {
   return { far: F.toCanvas(), near: N.toCanvas() };
 }
 function animNeonWide(g, t, ca) {
-  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44 + OFF_N, 95, 36, 7); }
+  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44 + OFF_N, 95, 42, 7); }
   if ((t >> 5) % 2) { g.fillStyle = '#ff3fa4'; g.fillRect(410 + OFF_N, 112, 30, 4); }
   if ((t >> 4) % 3 === 0) { g.fillStyle = '#0a0614'; g.fillRect(869, 101, 7, 9); }
   g.fillStyle = (t >> 3) % 2 ? '#ffd23f' : '#ff3fa4';   // arcade marquee bulbs chase
@@ -3467,7 +3467,7 @@ function buildStudioWide() {
   stage(-20 + OFF_N, 190, 120, 3); stage(270 + OFF_N, 210, 110, 4); stage(744, 196, 128, 7);
   R.rect(118, 150, 40, 12, '#2a1a1a'); R.text('ON AIR', 138, 152, '#5a1a1a', 1, true);
   // west: billboard on stilts + star trailers
-  N.rect(24, 78, 176, 44, '#2a2a34'); N.rect(28, 82, 168, 36, '#c0392b'); N.text('FAMILY KOMBAT', 112, 88, '#ffd23f', 1, true); N.text('NOW FILMING', 112, 102, '#ffffff', 1, true);
+  N.rect(24, 78, 176, 44, '#2a2a34'); N.rect(28, 82, 168, 36, '#c0392b'); N.text('FIGHTER SUPREME', 112, 88, '#ffd23f', 1, true); N.text('NOW FILMING', 112, 102, '#ffffff', 1, true);
   for (const sx of [56, 168]) N.rect(sx, 122, 4, 28, '#2a2a34');
   for (const tx of [30, 120]) { N.rect(tx, 186, 80, 44, '#d8cfbf'); N.rect(tx, 186, 80, 3, '#f4f1e6'); N.rect(tx + 8, 196, 18, 12, '#6a7580'); N.rect(tx + 52, 194, 18, 36, '#a8987a'); N.text('*', tx + 58, 202, '#ffd23f'); N.circle(tx + 16, 232, 5, '#222228'); N.circle(tx + 64, 232, 5, '#222228'); }
   // east: rocket ship prop in front of Stage 7
@@ -5081,8 +5081,8 @@ function drawLogo(g, cx, y, scale = 1) {
     for (let k = 1; k <= 2; k++) g.drawImage(sh, dx + k * px * 2, dy + k * px * 2, w, h);
     g.drawImage(bm, dx, dy, w, h); g.restore();
   };
-  if (scale === 'small') { draw('FAMILY', y - 46, 3); draw('KOMBAT', y + 14, 5); return; }
-  draw('FAMILY', y - 92, 4); draw('KOMBAT', y + 14, 7);
+  if (scale === 'small') { draw('FIGHTER', y - 46, 3); draw('SUPREME', y + 14, 5); return; }
+  draw('FIGHTER', y - 92, 4); draw('SUPREME', y + 14, 7);
 }
 
 /* ---------------- Pixel raster helper for stages ---------------- */
@@ -8650,7 +8650,7 @@ function drawArcadeEnd(g) {
   if (A.won) {
     txt(g, 'YOU WIN!', 480, 90, 80, '#ffd23f', 'center', 6);
     txt(g, CHARACTERS[A.p1].name + ' DEFEATED THE ' + BOSS.name + '!', 480, 150, 22, '#fff', 'center', 3);
-    txt(g, 'FAMILY KOMBAT CHAMPION', 480, 186, 26, '#ff5252', 'center', 4);
+    txt(g, 'FIGHTER SUPREME CHAMPION', 480, 186, 26, '#ff5252', 'center', 4);
     drawShadow(g, 480, 50);
     drawCharacter(g, A.p1, 480, CONFIG.GROUND_Y + Math.sin(t * 0.1) * 3, 1, POSES.victory || P({}), { mult: 1.25 });
     txt(g, A.continues ? 'CONTINUES USED: ' + A.continues : 'NO CONTINUES  -  PERFECT RUN!', 480, 500, 16, '#7dff7a', 'center', 3);
@@ -9882,7 +9882,7 @@ function buildCircusWide() {
   for (const px of [40, mid - 60, mid + 60, FAR_AW - 40]) { F.rect(px - 2, 20, 4, 170, '#7a7660'); F.rect(px - 1, 20, 1, 170, '#a29e80'); }
   // near layer: ring curb, pedestals, banner, bunting, cannon + balloons + ticket booth
   N.rect(80, 52, 800, 22, '#8a1a1a'); N.rect(80, 52, 800, 2, '#ffd23f'); N.rect(80, 72, 800, 2, '#ffd23f');
-  N.text('FAMILY KOMBAT BIG TOP', 480, 59, '#ffd23f', 1, true);
+  N.text('FIGHTER SUPREME BIG TOP', 480, 59, '#ffd23f', 1, true);
   for (let x = 84; x < 878; x += 12) N.px(x, 56, (x / 12) % 2 ? '#ffffff' : '#ffd23f');
   for (let s = 0; s < 3; s++) for (let x = 0; x < NEAR_AW; x += 1) { const y = 90 + s * 28 + Math.round(Math.sin((x - s * 140) / 76) * 10); N.px(x, y, '#2a2a2e'); if (x % 16 === 0) N.poly([[x, y], [x + 10, y], [x + 5, y + 10]], ['#c0392b', '#ffd23f', '#2f6fd0', '#3f8a3a'][(x / 16 + s) % 4]); }
   const ped = (x, w, h, c) => { N.rect(x, GY - h, w, h, c); N.rect(x, GY - h, w, 3, '#ffd23f'); N.rect(x, GY - 4, w, 4, '#2a0f1a'); for (let k = 0; k < 3; k++) N.rect(x + 4 + k * (w - 8) / 3, GY - h + 8, 2, h - 14, '#ffffff'); };

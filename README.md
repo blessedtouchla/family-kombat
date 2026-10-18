@@ -1,2 +1,2 @@
 # family-kombat
-Family Kombat - browser fighting game
+Fighter Supreme - browser fighting game
