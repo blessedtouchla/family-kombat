@@ -3020,7 +3020,7 @@ function buildJungle() {
   // shrine on top
   R.rect(205, 60, 70, 36, '#6a6652'); R.rect(201, 54, 78, 8, '#8f8b70'); R.rect(201, 61, 78, 1, '#45433a');
   R.rect(228, 72, 24, 24, '#1a1410'); R.rect(232, 76, 16, 20, '#2a1a10');
-  R.text('FK', 240, 64, '#d8a43a', 1, true);
+  R.text('FS', 240, 64, '#d8a43a', 1, true);
   R.rect(212, 70, 6, 26, '#55523f'); R.rect(262, 70, 6, 26, '#55523f');
   // canopy & vines
   for (let i = 0; i < 26; i++) { const x = rnd() * 480, y = rnd() * 30 - 6, r = 12 + rnd() * 16; R.circle(x | 0, y | 0, r | 0, i % 3 ? '#1d4a2a' : '#2a6a34'); }
@@ -3139,7 +3139,7 @@ function buildStudio() {
   for (const px of [30, 300]) { for (let y = 70; y < 170; y++) R.rect(px + Math.round(Math.sin(y / 30) * 3), y, 3, 1, '#2a1a30'); for (let k = 0; k < 6; k++) { const a = k * 1.05; for (let r = 0; r < 18; r++) R.px(px + 1 + Math.cos(a) * r, 70 + Math.sin(a) * r * 0.5 + r * r * 0.02, '#2a1a30'); } }
   // water tower
   R.rect(370, 50, 50, 34, '#9aa0a8'); R.rect(370, 50, 50, 2, '#c8ccd2'); R.rect(370, 82, 50, 2, '#6a7078'); R.poly([[366, 50], [395, 34], [424, 50]], '#7a8088');
-  R.text('FK', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
+  R.text('FS', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
   for (const lx of [374, 392, 412]) R.line(lx, 84, lx - 4 + (lx - 392) / 4, 150, '#5a5f68');
   R.line(372, 110, 416, 110, '#5a5f68');
   // back-lot wall + western facade between the soundstages
@@ -3304,7 +3304,7 @@ function buildJungleWide() {
   for (let y = 94; y < 213; y += 3) { R.rect(222, y, 36, 2, '#8f8b70'); R.rect(222, y + 2, 36, 1, '#55523f'); }
   R.rect(205, 60, 70, 36, '#6a6652'); R.rect(201, 54, 78, 8, '#8f8b70'); R.rect(201, 61, 78, 1, '#45433a');
   R.rect(228, 72, 24, 24, '#1a1410'); R.rect(232, 76, 16, 20, '#2a1a10');
-  R.text('FK', 240, 64, '#d8a43a', 1, true);
+  R.text('FS', 240, 64, '#d8a43a', 1, true);
   R.rect(212, 70, 6, 26, '#55523f'); R.rect(262, 70, 6, 26, '#55523f');
   // ---- west: waterfall cliff + giant stone head
   N.poly([[0, 40], [40, 34], [92, 52], [118, 96], [124, 236], [0, 236]], '#4a4838');
@@ -3453,7 +3453,7 @@ function buildStudioWide() {
   F.poly([[0, 170], [120, 140], [260, 160], [420, 136], [560, 158], [FAR_AW, 142], [FAR_AW, 270], [0, 270]], '#2a1a30');   // Hollywood hills
   const R = shifted(N, OFF_N);
   R.rect(370, 50, 50, 34, '#9aa0a8'); R.rect(370, 50, 50, 2, '#c8ccd2'); R.rect(370, 82, 50, 2, '#6a7078'); R.poly([[366, 50], [395, 34], [424, 50]], '#7a8088');
-  R.text('FK', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
+  R.text('FS', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
   for (const lx of [374, 392, 412]) R.line(lx, 84, lx - 4 + (lx - 392) / 4, 150, '#5a5f68');
   R.line(372, 110, 416, 110, '#5a5f68');
   N.rect(0, 150, NEAR_AW, 85, '#7a6a5a'); N.rect(0, 150, NEAR_AW, 2, '#9a8a78'); for (let x = 0; x < NEAR_AW; x += 16) N.rect(x, 152, 1, 83, '#6a5a4c');
@@ -3918,7 +3918,7 @@ function drawFatalityFX(g) {
     const { x, y, open } = F.clap;
     g.save(); g.translate(x, y);
     g.fillStyle = '#111'; g.fillRect(-60, 0, 120, 70); g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(-60, 0, 120, 70);
-    txt(g, 'SCENE 1', -52, 24, 14, '#fff', 'left', 0); txt(g, 'TAKE 1', -52, 48, 14, '#fff', 'left', 0); txt(g, 'FK', 20, 48, 14, '#fff', 'left', 0);
+    txt(g, 'SCENE 1', -52, 24, 14, '#fff', 'left', 0); txt(g, 'TAKE 1', -52, 48, 14, '#fff', 'left', 0); txt(g, 'FS', 20, 48, 14, '#fff', 'left', 0);
     g.rotate(open ? -0.45 : 0);
     g.fillStyle = '#111'; g.fillRect(-60, -18, 120, 16);
     g.fillStyle = '#fff'; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(-56 + i * 20, -18); g.lineTo(-46 + i * 20, -18); g.lineTo(-56 + i * 20, -2); g.lineTo(-66 + i * 20, -2); g.fill(); }
