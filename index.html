@@ -790,6 +790,21 @@ function setDirMode(m) {
 }
 function toggleDirMode() { setDirMode(DIRCTL.mode === 'arrows' ? 'stick' : 'arrows'); try { Sound.play('select'); } catch (e) { /* ignore */ } }
 function dirModeName() { return DIRCTL.mode === 'arrows' ? 'ARROW BUTTONS' : 'JOYSTICK'; }
+/* In-fight quick switch (top-left, under P1's ULT meter): flips JOYSTICK <-> ARROWS mid-fight without pausing.
+ * Uses the same setting / storage key as the menu, pause and phone-controller switches, so they all stay in sync.
+ * Kept well clear of the joystick / arrow touch zones (left, lower) and the punch / kick buttons (right). */
+function quickDirRect() { const L = (typeof TOUCH_UI !== 'undefined' && TOUCH_UI.layout) || { minL: 0 }; return { x: Math.max(30, Math.round(L.minL) + 6), y: 96, w: 104, h: 44 }; }
+function hitQuickDir(p) { const b = quickDirRect(); return p.x > b.x - 8 && p.x < b.x + b.w + 8 && p.y > b.y - 8 && p.y < b.y + b.h + 8; }
+function drawQuickDir(g) {
+  const b = quickDirRect(), arrows = DIRCTL.mode === 'arrows', col = arrows ? '#3ce05a' : '#7ff';
+  g.globalAlpha = game.tvMode ? 0.3 : 0.8;
+  g.fillStyle = '#000'; g.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+  g.fillStyle = '#241638'; g.fillRect(b.x, b.y, b.w, b.h);
+  g.fillStyle = col; g.fillRect(b.x, b.y, b.w, 3); g.fillRect(b.x, b.y + b.h - 3, b.w, 3); g.fillRect(b.x, b.y, 3, b.h); g.fillRect(b.x + b.w - 3, b.y, 3, b.h);
+  txt(g, '\u25C0 MOVE \u25B6', b.x + b.w / 2, b.y + 13, 15, '#bbb', 'center', 0, b.w - 10);
+  txt(g, arrows ? 'ARROWS' : 'STICK', b.x + b.w / 2, b.y + 31, 15, col, 'center', 3, b.w - 10);
+  g.globalAlpha = 1;
+}
 /* 88-unit arrow buttons, 16-unit gaps: >= 52pt and >= 9pt apart even on a 568x320 phone (58pt / 11pt on a 780x360 one). */
 const ARROW_UI = { cx: 158, cy: 386, s: 88, step: 104, homeX: 158, homeY: 386 };
 /* Safe-area insets (CSS px) from env(safe-area-inset-*); tests can set window.FK_SAFE = { l, r, t, b }. */
@@ -898,6 +913,7 @@ function onTouchStart(e) {
       togglePause(); continue;
     }
     if (game.paused || !isFightState()) { handleTap(p); continue; }
+    if (hitQuickDir(p)) { toggleDirMode(); continue; }   // quick JOYSTICK / ARROWS switch: the fight keeps running
     if (dirTouchStart(t, p)) continue;
     const b = buttonAt(p);
     if (b) { TouchPad.fingers.set(t.identifier, b.btn); TouchPad.held[b.btn] = true; TouchPad.pressed.push(b.btn); }
@@ -4203,6 +4219,7 @@ function drawTouchControls(g) {
   if (arrows) { drawArrowPad(g); TOUCH_FADE.k = ghost ? 0.3 : touchOverlap(690, 210, 960, 540) ? 0.4 : 1; drawAttackButtons(g); }
   else drawStickControls(g);
   TOUCH_FADE.k = 1;
+  if (game.state !== 'pad') drawQuickDir(g);
   g.globalAlpha = game.mode === 'online' ? 0 : game.tvMode ? 0.3 : 0.6; const pz = TOUCH_UI.pause;
   circle(g, pz.x, pz.y, pz.r, '#222', '#fff', 2); g.fillStyle = '#fff'; g.fillRect(pz.x - 7, pz.y - 8, 5, 16); g.fillRect(pz.x + 2, pz.y - 8, 5, 16);
   g.restore();
