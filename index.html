@@ -346,35 +346,36 @@ const CHARACTERS = [
   },
   {
     id: 'rainy', name: 'RAINY', tagline: 'Water Fighter - Splashes, Storms & Hearts',
-    // Mid roster: not the fastest (Cyclone), not the tank (Editor), not the hardest hitter.
-    // Slightly smaller body. Hits she lands splash water instead of blood.
-    maxHp: 100, walk: 3.45, backWalk: 2.85, jump: 16.2, power: 0.96, scale: 0.96, girth: 0.94,
+    // Top-tier hitter. Power, health, meter, and special damage sit above the rest of the roster.
+    // Hits she lands splash water instead of blood. haste trims her basic startup/recovery only.
+    maxHp: 126, walk: 4.2, backWalk: 3.4, jump: 16.8, power: 1.38, scale: 1.0, girth: 1.0,
+    meterGain: 1.85, chainDmg: 2.25, haste: 0.68, aggressive: true,
     voice: 'f',
     colors: { skin: '#e4b48a', cheek: '#f0a0a8', lip: '#c45a6a', eye: '#3a2414',
               main: '#16161c', main2: '#2c2c36', pants: '#1a3a6e', shoe: '#5ad4ff', sole: '#f4f7fb',
               hair: '#6a3a22', hairHi: '#a06a3c', hairDark: '#4a2814', accent: '#3ec8ff', glow: '#7af0ff',
               heart: '#ff6eb4', heart2: '#ff8ad4', drop: '#bff6ff', deep: '#1560c8', foam: '#e8fbff', ink: '#d7f6ff' },
     specials: {
-      s1: { name: 'Splash Jab', type: 'projectile', startup: 11, active: 1, recovery: 18, pose: 'jab', sfxStart: 'rn_drip',
-            proj: { kind: 'splash', speed: 9.2, dmg: 7, w: 46, h: 38, y: -110, hitstun: 18, kb: 6, sfx: 'rn_splash' },
-            air: { name: 'Rain Drop', type: 'skydive', startup: 5, active: 0, recovery: 12, pose: 'akick', fx: 'splash',
-                   vx: 7.5, vy: 9, dmg: 8, hitstun: 20, kb: 5, kbY: -5, box: { x: -8, y: -110, w: 78, h: 110 } } },
-      s2: { name: 'Tidal Kick', type: 'rush', startup: 8, active: 12, recovery: 16, pose: 'highkick', sfxStart: 'rn_wave',
-            speed: 9, dmg: 9, hitstun: 22, kb: 9, kbY: -4, box: { x: 8, y: -140, w: 96, h: 50 }, fx: 'wave' },
-      s3: { name: 'Bubble Trap', type: 'projectile', startup: 12, active: 1, recovery: 20, pose: 'cast', sfxStart: 'rn_drip',
-            proj: { kind: 'bubble', speed: 7.2, dmg: 4, w: 54, h: 54, y: -120, hitstun: 12, kb: 1, trap: 68,
+      s1: { name: 'Splash Jab', type: 'projectile', startup: 6, active: 1, recovery: 10, pose: 'jab', sfxStart: 'rn_drip',
+            proj: { kind: 'splash', speed: 13.5, dmg: 12, w: 66, h: 52, y: -110, hitstun: 22, kb: 8, sfx: 'rn_splash' },
+            air: { name: 'Rain Drop', type: 'skydive', startup: 4, active: 0, recovery: 8, pose: 'akick', fx: 'splash',
+                   vx: 10, vy: 10, dmg: 14, hitstun: 24, kb: 7, kbY: -6, box: { x: -10, y: -120, w: 100, h: 130 } } },
+      s2: { name: 'Tidal Kick', type: 'rush', startup: 5, active: 18, recovery: 8, pose: 'highkick', sfxStart: 'rn_wave',
+            speed: 14, dmg: 15, hitstun: 26, kb: 12, kbY: -5, box: { x: 4, y: -150, w: 150, h: 64 }, fx: 'wave' },
+      s3: { name: 'Bubble Trap', type: 'projectile', startup: 7, active: 1, recovery: 11, pose: 'cast', sfxStart: 'rn_drip',
+            proj: { kind: 'bubble', speed: 11, dmg: 8, w: 68, h: 68, y: -120, hitstun: 16, kb: 2, trap: 96,
                     trapText: 'BUBBLE!', barText: 'BUBBLE', trapSfx: 'rn_bubble', textCol: '#7af0ff', sfx: 'rn_bubble' } },
-      s4: { name: 'Whirlpool Spin', type: 'rnWhirl', startup: 6, active: 40, recovery: 16, pose: 'spin', sfxStart: 'rn_whirl',
-            speed: 2.2, dmg: 2.3, hitEvery: 8, radius: 84, hitstun: 14, kb: 1.5, finalDmg: 5, finalKb: 7, finalKbY: -10 },
-      s5: { name: 'Geyser Uppercut', type: 'twister', startup: 4, active: 0, recovery: 14, pose: 'uppercut', sfxStart: 'rn_geyser', fx: 'geyser',
-            vy: -15.5, vx: 3.2, invuln: 5, hits: 3, dmg: 2.6, lastDmg: 4.5, hitEvery: 5, hitstun: 28, kb: 6, kbY: -10,
-            box: { x: -14, y: -200, w: 82, h: 200 } },
+      s4: { name: 'Whirlpool Spin', type: 'rnWhirl', startup: 4, active: 36, recovery: 9, pose: 'spin', sfxStart: 'rn_whirl',
+            speed: 3.4, dmg: 4, hitEvery: 6, radius: 115, hitstun: 16, kb: 2, finalDmg: 9, finalKb: 9, finalKbY: -11 },
+      s5: { name: 'Geyser Uppercut', type: 'twister', startup: 3, active: 0, recovery: 8, pose: 'uppercut', sfxStart: 'rn_geyser', fx: 'geyser',
+            vy: -16.5, vx: 4, invuln: 8, hits: 3, dmg: 4.5, lastDmg: 8, hitEvery: 4, hitstun: 30, kb: 8, kbY: -12,
+            box: { x: -18, y: -210, w: 108, h: 220 } },
     },
     chains: [{ name: 'Drip Drop Splash', fx: 'splash', sfx: 'rn_splash' }, { name: 'Ripple Kicks', fx: 'wave', sfx: 'rn_wave' }, { name: 'Rain Storm', fx: 'storm', sfx: 'rn_storm' }],
     ult: { name: 'TSUNAMI', type: 'tsunami', startup: 1, active: 50, recovery: 18, pose: 'raise' },
     fatality: { name: 'MONSOON', type: 'monsoon' },
     finisher2: { name: 'FLASH FLOOD', type: 'flashFlood', motion: ['D', 'B'], btn: 'HP' },
-    ai: { far: ['s1', 's3', 's1'], mid: ['s2', 's1', 's5', 's3'], close: ['s4', 's5', 's2'] },
+    ai: { far: ['s1', 's1', 's2', 's3'], mid: ['s2', 's1', 's5', 's4', 's2'], close: ['s2', 's4', 's5', 's2'] },
     antiAir: 's5',  },
 ];
 
@@ -1148,6 +1149,10 @@ class Fighter {
     if (a.type === 'base') {
       const variant = !this.grounded ? 'air' : this.crouching ? 'crouch' : 'stand';
       def = CONFIG.MOVES[variant][a.btn];
+      if (this.ch.haste) {   // Rainy only: snappier punches and kicks. Copy so the shared move table stays put.
+        const h = this.ch.haste;
+        def = Object.assign({}, def, { startup: Math.max(2, Math.round(def.startup * h)), recovery: Math.max(3, Math.round(def.recovery * h)) });
+      }
       // button chains: extend the string if the previous basic attack connected and this one follows it closely
       const pm = this.lastBase, D = pm && pm.def;
       const linked = pm && pm.hit && this.grounded && D && game.frame - pm.startF <= D.startup + D.active + D.recovery + 26;
@@ -1338,7 +1343,7 @@ const MOVE_HANDLERS = {
           const c = m.chain != null && f.ch.chains ? f.ch.chains[m.chain] : null;
           const FX = { toot: 'brown', flush: null, data: 'plasma', wind: 'wind', razor: 'slash', splash: 'splash', wave: 'wave', storm: 'splash' };
           const wet = f.ch.id === 'rainy';
-          const r = c ? applyHit(f, opp, { dmg: d.dmg * CONFIG.CHAIN_DMG, hitstun: d.hitstun + 10, blockstun: d.blockstun + 4, kb: d.kb + 3, kbY: -8, low: d.low, heavy: true, fx: FX[c.fx] || (wet ? 'splash' : null), noBlood: !!CX_CHAIN[c.fx] || wet || c.fx === 'splash' || c.fx === 'wave' || c.fx === 'storm', plant: c.fx === 'leaf' })
+          const r = c ? applyHit(f, opp, { dmg: d.dmg * (f.ch.chainDmg || CONFIG.CHAIN_DMG), hitstun: d.hitstun + 10, blockstun: d.blockstun + 4, kb: d.kb + 3, kbY: -8, low: d.low, heavy: true, fx: FX[c.fx] || (wet ? 'splash' : null), noBlood: !!CX_CHAIN[c.fx] || wet || c.fx === 'splash' || c.fx === 'wave' || c.fx === 'storm', plant: c.fx === 'leaf' })
                       : applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: d.blockstun, kb: d.kb, kbY: d.kbY, low: d.low, heavy: d.heavy, fx: wet ? 'splash' : null, noBlood: wet });          if (r) { m.hit = true; if (c) chainBurst(f, opp, c, r); }
         }
       }
@@ -1677,7 +1682,7 @@ function applyHit(att, def, h) {
   if (h.plant) cxGrow(att, dmg * 2.6);
   def.hp = Math.max(0, def.hp - dmg);
   if (def.move && def.move.def.armor && def.hp > 0) {   // super armour (Grok Girl's SINGULARITY): takes the damage but is not interrupted
-    def.flash = 5; att.meter = Math.min(CONFIG.METER_MAX, att.meter + dmg * CONFIG.METER_GAIN_DEAL);
+    def.flash = 5; att.meter = Math.min(CONFIG.METER_MAX, att.meter + dmg * CONFIG.METER_GAIN_DEAL * ((att.ch && att.ch.meterGain) || 1));
     for (let i = 0; i < 8; i++) spawnParticle({ x: def.x - dir * 16, y: def.centerY() + rand(-40, 30), vx: -dir * rand(1, 5), vy: rand(-4, 2), life: 14, size: rand(2, 4), color: '#38e8ff', type: 'spark' });
     Sound.play('block'); game.hitstop = 3; return 'hit';
   }
@@ -1688,7 +1693,7 @@ function applyHit(att, def, h) {
   else if (!def.grounded) def.vy = Math.min(def.vy, -3);   // juggle: keep them floating a bit
   def.flash = 5;
   def.state = 'hit';
-  att.meter = Math.min(CONFIG.METER_MAX, att.meter + dmg * CONFIG.METER_GAIN_DEAL);
+  att.meter = Math.min(CONFIG.METER_MAX, att.meter + dmg * CONFIG.METER_GAIN_DEAL * ((att.ch && att.ch.meterGain) || 1));
   def.meter = Math.min(CONFIG.METER_MAX, def.meter + dmg * CONFIG.METER_GAIN_TAKE);
   if (h.fire) def.onFire = Math.max(def.onFire, 110);
 
@@ -1750,7 +1755,7 @@ class CpuBrain {
     // react to danger: block (or jump over projectiles) sometimes
     const threat = f.blind > 0 && R() < 0.8 ? false : threatTo(f);   // pie / pollen in the eyes
     if (f.ch.bloomDef && f.growth >= 100 && !(f.bloom > 0) && !f.move && !f.queued && f.grounded && R() < 0.06) { f.queued = { type: 'bloom' }; f.queuedT = 0; }
-    if (f.ch.antiAir && !f.move && f.grounded && !f.queued && !opp.grounded && dist > 40 && dist < 360 && R() < 0.05 + L * 0.1) { f.queued = { type: 'special', slot: f.ch.antiAir }; f.queuedT = 0; }
+    if (f.ch.antiAir && !f.move && f.grounded && !f.queued && !opp.grounded && dist > 40 && dist < (f.ch.aggressive ? 460 : 360) && R() < (f.ch.aggressive ? 0.28 : 0.05) + L * 0.1) { f.queued = { type: 'special', slot: f.ch.antiAir }; f.queuedT = 0; }
     if (threat && this.plan !== 'block' && !f.move && R() < 0.04 + L * 0.22) {
       const proj = game.entities.find((e) => e.type === 'proj' && e.owner === opp);
       if (proj && f.ch.specials.s4 && f.ch.specials.s4.type === 'reroute' && Math.abs(opp.x - f.x) < 520 && R() < 0.1 + L * 0.15) { f.queued = { type: 'special', slot: 's4' }; f.queuedT = 0; }   // Grok Girl reroutes through projectiles
@@ -1784,22 +1789,29 @@ class CpuBrain {
     if (this.plan === 'approach' && dist < 85) this.planT = 0;
   }
   choose(dist) {
-    const f = this.f, L = CONFIG.CPU_LEVEL, R = Math.random, ai = f.ch.ai;
-    this.planT = Math.round((8 + R() * 22) * (1.4 - L));
+    const f = this.f, L = CONFIG.CPU_LEVEL, R = Math.random, ai = f.ch.ai, hot = !!f.ch.aggressive;
+    this.planT = Math.round((hot ? 4 + R() * 8 : 8 + R() * 22) * (1.4 - L));
     this.plan = 'idle';
     const queue = (a) => { f.queued = a; f.queuedT = 0; };
-    if (f.meter >= CONFIG.METER_MAX && dist < 400 && R() < 0.5) { queue({ type: 'ult' }); return; }
+    if (f.meter >= CONFIG.METER_MAX && dist < (hot ? 700 : 400) && R() < (hot ? 0.92 : 0.5)) { queue({ type: 'ult' }); return; }
     const r = R();
     if (dist > 260) {
-      if (r < 0.3 + L * 0.15) queue({ type: 'special', slot: pick(ai.far) });
-      else if (r < 0.85) { this.plan = 'approach'; this.planT += 10; }
+      if (r < (hot ? 0.78 : 0.3 + L * 0.15)) queue({ type: 'special', slot: pick(ai.far) });
+      else if (r < 0.85 || hot) { this.plan = 'approach'; this.planT += 10; }
       else { this.plan = 'jumpin'; this.planT = 3; }
-    } else if (dist > 110 && airSlotOf(f.ch) && r < 0.12) { this.plan = 'jumpin'; this.planT = 3;
+    } else if (dist > 110 && airSlotOf(f.ch) && r < (hot ? 0.22 : 0.12)) { this.plan = 'jumpin'; this.planT = 3;
     } else if (dist > 110) {
-      if (r < 0.25 + L * 0.1) queue({ type: 'special', slot: pick(ai.mid) });
-      else if (r < 0.75) this.plan = 'approach';
+      if (r < (hot ? 0.72 : 0.25 + L * 0.1)) queue({ type: 'special', slot: pick(ai.mid) });
+      else if (r < 0.75 || hot) this.plan = 'approach';
       else if (r < 0.87) { this.plan = 'jumpin'; this.planT = 3; }
       else { this.plan = 'block'; this.lowBlock = R() < 0.4; }
+    } else if (hot) {
+      if (r < 0.62) {
+        const strings = CONFIG.CHAINS;
+        this.combo = pick(strings).map((b) => ({ type: 'base', btn: b }));
+        this.combo.push({ type: 'special', slot: pick(ai.close) });
+        queue(this.combo.shift());
+      } else queue({ type: 'special', slot: pick(ai.close) });
     } else {
       if (r < 0.5) {
         // a little combo string
@@ -10240,11 +10252,11 @@ const RN_ENT = {
     if (e.t % 2 === 0) rnDrops(e.x + rand(-30, 30), CONFIG.GROUND_Y - rand(10, 80), 2, 3);
     if (e.life <= 0 || e.x < -100 || e.x > 1060) { e.dead = true; return; }
     if (!opp || !e.owner || opp.invuln > 0 || opp.state === 'ko' || game.state !== 'fight') return;
-    const low = opp.y > CONFIG.GROUND_Y - 118;
-    if (!low || Math.abs(opp.x - e.x) > 78) return;
+    const low = opp.y > CONFIG.GROUND_Y - 130;
+    if (!low || Math.abs(opp.x - e.x) > 100) return;
     if (!e.caught) {
       if (opp.isBlocking()) {
-        applyHit(e.owner, opp, { dmg: 6, blockstun: 18, kb: 7, chip: true, fx: 'wave', noBlood: true });
+        applyHit(e.owner, opp, { dmg: 10, blockstun: 20, kb: 8, chip: true, fx: 'wave', noBlood: true });
         e.dead = true; rnDrops(opp.x, CONFIG.GROUND_Y - 40, 10, 6); return;
       }
       e.caught = true; e.hits = 0; e.tick = 0;
@@ -10255,7 +10267,7 @@ const RN_ENT = {
     if (e.tick % 8 === 1 && e.hits < 3) {
       e.hits++;
       const last = e.hits === 3;
-      applyHit(e.owner, opp, { dmg: last ? 10 : 6, hitstun: last ? 34 : 14, kb: last ? 10 : 2, kbY: last ? -8 : -2, unblockable: true, noBlood: true, fx: 'wave', heavy: last });
+      applyHit(e.owner, opp, { dmg: last ? 16 : 9, hitstun: last ? 40 : 16, kb: last ? 12 : 3, kbY: last ? -9 : -3, unblockable: true, noBlood: true, fx: 'wave', heavy: last });
       if (last) { e.dead = true; rnDrops(opp.x, opp.centerY(), 16, 8); }
     }
   },
@@ -10308,7 +10320,7 @@ Object.assign(MOVE_HANDLERS, {
     update(f, m) {
       if (m.frame === 1) {
         f.invuln = Math.max(f.invuln, 20);
-        game.entities.push({ type: 'rnwave', owner: f, x: f.x + f.facing * 50, dir: f.facing, speed: 7.6, life: 120, t: 0, hits: 0, threat: true });
+        game.entities.push({ type: 'rnwave', owner: f, x: f.x + f.facing * 50, dir: f.facing, speed: 9.6, life: 110, t: 0, hits: 0, threat: true });
         Sound.play('rn_tsunami'); game.shake = Math.max(game.shake, 12);
         game.tint = { r: 10, g: 40, b: 90, a: 0.28, t: 50, max: 50, label: '' };
         rnDrops(f.x + f.facing * 40, CONFIG.GROUND_Y - 20, 18, 7);
@@ -10386,7 +10398,7 @@ FATALITY_TITLE_AT.monsoon = 200;
 FATALITY_TITLE_AT.flashFlood = 175;
 SFX_META.fatality_title_rainy = { voiceAt: 0.5 };
 SFX_SAMPLES.fatality_title_rainy = "data:audio/mpeg;base64,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CkIUKY7f0tLyqhwpnN0T3cvolnu4VmO5SGBoLEoKUOGuuvpImCrUmTABhYaLnMp2cCSFqhEUMosH0cVvuhjpbuRsJHV6uP/zUMTlGWpWnn7aBrz7cs1uhssfrftnA4p5y7ia7HVr7n3vcVKky0nlrRQqRBgyOGrZH/lAXBZpZ8wABhi/6XQdMHXUqmAGl2aJjtSO8Bscqc0TSLQkJj0jaOakYqstxQtKNItZzNLp51M6hHsSEWDBIPbSdVQEbTy9GtXm9EilDFn/80DE9BhCVpZ+wkQ4/9LpocM0UilVzpX//+voyIRTKzLmoirr1u4PVMzDSr91UQaFVXla3LLwFLHdTCSrMxU/K8bzXxekyKMSiHImBxSMI3qW3Yj0pBMClkzQ/1up3ZjRg2YVBADBhf/zQMTuFUlWkx5ITEDZPRCsXMDU5iiJiWSn/T6rqzht3dVU5k+QzkXWGOqXinqV5AAIZmZ4eyR24COpNqIB9TAtA340HXFkTCWkVSYKvfyPjsCMGRbVQoCRRzT8p7XJiK+tLJnLYGMX//NAxPMXWq6PHkjFGYZIKlnjtUTJuVY6vaYLCYODwmOIgEuODh7rGlHA00ZeukF7b6B9pZIB5qEZZJc8mQAUz5VDN+SlkiZaWb/nIgriKhpqjMNnSlOejMcYgyqAthIBaLhFJAiASwv/80DE8Bc6poceSMTZmtJFGoVlkIZrU/HL7r3HSqr6AsoFA2+1ugCip2IZc6TVfEf/u//88qPI73XBMpNThnI/uSHhl+p0vucy37y/StKNP5n/Py83KFlS/JGoWDDlPKBIj37FT9Niuv/zQMTuFiFmex5JhlQv+2oAFpgSYc7Zf/YV//+XNQlbjyeRSshG8Uhyi960bx2N+XTAjmFvR/t1NPzc2kEOGsyTa7fNC0At1uoAzUXCaEwGR4d///6gIqpVIhBFwecJxBBJTC6HpUKR//MwxPAS4VJuXkgHBMKGQMeWOCrQkkUFWB0g0sYKwosG3zy0rQrNdttoAEhYEWRE8oJBFbf//joTO3D4EkRUoaeUtCqDwsBWT6RC0/Mk//NAxOURulZuXkhGfMSVC7I0VFmdZ1XVakwghoKaFUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/8yDE+Q4xUm3+SAaVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MwxOcO8CJp/lrOAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MwxOwNKDZp/ioGAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MQxPcBOAZEoAgAAVVVVVVVVVVVVVVVVVU=";
-window.FK = { GP, GP_BTN, Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown, ZOOM, zoomTarget, zmap, callout, CALLOUT_COL, DIRCTL, setDirMode, toggleDirMode, ARROW_UI, arrowBtnRects, arrowDirsAt, PAUSE_DIRBTN, MENU_DIRBTN, PAD_DIRBTN, PAD_PAUSE_DIRBTN, TOUCH_FADE };
+window.FK = { GP, GP_BTN, Arcade, BOSS, CpuBrain, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown, ZOOM, zoomTarget, zmap, callout, CALLOUT_COL, DIRCTL, setDirMode, toggleDirMode, ARROW_UI, arrowBtnRects, arrowDirsAt, PAUSE_DIRBTN, MENU_DIRBTN, PAD_DIRBTN, PAD_PAUSE_DIRBTN, TOUCH_FADE };
 </script>
 </body>
 </html>
