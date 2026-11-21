@@ -7,10 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
-<title>FAMILY KOMBAT</title>
+<title>FIGHTER SUPREME</title>
 <!--
   =====================================================================
-   FAMILY KOMBAT  -  a 16-bit pixel-art beat-'em-up for the whole family
+   FIGHTER SUPREME  -  a 16-bit pixel-art beat-'em-up for the whole family
   =====================================================================
    One self-contained file: no images, no fonts, no libraries, no CDNs.
    Everything is drawn on a <canvas> with code, all sounds are made
@@ -69,7 +69,7 @@
 </head>
 <body>
 <canvas id="game" width="960" height="540" tabindex="0"></canvas>
-<div id="rotate"><div class="icon">&#9647;</div><div style="margin-top:18px">ROTATE YOUR PHONE</div><div style="font-size:16px;color:#fff;margin-top:8px">Family Kombat plays in landscape</div></div>
+<div id="rotate"><div class="icon">&#9647;</div><div style="margin-top:18px">ROTATE YOUR PHONE</div><div style="font-size:16px;color:#fff;margin-top:8px">Fighter Supreme plays in landscape</div></div>
 <script>
 'use strict';
 /* =====================================================================
@@ -375,8 +375,7 @@ const CHARACTERS = [
     fatality: { name: 'MONSOON', type: 'monsoon' },
     finisher2: { name: 'FLASH FLOOD', type: 'flashFlood', motion: ['D', 'B'], btn: 'HP' },
     ai: { far: ['s1', 's3', 's1'], mid: ['s2', 's1', 's5', 's3'], close: ['s4', 's5', 's2'] },
-    antiAir: 's5',
-  },
+    antiAir: 's5',  },
 ];
 
 /* =====================================================================
@@ -485,8 +484,7 @@ const Sound = {
     if (name.startsWith('ed_')) { edSfx(this, name); return; }
     if (name.startsWith('cl_')) { clSfx(this, name); return; }
     if (name.startsWith('tk_')) { tkSfx(this, name); return; }
-    if (name.startsWith('rn_')) { rnSfx(this, name); return; }
-    switch (name) {
+    if (name.startsWith('rn_')) { rnSfx(this, name); return; }    switch (name) {
       case 'lp': case 'lk': this.noise(0.07, 0.25, 2200, 'bandpass'); break;
       case 'hp': case 'hk': this.noise(0.14, 0.35, 900, 'bandpass', 0, 300); break;
       case 'hit': this.tone(190, 50, 0.13, 'square', 0.22); this.noise(0.09, 0.4, 1400); break;
@@ -829,7 +827,21 @@ function setDirMode(m) {
 }
 function toggleDirMode() { setDirMode(DIRCTL.mode === 'arrows' ? 'stick' : 'arrows'); try { Sound.play('select'); } catch (e) { /* ignore */ } }
 function dirModeName() { return DIRCTL.mode === 'arrows' ? 'ARROW BUTTONS' : 'JOYSTICK'; }
-/* 88-unit arrow buttons, 16-unit gaps: >= 52pt and >= 9pt apart even on a 568x320 phone (58pt / 11pt on a 780x360 one). */
+/* In-fight quick switch (top-left, under P1's ULT meter): flips JOYSTICK <-> ARROWS mid-fight without pausing.
+ * Uses the same setting / storage key as the menu, pause and phone-controller switches, so they all stay in sync.
+ * Kept well clear of the joystick / arrow touch zones (left, lower) and the punch / kick buttons (right). */
+function quickDirRect() { const L = (typeof TOUCH_UI !== 'undefined' && TOUCH_UI.layout) || { minL: 0 }; return { x: Math.max(30, Math.round(L.minL) + 6), y: 96, w: 104, h: 44 }; }
+function hitQuickDir(p) { const b = quickDirRect(); return p.x > b.x - 8 && p.x < b.x + b.w + 8 && p.y > b.y - 8 && p.y < b.y + b.h + 8; }
+function drawQuickDir(g) {
+  const b = quickDirRect(), arrows = DIRCTL.mode === 'arrows', col = arrows ? '#3ce05a' : '#7ff';
+  g.globalAlpha = game.tvMode ? 0.3 : 0.8;
+  g.fillStyle = '#000'; g.fillRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+  g.fillStyle = '#241638'; g.fillRect(b.x, b.y, b.w, b.h);
+  g.fillStyle = col; g.fillRect(b.x, b.y, b.w, 3); g.fillRect(b.x, b.y + b.h - 3, b.w, 3); g.fillRect(b.x, b.y, 3, b.h); g.fillRect(b.x + b.w - 3, b.y, 3, b.h);
+  txt(g, '\u25C0 MOVE \u25B6', b.x + b.w / 2, b.y + 13, 15, '#bbb', 'center', 0, b.w - 10);
+  txt(g, arrows ? 'ARROWS' : 'STICK', b.x + b.w / 2, b.y + 31, 15, col, 'center', 3, b.w - 10);
+  g.globalAlpha = 1;
+}/* 88-unit arrow buttons, 16-unit gaps: >= 52pt and >= 9pt apart even on a 568x320 phone (58pt / 11pt on a 780x360 one). */
 const ARROW_UI = { cx: 158, cy: 386, s: 88, step: 104, homeX: 158, homeY: 386 };
 /* Safe-area insets (CSS px) from env(safe-area-inset-*); tests can set window.FK_SAFE = { l, r, t, b }. */
 const SAFE = { l: 0, r: 0, t: 0, b: 0 };
@@ -937,6 +949,7 @@ function onTouchStart(e) {
       togglePause(); continue;
     }
     if (game.paused || !isFightState()) { handleTap(p); continue; }
+    if (hitQuickDir(p)) { toggleDirMode(); continue; }   // quick JOYSTICK / ARROWS switch: the fight keeps running
     if (dirTouchStart(t, p)) continue;
     const b = buttonAt(p);
     if (b) { TouchPad.fingers.set(t.identifier, b.btn); TouchPad.held[b.btn] = true; TouchPad.pressed.push(b.btn); }
@@ -1019,8 +1032,7 @@ function chainBurst(f, opp, c, res) {
     else if (c.fx === 'splash' || c.fx === 'wave' || c.fx === 'storm') spawnParticle({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: 28, size: rand(3, 6), color: pick(['#7af0ff', '#3ec8ff', '#bff6ff', '#e8fbff']), grav: 0.25, type: 'blob' });
     else spawnParticle({ x: x + rand(-30, 30), y: y + rand(-50, 50), vx: f.facing * rand(4, 9), vy: rand(-1, 1), life: 12, size: rand(16, 30), color: pick(['#ffffff', '#ffd23f']), type: 'streak' });
   }
-  if (c.fx === 'storm') for (let i = 0; i < 14; i++) spawnParticle({ x: x + rand(-70, 70), y: y - rand(40, 180), vx: rand(-0.6, 0.6), vy: rand(2, 5), life: 30, size: rand(2.5, 5), color: pick(['#7af0ff', '#bff6ff', '#3ec8ff']), grav: 0.35, type: 'blob' });
-  if (c.fx === 'razor') game.entities.push({ type: 'slash', x1: x - 80, y1: y + 60, x2: x + 80, y2: y - 60, life: 18, max: 18 });
+  if (c.fx === 'storm') for (let i = 0; i < 14; i++) spawnParticle({ x: x + rand(-70, 70), y: y - rand(40, 180), vx: rand(-0.6, 0.6), vy: rand(2, 5), life: 30, size: rand(2.5, 5), color: pick(['#7af0ff', '#bff6ff', '#3ec8ff']), grav: 0.35, type: 'blob' });  if (c.fx === 'razor') game.entities.push({ type: 'slash', x1: x - 80, y1: y + 60, x2: x + 80, y2: y - 60, life: 18, max: 18 });
 }
 /** The slot holding this fighter's air special. */
 function airSlotOf(ch) { return Object.keys(ch.specials).find((k) => ch.specials[k].air) || null; }
@@ -1327,8 +1339,7 @@ const MOVE_HANDLERS = {
           const FX = { toot: 'brown', flush: null, data: 'plasma', wind: 'wind', razor: 'slash', splash: 'splash', wave: 'wave', storm: 'splash' };
           const wet = f.ch.id === 'rainy';
           const r = c ? applyHit(f, opp, { dmg: d.dmg * CONFIG.CHAIN_DMG, hitstun: d.hitstun + 10, blockstun: d.blockstun + 4, kb: d.kb + 3, kbY: -8, low: d.low, heavy: true, fx: FX[c.fx] || (wet ? 'splash' : null), noBlood: !!CX_CHAIN[c.fx] || wet || c.fx === 'splash' || c.fx === 'wave' || c.fx === 'storm', plant: c.fx === 'leaf' })
-                      : applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: d.blockstun, kb: d.kb, kbY: d.kbY, low: d.low, heavy: d.heavy, fx: wet ? 'splash' : null, noBlood: wet });
-          if (r) { m.hit = true; if (c) chainBurst(f, opp, c, r); }
+                      : applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: d.blockstun, kb: d.kb, kbY: d.kbY, low: d.low, heavy: d.heavy, fx: wet ? 'splash' : null, noBlood: wet });          if (r) { m.hit = true; if (c) chainBurst(f, opp, c, r); }
         }
       }
     },
@@ -1389,8 +1400,7 @@ const MOVE_HANDLERS = {
         if (d.fx === 'wind') for (let i = 0; i < 2; i++) spawnParticle({ x: f.x + rand(-30, 30), y: f.y - rand(10, 150) * f.ch.scale, vx: -f.facing * rand(3, 7), vy: rand(-1, 1), life: 16, size: rand(10, 24), color: 'rgba(220,240,255,0.7)', type: 'streak' });
         if (d.fx === 'wave') { spawnParticle({ x: f.x - f.facing * rand(10, 50), y: f.y - rand(20, 90) * f.ch.scale, vx: -f.facing * rand(2, 5), vy: rand(-1, 1), life: 16, size: rand(4, 7), color: pick(['#7af0ff', '#3ec8ff', '#bff6ff']), grav: 0.2, type: 'blob' }); if (m.frame % 3 === 0) rnDrops(f.x, f.y - 40, 2, 3); }
         if (!m.hit && overlap(f.worldBox(d.box), opp.hurtbox())) {
-          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx, noBlood: d.fx === 'wave' || d.fx === 'splash' });
-          if (r) {
+          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx, noBlood: d.fx === 'wave' || d.fx === 'splash' });          if (r) {
             m.hit = true;
             if (r === 'hit' && d.burst) m.data.burstAt = m.frame + d.burst.delay;
             if (r === 'hit' && d.fx === 'razor') { const y = opp.y - 110 * opp.ch.scale; game.entities.push({ type: 'slash', x1: opp.x - 70, y1: y + 40, x2: opp.x + 70, y2: y - 40, life: 16, max: 16 }); }
@@ -1468,8 +1478,7 @@ const MOVE_HANDLERS = {
         if (m.hits < d.hits && m.frame - m.lastHit >= d.hitEvery && overlap(f.worldBox(d.box), opp.hurtbox())) {
           const last = m.hits === d.hits - 1;
           const r = applyHit(f, opp, { dmg: last ? d.lastDmg : d.dmg, hitstun: last ? d.hitstun : 16, blockstun: 10, kb: last ? d.kb : 1,
-                                       kbY: last ? d.kbY : -6, chip: true, heavy: last, fx: d.fx === 'geyser' ? 'splash' : 'wind', noBlood: d.fx === 'geyser' });
-          if (r) {
+                                       kbY: last ? d.kbY : -6, chip: true, heavy: last, fx: d.fx === 'geyser' ? 'splash' : 'wind', noBlood: d.fx === 'geyser' });          if (r) {
             m.hit = true; m.lastHit = m.frame; m.hits = r === 'block' ? d.hits : m.hits + 1;
             if (r === 'hit' && !last) { opp.vy = f.vy; opp.vx = f.vx; }   // swept up with him
           }
@@ -1494,8 +1503,7 @@ const MOVE_HANDLERS = {
           const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 12, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx === 'data' ? 'plasma' : d.fx === 'splash' ? 'splash' : 'wind', noBlood: d.fx === 'splash' });
           if (r) { m.hit = true; f.vx = -f.facing * 3; f.vy = -7; f.spinX = 1; }   // bounce off
         }
-        if (f.grounded && f.vy >= 0 && m.frame > d.startup) { m.data.landedAt = m.frame; f.vx = 0; f.spinX = 1; if (d.fx === 'splash') rnDrops(f.x, f.y - 8, 12, 5); }
-      }
+        if (f.grounded && f.vy >= 0 && m.frame > d.startup) { m.data.landedAt = m.frame; f.vx = 0; f.spinX = 1; if (d.fx === 'splash') rnDrops(f.x, f.y - 8, 12, 5); }      }
     },
   },
   /** Invincible teleport behind the opponent (smoke, or Editor's Jump Cut as a hard film cut). */
@@ -1878,8 +1886,7 @@ function updateWorldObjects() {
   // ---- entities: projectiles, clouds, tornadoes, slashes ----
   for (const e of game.entities) {
     const opp = e.owner ? e.owner.opp : null;
-    if (typeof RN_ENT !== 'undefined' && RN_ENT[e.type]) { if (!e.dead) RN_ENT[e.type](e, opp); continue; }
-    if (CX_ENT[e.type]) { if (!e.dead) CX_ENT[e.type](e, opp); continue; }
+    if (typeof RN_ENT !== 'undefined' && RN_ENT[e.type]) { if (!e.dead) RN_ENT[e.type](e, opp); continue; }    if (CX_ENT[e.type]) { if (!e.dead) CX_ENT[e.type](e, opp); continue; }
     if (e.type === 'proj') {
       e.t++; e.x += e.vx; e.life--;
       if ((e.kind === 'splash' || e.kind === 'bubble') && e.t % 2 === 0) rnDrops(e.x - e.vx * 0.4, e.y, 1, 2);
@@ -1893,8 +1900,7 @@ function updateWorldObjects() {
       }
       if (!e.dead && opp && opp.invuln <= 0 && opp.state !== 'ko' && overlap(box, opp.hurtbox())) {
         const wetShot = e.kind === 'splash' || e.kind === 'bubble';
-        const r = applyHit(e.owner, opp, { dmg: e.p.dmg, hitstun: e.p.hitstun, blockstun: 10, kb: e.p.kb, chip: true, fx: e.kind === 'butt' ? 'brown' : e.kind === 'net' ? 'plasma' : e.kind === 'gust' ? 'wind' : wetShot ? 'splash' : null, noBlood: e.kind === 'mind' || e.kind === 'net' || e.kind === 'frame' || e.kind === 'gust' || wetShot });
-        if (r) {
+        const r = applyHit(e.owner, opp, { dmg: e.p.dmg, hitstun: e.p.hitstun, blockstun: 10, kb: e.p.kb, chip: true, fx: e.kind === 'butt' ? 'brown' : e.kind === 'net' ? 'plasma' : e.kind === 'gust' ? 'wind' : wetShot ? 'splash' : null, noBlood: e.kind === 'mind' || e.kind === 'net' || e.kind === 'frame' || e.kind === 'gust' || wetShot });        if (r) {
           e.dead = true;
           if (r === 'hit' && e.p.trap) { opp.trapped = e.p.trap; opp.gkBuf = e.p.trapText ? e.p.trap : 0; opp.trapLabel = e.p.barText || 'BUFFERING'; if (e.p.trapText) Sound.play(e.p.trapSfx || 'gk_buffer'); addText(e.p.trapText || 'TRAPPED!', { x: opp.x, y: opp.y - 200, size: 24, color: e.p.textCol || '#38e8ff', dur: 50 }); }
           if (r === 'hit' && e.p.reverse) { opp.reversed = e.p.reverse; addText('CONTROLS REVERSED!', { x: opp.x, y: opp.y - 200, size: 22, color: '#c77dff', dur: 70 }); }
@@ -1949,8 +1955,7 @@ function addText(text, o = {}) {
 }
 /* ---- Move-name CALLOUTS: big, bold, fighter-coloured names for specials / ultimates / finishers ----
  * They live in game.texts (kind 'callout'), so they mirror to the online guest and show on the TV. */
-const CALLOUT_COL = { mierda: '#7dff3a', grok: '#4d9dff', cyclone: '#9be7ff', editor: '#ffd23f', clowny: '#ff3b3b', takata: '#5cffb4', rainy: '#3ec8ff' };
-function fighterCol(f) { return (f && f.ch && (CALLOUT_COL[f.ch.id] || f.ch.colors.accent)) || '#ffd23f'; }
+const CALLOUT_COL = { mierda: '#7dff3a', grok: '#4d9dff', cyclone: '#9be7ff', editor: '#ffd23f', clowny: '#ff3b3b', takata: '#5cffb4', rainy: '#3ec8ff' };function fighterCol(f) { return (f && f.ch && (CALLOUT_COL[f.ch.id] || f.ch.colors.accent)) || '#ffd23f'; }
 function callout(f, name, o = {}) {
   const T = game.texts;
   for (let i = T.length - 1; i >= 0; i--) if (T[i].kind === 'callout' && T[i].side === f.side) T.splice(i, 1);   // newest replaces older
@@ -2752,7 +2757,6 @@ function drawBody(g, ch, J, d, o) {
     circle(g, hc.x - r * 0.15, hc.y + r * 1.55, r * 0.5, col('hair'), '#111', 2);
     circle(g, hc.x - r * 0.85, hc.y + r * 1.15, r * 0.46, col('hairDark'), '#111', 2);
   }
-
   // ================= back leg & back arm =================
   const legC = id === 'mierda' ? 'main' : 'pants';
   limbDraw(g, [J.hip, J.bk, J.bf], d.limbW * (id === 'mierda' ? 1.25 : 1.1), [dark(legC), dark(legC)]);
@@ -2765,8 +2769,7 @@ function drawBody(g, ch, J, d, o) {
   if (id === 'mierda') circle(g, J.bk.x, J.bk.y, 6 * S, dark('trim'), '#111', 2);
   const backArm = id === 'grok' || id === 'takata' ? 'main' : id === 'rainy' ? 'skin' : 'main2';
   limbDraw(g, [J.sh, J.be, J.bh], d.limbW * (id === 'mierda' ? 1.25 : 1), [dark(backArm), dark(backArm)]);
-  if (!plain && id === 'rainy') limbDraw(g, [J.sh, lp(J.sh, J.be, 0.4)], d.limbW * 1.15, [col('main')]);
-  if (!plain && id === 'clowny') { cxStripes(g, J.sh, J.be, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); cxStripes(g, J.be, J.bh, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); }
+  if (!plain && id === 'rainy') limbDraw(g, [J.sh, lp(J.sh, J.be, 0.4)], d.limbW * 1.15, [col('main')]);  if (!plain && id === 'clowny') { cxStripes(g, J.sh, J.be, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); cxStripes(g, J.be, J.bh, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); }
   if (!plain && id === 'takata') { cxStripes(g, J.sh, J.be, d.limbW, dark('main2', -0.1), 2, 2 * S, 0.5); cxStripes(g, J.be, J.bh, d.limbW, dark('main2', -0.1), 2, 2 * S, 0.5); }
   if (!plain && !moon && id === 'clowny') cxPinShape(g, J.bh.x, J.bh.y - 14 * S, -0.3 + J.lean, S * 0.9);   // a juggling pin in the back hand
   if (!plain && !moon && id === 'mierda') {
@@ -2883,8 +2886,7 @@ function drawBody(g, ch, J, d, o) {
       heart(hx + 12 * S, hy + 9 * S, 5 * S, col('heart2'));
       g.fillStyle = col('heart'); g.fillRect(hx, hy + 12 * S, 1.8 * S, 6 * S);
       const hem = lp(J.hip, J.sh, 0.12);
-      for (let i = -1; i <= 1; i++) circle(g, hem.x + i * 7 * S, hem.y + (4 + ((t / 180 + i) % 1) * 8) * S, 1.7 * S, col('glow'), null);
-    }
+      for (let i = -1; i <= 1; i++) circle(g, hem.x + i * 7 * S, hem.y + (4 + ((t / 180 + i) % 1) * 8) * S, 1.7 * S, col('glow'), null);    }
   }
 
   // ================= front leg =================
@@ -2896,8 +2898,7 @@ function drawBody(g, ch, J, d, o) {
   if (id === 'clowny') limbDraw(g, [lp(J.fk, J.ff, 0.5), J.ff], d.limbW * 1.45, [col('shoe')]);
   if (!plain && id === 'cyclone') { const cp = lp(J.hip, J.fk, 0.6); circle(g, cp.x, cp.y, 3.5 * S, col('chest'), '#111', 1.5); }
   ellipse(g, J.ff.x + 6 * S, J.ff.y - 2 * S, (id === 'mierda' ? 13 : id === 'clowny' ? 16 : 11) * S, (id === 'mierda' ? 7 : id === 'clowny' ? 8 : 6) * S, col('shoe'));
-  if (!plain && id === 'rainy') { g.fillStyle = col('sole'); g.fillRect(J.ff.x + 1 * S, J.ff.y - 1 * S, 10 * S, 2 * S); }
-  if (!plain && id === 'takata') { cxFlower(g, J.ff.x + 16 * S, J.ff.y - 2 * S, 2.4 * S, col('flower')); cxFlower(g, J.bf.x - 6 * S, J.bf.y, 2 * S, col('flower2')); line({ x: J.ff.x - 4 * S, y: J.ff.y }, { x: J.ff.x - 12 * S, y: J.ff.y + 3 * S }, 2 * S, col('bark')); }
+  if (!plain && id === 'rainy') { g.fillStyle = col('sole'); g.fillRect(J.ff.x + 1 * S, J.ff.y - 1 * S, 10 * S, 2 * S); }  if (!plain && id === 'takata') { cxFlower(g, J.ff.x + 16 * S, J.ff.y - 2 * S, 2.4 * S, col('flower')); cxFlower(g, J.bf.x - 6 * S, J.bf.y, 2 * S, col('flower2')); line({ x: J.ff.x - 4 * S, y: J.ff.y }, { x: J.ff.x - 12 * S, y: J.ff.y + 3 * S }, 2 * S, col('bark')); }
   if (!plain && id === 'editor') { g.fillStyle = col('clipA'); g.fillRect(J.ff.x + 1 * S, J.ff.y - 5 * S, 9 * S, 2 * S); }   // sneaker stripe
   if (id === 'mierda') { circle(g, J.fk.x, J.fk.y, 6.5 * S, col('trim'), '#111', 2); circle(g, J.fk.x, J.fk.y, 2.5 * S, dark('trim'), null); }
 
@@ -2945,8 +2946,7 @@ function drawBody(g, ch, J, d, o) {
     limbDraw(g, [J.sh, J.fe, J.fh], d.limbW, [col('skin'), col('skin')]);
     limbDraw(g, [J.sh, lp(J.sh, J.fe, 0.42)], d.limbW * 1.2, [col('main')]);
     if (!plain) { const wr = lp(J.fe, J.fh, 0.72); circle(g, wr.x, wr.y, 3.2 * S, col('glow'), '#111', 1.2); }
-    circle(g, J.fh.x, J.fh.y, 7 * S, col('skin'), '#111', 2.5);
-  } else {
+    circle(g, J.fh.x, J.fh.y, 7 * S, col('skin'), '#111', 2.5);  } else {
     limbDraw(g, [J.sh, J.fe, J.fh], d.limbW, [col('main2'), col('main2')]);
     if (!plain) { const rl = lp(J.sh, J.fe, 0.45); circle(g, rl.x, rl.y, 4 * S, col('accent'), '#111', 1.5); circle(g, rl.x, rl.y, 1.5 * S, col('main'), null);   // film-reel patch
       const cuff = lp(J.fe, J.fh, 0.82); circle(g, cuff.x, cuff.y, 3.5 * S, col('shirt'), null); }
@@ -3142,7 +3142,7 @@ function buildJungle() {
   // shrine on top
   R.rect(205, 60, 70, 36, '#6a6652'); R.rect(201, 54, 78, 8, '#8f8b70'); R.rect(201, 61, 78, 1, '#45433a');
   R.rect(228, 72, 24, 24, '#1a1410'); R.rect(232, 76, 16, 20, '#2a1a10');
-  R.text('FK', 240, 64, '#d8a43a', 1, true);
+  R.text('FS', 240, 64, '#d8a43a', 1, true);
   R.rect(212, 70, 6, 26, '#55523f'); R.rect(262, 70, 6, 26, '#55523f');
   // canopy & vines
   for (let i = 0; i < 26; i++) { const x = rnd() * 480, y = rnd() * 30 - 6, r = 12 + rnd() * 16; R.circle(x | 0, y | 0, r | 0, i % 3 ? '#1d4a2a' : '#2a6a34'); }
@@ -3199,7 +3199,7 @@ function buildNeon() {
   }
   // neon signs (lit versions; anim() blinks some of them off)
   const sign = (sx, sy, s, col, dark) => { const w = s.length * 6 + 6; R.dither(sx - 4, sy - 4, w + 8, 21, dark, 0.2); R.rect(sx, sy, w, 13, '#0a0614'); R.rect(sx, sy, w, 1, col); R.rect(sx, sy + 12, w, 1, col); R.rect(sx, sy, 1, 13, col); R.rect(sx + w - 1, sy, 1, 13, col); R.text(s, sx + 4, sy + 3, col); };
-  sign(40, 92, 'KOMBAT', '#ff3fa4', '#ff3fa4'); sign(330, 80, 'RAMEN', '#38e8ff', '#38e8ff'); sign(200, 70, '24H', '#ffd23f', '#ffd23f');
+  sign(40, 92, 'FIGHTER', '#ff3fa4', '#ff3fa4'); sign(330, 80, 'RAMEN', '#38e8ff', '#38e8ff'); sign(200, 70, '24H', '#ffd23f', '#ffd23f');
   R.rect(410, 120, 30, 50, '#0a0614'); R.text('B', 420, 124, '#c77dff'); R.text('A', 420, 133, '#c77dff'); R.text('R', 420, 142, '#c77dff');
   // street lamps
   for (const lx of [100, 380]) { R.rect(lx, 150, 2, 85, '#3a3450'); R.rect(lx, 150, 14, 2, '#3a3450'); R.rect(lx + 10, 152, 6, 3, '#fff3b0'); R.rect(lx + 11, 155, 4, 1, '#c8a43a'); }
@@ -3211,8 +3211,8 @@ function buildNeon() {
   return R.toCanvas();
 }
 function animNeon(g, t) {
-  // flickering KOMBAT sign + rain
-  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44, 95, 36, 7); }
+  // flickering FIGHTER sign + rain
+  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44, 95, 42, 7); }
   if ((t >> 5) % 2) { g.fillStyle = '#ff3fa4'; g.fillRect(410, 112, 30, 4); }
   g.fillStyle = '#6a5aa0';
   for (let i = 0; i < 40; i++) { const x = (i * 53 + t * 3) % 500 - 10, y = (i * 97 + t * 7) % 270; g.fillRect(x, y, 1, 4); }
@@ -3261,7 +3261,7 @@ function buildStudio() {
   for (const px of [30, 300]) { for (let y = 70; y < 170; y++) R.rect(px + Math.round(Math.sin(y / 30) * 3), y, 3, 1, '#2a1a30'); for (let k = 0; k < 6; k++) { const a = k * 1.05; for (let r = 0; r < 18; r++) R.px(px + 1 + Math.cos(a) * r, 70 + Math.sin(a) * r * 0.5 + r * r * 0.02, '#2a1a30'); } }
   // water tower
   R.rect(370, 50, 50, 34, '#9aa0a8'); R.rect(370, 50, 50, 2, '#c8ccd2'); R.rect(370, 82, 50, 2, '#6a7078'); R.poly([[366, 50], [395, 34], [424, 50]], '#7a8088');
-  R.text('FK', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
+  R.text('FS', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
   for (const lx of [374, 392, 412]) R.line(lx, 84, lx - 4 + (lx - 392) / 4, 150, '#5a5f68');
   R.line(372, 110, 416, 110, '#5a5f68');
   // back-lot wall + western facade between the soundstages
@@ -3426,8 +3426,7 @@ function buildJungleWide() {
   for (let y = 94; y < 213; y += 3) { R.rect(222, y, 36, 2, '#8f8b70'); R.rect(222, y + 2, 36, 1, '#55523f'); }
   R.rect(205, 60, 70, 36, '#6a6652'); R.rect(201, 54, 78, 8, '#8f8b70'); R.rect(201, 61, 78, 1, '#45433a');
   R.rect(228, 72, 24, 24, '#1a1410'); R.rect(232, 76, 16, 20, '#2a1a10');
-  R.text('FK', 240, 64, '#d8a43a', 1, true);
-  R.rect(212, 70, 6, 26, '#55523f'); R.rect(262, 70, 6, 26, '#55523f');
+  R.text('FS', 240, 64, '#d8a43a', 1, true);  R.rect(212, 70, 6, 26, '#55523f'); R.rect(262, 70, 6, 26, '#55523f');
   // ---- west: waterfall cliff + giant stone head
   N.poly([[0, 40], [40, 34], [92, 52], [118, 96], [124, 236], [0, 236]], '#4a4838');
   for (let i = 0; i < 40; i++) N.rect((rnd() * 110) | 0, (50 + rnd() * 180) | 0, 8 + ((rnd() * 10) | 0), 3, rnd() < 0.5 ? '#5e5b48' : '#3a3828');
@@ -3477,8 +3476,7 @@ function animJungleWide(g, t) {
   for (let i = 0; i < 18; i++) { if (((t >> 4) + i * 3) % 5 === 0) continue; g.fillRect((40 + i * 52 + Math.round(Math.sin(t / 40 + i) * 8)) | 0, (150 + Math.round(Math.cos(t / 33 + i * 2) * 20)) | 0, 1, 1); }
 }
 
-/* ---------------- NEON CITY: arcade row (west) - KOMBAT block (centre) - hotel & TV tower (east) ---------------- */
-function buildNeonWide() {
+/* ---------------- NEON CITY: arcade row (west) - FIGHTER block (centre) - hotel & TV tower (east) ---------------- */function buildNeonWide() {
   const F = new Raster(FAR_AW, ART_H), N = new Raster(NEAR_AW, ART_H), rnd = seeded(77);
   F.grad(0, 0, FAR_AW, 190, ['#05030f', '#120a2e', '#2a0f45', '#5a1658']);
   for (let i = 0; i < 100; i++) F.px(rnd() * FAR_AW, rnd() * 90, rnd() < 0.3 ? '#ffffff' : '#8a7ab8');
@@ -3493,8 +3491,7 @@ function buildNeonWide() {
     x += w + 6;
   }
   const sign = (sx, sy, s, col) => { const w = s.length * 6 + 6; N.dither(sx - 4, sy - 4, w + 8, 21, col, 0.2); N.rect(sx, sy, w, 13, '#0a0614'); N.rect(sx, sy, w, 1, col); N.rect(sx, sy + 12, w, 1, col); N.rect(sx, sy, 1, 13, col); N.rect(sx + w - 1, sy, 1, 13, col); N.text(s, sx + 4, sy + 3, col); };
-  sign(40 + OFF_N, 92, 'KOMBAT', '#ff3fa4'); sign(330 + OFF_N, 80, 'RAMEN', '#38e8ff'); sign(200 + OFF_N, 70, '24H', '#ffd23f');
-  N.rect(410 + OFF_N, 120, 30, 50, '#0a0614'); N.text('B', 420 + OFF_N, 124, '#c77dff'); N.text('A', 420 + OFF_N, 133, '#c77dff'); N.text('R', 420 + OFF_N, 142, '#c77dff');
+  sign(40 + OFF_N, 92, 'FIGHTER', '#ff3fa4'); sign(330 + OFF_N, 80, 'RAMEN', '#38e8ff'); sign(200 + OFF_N, 70, '24H', '#ffd23f');  N.rect(410 + OFF_N, 120, 30, 50, '#0a0614'); N.text('B', 420 + OFF_N, 124, '#c77dff'); N.text('A', 420 + OFF_N, 133, '#c77dff'); N.text('R', 420 + OFF_N, 142, '#c77dff');
   // west: arcade with a marquee of bulbs + pizza
   N.rect(30, 132, 150, 104, '#170f2c'); N.rect(30, 132, 150, 3, '#ff3fa4'); N.rect(56, 170, 98, 66, '#0a0614');
   for (let i = 0; i < 4; i++) { N.rect(64 + i * 22, 182, 14, 26, '#3a2a6a'); N.rect(66 + i * 22, 185, 10, 8, i % 2 ? '#77ffff' : '#ffd23f'); }
@@ -3511,8 +3508,7 @@ function buildNeonWide() {
   return { far: F.toCanvas(), near: N.toCanvas() };
 }
 function animNeonWide(g, t, ca) {
-  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44 + OFF_N, 95, 36, 7); }
-  if ((t >> 5) % 2) { g.fillStyle = '#ff3fa4'; g.fillRect(410 + OFF_N, 112, 30, 4); }
+  if ((t >> 3) % 23 === 0 || (t >> 2) % 37 === 0) { g.fillStyle = '#0a0614'; g.fillRect(44 + OFF_N, 95, 42, 7); }  if ((t >> 5) % 2) { g.fillStyle = '#ff3fa4'; g.fillRect(410 + OFF_N, 112, 30, 4); }
   if ((t >> 4) % 3 === 0) { g.fillStyle = '#0a0614'; g.fillRect(869, 101, 7, 9); }
   g.fillStyle = (t >> 3) % 2 ? '#ffd23f' : '#ff3fa4';   // arcade marquee bulbs chase
   for (let i = 0; i < 15; i++) if ((i + (t >> 3)) % 3 === 0) g.fillRect(32 + i * 10, 133, 2, 2);
@@ -3575,8 +3571,7 @@ function buildStudioWide() {
   F.poly([[0, 170], [120, 140], [260, 160], [420, 136], [560, 158], [FAR_AW, 142], [FAR_AW, 270], [0, 270]], '#2a1a30');   // Hollywood hills
   const R = shifted(N, OFF_N);
   R.rect(370, 50, 50, 34, '#9aa0a8'); R.rect(370, 50, 50, 2, '#c8ccd2'); R.rect(370, 82, 50, 2, '#6a7078'); R.poly([[366, 50], [395, 34], [424, 50]], '#7a8088');
-  R.text('FK', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);
-  for (const lx of [374, 392, 412]) R.line(lx, 84, lx - 4 + (lx - 392) / 4, 150, '#5a5f68');
+  R.text('FS', 395, 56, '#c0392b', 1, true); R.text('STUDIOS', 395, 66, '#2a2a34', 1, true);  for (const lx of [374, 392, 412]) R.line(lx, 84, lx - 4 + (lx - 392) / 4, 150, '#5a5f68');
   R.line(372, 110, 416, 110, '#5a5f68');
   N.rect(0, 150, NEAR_AW, 85, '#7a6a5a'); N.rect(0, 150, NEAR_AW, 2, '#9a8a78'); for (let x = 0; x < NEAR_AW; x += 16) N.rect(x, 152, 1, 83, '#6a5a4c');
   R.rect(176, 132, 90, 103, '#8a5a34'); R.rect(176, 132, 90, 3, '#a8784a'); R.poly([[176, 132], [221, 118], [266, 132]], '#8a5a34');
@@ -3589,8 +3584,7 @@ function buildStudioWide() {
   stage(-20 + OFF_N, 190, 120, 3); stage(270 + OFF_N, 210, 110, 4); stage(744, 196, 128, 7);
   R.rect(118, 150, 40, 12, '#2a1a1a'); R.text('ON AIR', 138, 152, '#5a1a1a', 1, true);
   // west: billboard on stilts + star trailers
-  N.rect(24, 78, 176, 44, '#2a2a34'); N.rect(28, 82, 168, 36, '#c0392b'); N.text('FAMILY KOMBAT', 112, 88, '#ffd23f', 1, true); N.text('NOW FILMING', 112, 102, '#ffffff', 1, true);
-  for (const sx of [56, 168]) N.rect(sx, 122, 4, 28, '#2a2a34');
+  N.rect(24, 78, 176, 44, '#2a2a34'); N.rect(28, 82, 168, 36, '#c0392b'); N.text('FIGHTER SUPREME', 112, 88, '#ffd23f', 1, true); N.text('NOW FILMING', 112, 102, '#ffffff', 1, true);  for (const sx of [56, 168]) N.rect(sx, 122, 4, 28, '#2a2a34');
   for (const tx of [30, 120]) { N.rect(tx, 186, 80, 44, '#d8cfbf'); N.rect(tx, 186, 80, 3, '#f4f1e6'); N.rect(tx + 8, 196, 18, 12, '#6a7580'); N.rect(tx + 52, 194, 18, 36, '#a8987a'); N.text('*', tx + 58, 202, '#ffd23f'); N.circle(tx + 16, 232, 5, '#222228'); N.circle(tx + 64, 232, 5, '#222228'); }
   // east: rocket ship prop in front of Stage 7
   N.poly([[908, 236], [908, 150], [920, 120], [932, 150], [932, 236]], '#dfe6ec'); N.poly([[920, 120], [914, 134], [926, 134]], '#c0392b');
@@ -3827,8 +3821,7 @@ function drawFighter(g, f) {
     g.moveTo(x0, y1 - L); g.lineTo(x0, y1); g.lineTo(x0 + L, y1); g.moveTo(x1 - L, y1); g.lineTo(x1, y1); g.lineTo(x1, y1 - L); g.stroke();
     g.fillStyle = '#ffffff'; g.fillRect(x1 + 6, y0 + 4, 6, 18); g.fillRect(x1 + 16, y0 + 4, 6, 18);
     g.restore();
-  } else if (f.trapped > 0 && f.trapLabel === 'BUBBLE') { rnDrawBubble(g, f);
-  } else if (f.trapped > 0 && f.trapLabel === 'ROOTED') { cxDrawRooted(g, f);
+  } else if (f.trapped > 0 && f.trapLabel === 'BUBBLE') { rnDrawBubble(g, f);  } else if (f.trapped > 0 && f.trapLabel === 'ROOTED') { cxDrawRooted(g, f);
   } else if (f.trapped > 0) {
     const hb = f.hurtbox(); g.save(); g.strokeStyle = '#38e8ff'; g.shadowColor = '#38e8ff'; g.shadowBlur = 8; g.lineWidth = 2;
     for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(hb.x - 8 + i * (hb.w + 16) / 6, hb.y); g.lineTo(hb.x - 8 + (6 - i) * (hb.w + 16) / 6, hb.y + hb.h); g.stroke(); }
@@ -3858,8 +3851,7 @@ function drawShadow(g, x, w, y = CONFIG.GROUND_Y) { g.fillStyle = 'rgba(0,0,0,0.
 function drawEntity(g, e) {
   const t = game.frame;
   if (CX_DRAW[e.type]) { CX_DRAW[e.type](g, e); return; }
-  if (typeof RN_DRAW !== 'undefined' && RN_DRAW[e.type]) { RN_DRAW[e.type](g, e); return; }
-  if (e.type === 'proj') {
+  if (typeof RN_DRAW !== 'undefined' && RN_DRAW[e.type]) { RN_DRAW[e.type](g, e); return; }  if (e.type === 'proj') {
     g.save(); g.translate(e.x, e.y); g.scale(Math.sign(e.vx) || 1, 1);
     if (e.kind === 'butt') {
       // a flying cartoon butt, naturally
@@ -3887,8 +3879,7 @@ function drawEntity(g, e) {
       const wob = Math.sin(e.t * 0.25) * 2;
       g.strokeStyle = '#7af0ff'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 22 + wob, 0, Math.PI * 2); g.stroke();
       g.strokeStyle = '#e8fbff'; g.lineWidth = 2; g.beginPath(); g.arc(-6, -6, 6, 0, Math.PI * 1.4); g.stroke();
-      circle(g, 8, 6, 3, '#bff6ff', null);
-    } else if (e.kind === 'frame') {   // Editor's Freeze Frame shot: a flying viewfinder frame with a REC dot
+      circle(g, 8, 6, 3, '#bff6ff', null);    } else if (e.kind === 'frame') {   // Editor's Freeze Frame shot: a flying viewfinder frame with a REC dot
       const w = e.w, h = e.h, L = 14; g.shadowColor = '#9be7ff'; g.shadowBlur = 12;
       g.fillStyle = 'rgba(155,231,255,0.22)'; g.fillRect(-w / 2, -h / 2, w, h);
       g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.beginPath();
@@ -4031,8 +4022,7 @@ function drawHeads(g) {
 function drawFatalityFX(g) {
   const F = game.fatal; if (!F || game.state !== 'fatality') return;
   cxDrawFatal(g, F);
-  rnDrawFatal(g, F);
-  const { w, l, t } = F;
+  rnDrawFatal(g, F);  const { w, l, t } = F;
   if (F.laser) {
     const ey = w.y - 151 * w.ch.scale, ex = w.x + w.facing * 10;
     const ty = l.y - 20 - ((Math.sin(t * 0.12) + 1) / 2) * 160 * l.ch.scale;
@@ -4052,7 +4042,7 @@ function drawFatalityFX(g) {
     const { x, y, open } = F.clap;
     g.save(); g.translate(x, y);
     g.fillStyle = '#111'; g.fillRect(-60, 0, 120, 70); g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(-60, 0, 120, 70);
-    txt(g, 'SCENE 1', -52, 24, 14, '#fff', 'left', 0); txt(g, 'TAKE 1', -52, 48, 14, '#fff', 'left', 0); txt(g, 'FK', 20, 48, 14, '#fff', 'left', 0);
+    txt(g, 'SCENE 1', -52, 24, 14, '#fff', 'left', 0); txt(g, 'TAKE 1', -52, 48, 14, '#fff', 'left', 0); txt(g, 'FS', 20, 48, 14, '#fff', 'left', 0);
     g.rotate(open ? -0.45 : 0);
     g.fillStyle = '#111'; g.fillRect(-60, -18, 120, 16);
     g.fillStyle = '#fff'; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(-56 + i * 20, -18); g.lineTo(-46 + i * 20, -18); g.lineTo(-56 + i * 20, -2); g.lineTo(-66 + i * 20, -2); g.fill(); }
@@ -4337,7 +4327,7 @@ function drawTouchControls(g) {
   if (arrows) { drawArrowPad(g); TOUCH_FADE.k = ghost ? 0.3 : touchOverlap(690, 210, 960, 540) ? 0.4 : 1; drawAttackButtons(g); }
   else drawStickControls(g);
   TOUCH_FADE.k = 1;
-  g.globalAlpha = game.mode === 'online' ? 0 : game.tvMode ? 0.3 : 0.6; const pz = TOUCH_UI.pause;
+  if (game.state !== 'pad') drawQuickDir(g);  g.globalAlpha = game.mode === 'online' ? 0 : game.tvMode ? 0.3 : 0.6; const pz = TOUCH_UI.pause;
   circle(g, pz.x, pz.y, pz.r, '#222', '#fff', 2); g.fillStyle = '#fff'; g.fillRect(pz.x - 7, pz.y - 8, 5, 16); g.fillRect(pz.x + 2, pz.y - 8, 5, 16);
   g.restore();
 }
@@ -4584,13 +4574,11 @@ function drawTitle(g) {
   g.restore();
   drawParticles(g);
   // the roster lines up
-  const NC = CHARACTERS.length, xs = NC > 6 ? Array.from({ length: NC }, (_, i) => 78 + (804 * i) / (NC - 1)) : NC > 4 ? [100, 236, 372, 588, 724, 860] : [190, 370, 590, 770];
-  for (let i = 0; i < NC; i++) {
+  const NC = CHARACTERS.length, xs = NC > 6 ? Array.from({ length: NC }, (_, i) => 78 + (804 * i) / (NC - 1)) : NC > 4 ? [100, 236, 372, 588, 724, 860] : [190, 370, 590, 770];  for (let i = 0; i < NC; i++) {
     const bob = Math.sin(t * 0.08 + i) * 1.5;
     const pose = P({ drop: 4 + bob, fa2: 1.9 + Math.sin(t * 0.08 + i) * 0.1 });
     drawShadow(g, xs[i], 40);
-    drawCharacter(g, i, xs[i], CONFIG.GROUND_Y + 40, i < NC / 2 ? 1 : -1, pose, { mult: NC > 6 ? 0.72 : NC > 4 ? 0.92 : 1 });
-  }
+    drawCharacter(g, i, xs[i], CONFIG.GROUND_Y + 40, i < NC / 2 ? 1 : -1, pose, { mult: NC > 6 ? 0.72 : NC > 4 ? 0.92 : 1 });  }
   const sh = g.createLinearGradient(0, 380, 0, 540); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.6)');
   g.fillStyle = sh; g.fillRect(0, 380, 960, 160);
   drawLogo(g, 480, 160, 1);
@@ -4621,8 +4609,7 @@ function drawSelect(g) {
     const hover = (p1Here && !s.p1Done) || (p2Here && (game.mode !== 'cpu' ? !s.p2Done : s.p1Done && !s.p2Done));
     const pose = hover ? P({ fa: 1.57, fa2: 0, lean: 0.12, drop: 4 + Math.sin(t * 0.1) * 2 }) : P({ drop: 4 + Math.sin(t * 0.06 + i) * 1.5 });
     const narrow = c.w < 160;
-    drawCharacter(g, i, c.x + c.w / 2 - 6, c.y + (c.w < 130 ? 274 : narrow ? 266 : 262), 1, pose, { mult: c.w < 130 ? 0.62 : narrow ? 0.78 : 1.12 });
-    g.restore();
+    drawCharacter(g, i, c.x + c.w / 2 - 6, c.y + (c.w < 130 ? 274 : narrow ? 266 : 262), 1, pose, { mult: c.w < 130 ? 0.62 : narrow ? 0.78 : 1.12 });    g.restore();
     // a name too wide for a narrow card goes on two lines (TAKATA / JACKSON)
     const nl = narrow && textWidth(ch.name, 22) > c.w - 6 && ch.name.includes(' ') ? [ch.name.slice(0, ch.name.indexOf(' ')), ch.name.slice(ch.name.indexOf(' ') + 1)] : [ch.name];
     nl.forEach((ln, k) => txt(g, ln, c.x + c.w / 2, c.y + 280 + (k - (nl.length - 1) / 2) * 15, 22, ch.colors.accent, 'center', 4, c.w));
@@ -5215,8 +5202,8 @@ function drawLogo(g, cx, y, scale = 1) {
     for (let k = 1; k <= 2; k++) g.drawImage(sh, dx + k * px * 2, dy + k * px * 2, w, h);
     g.drawImage(bm, dx, dy, w, h); g.restore();
   };
-  if (scale === 'small') { draw('FAMILY', y - 46, 3); draw('KOMBAT', y + 14, 5); return; }
-  draw('FAMILY', y - 92, 4); draw('KOMBAT', y + 14, 7);
+  if (scale === 'small') { draw('FIGHTER', y - 46, 3); draw('SUPREME', y + 14, 5); return; }
+  draw('FIGHTER', y - 92, 4); draw('SUPREME', y + 14, 7);
 }
 
 /* ---------------- Pixel raster helper for stages ---------------- */
@@ -8180,8 +8167,7 @@ const Pad = {
     TouchPad.stick = null; TouchPad.arrows.clear(); TouchPad.fingers.clear(); for (const k in TouchPad.held) TouchPad.held[k] = false;
     Sound.play('select');
   },
-  selBtns() { const n = CHARACTERS.length, rows = Math.ceil(n / 2), h = rows > 3 ? 76 : rows > 2 ? 92 : 130, step = rows > 3 ? 88 : rows > 2 ? 104 : 150, y0 = rows > 3 ? 124 : rows > 2 ? 124 : 150;
-    return CHARACTERS.map((c, i) => ({ id: 'ch' + i, i, x: 60 + (i % 2) * 430, y: y0 + ((i / 2) | 0) * step, w: 410, h, label: c.name })); },
+  selBtns() { const n = CHARACTERS.length, rows = Math.ceil(n / 2), h = rows > 3 ? 76 : rows > 2 ? 92 : 130, step = rows > 3 ? 88 : rows > 2 ? 104 : 150, y0 = rows > 3 ? 124 : rows > 2 ? 124 : 150;    return CHARACTERS.map((c, i) => ({ id: 'ch' + i, i, x: 60 + (i % 2) * 430, y: y0 + ((i / 2) | 0) * step, w: 410, h, label: c.name })); },
   tap(p) {
     const v = this.view(), T = this.tv;
     if (this.moves) { if (p.y > 470) { this.moves = false; game.movesOpen = false; } return; }
@@ -8261,8 +8247,7 @@ const Pad = {
         drawButton(g, { x: 330, y: 452, w: 300, h: 60, label: 'CHANGE FIGHTER' }, false);
         return;
       }
-      txt(g, 'PICK YOUR FIGHTER', 480, CHARACTERS.length > 6 ? 108 : 122, CHARACTERS.length > 6 ? 22 : 26, '#ffd23f', 'center', 3);
-      for (const b of this.selBtns()) {
+      txt(g, 'PICK YOUR FIGHTER', 480, CHARACTERS.length > 6 ? 108 : 122, CHARACTERS.length > 6 ? 22 : 26, '#ffd23f', 'center', 3);      for (const b of this.selBtns()) {
         const ch = CHARACTERS[b.i];
         drawButton(g, { ...b, label: '' }, b.i === cur, ch.colors.accent);
         txt(g, ch.name, b.x + b.w / 2, b.y + (b.h < 120 ? 34 : 50), b.h < 120 ? 30 : 34, ch.colors.accent, 'center', 4, b.w - 20);
@@ -8669,8 +8654,7 @@ function submitJoin() {
  *     Lose a fight and you can CONTINUE (retry the same opponent).
  * ===================================================================== */
 const ARCADE_LEVELS = [0.28, 0.42, 0.55, 0.67, 0.8, 0.88];
-const ARCADE_LABELS = ['EASY', 'EASY+', 'MEDIUM', 'HARD', 'HARDER', 'EXPERT'];
-const BOSS_STAGE = 3;   // the boss always fights on the STUDIO BACKLOT
+const ARCADE_LABELS = ['EASY', 'EASY+', 'MEDIUM', 'HARD', 'HARDER', 'EXPERT'];const BOSS_STAGE = 3;   // the boss always fights on the STUDIO BACKLOT
 const BOSS = { name: 'SHADOW KING', hp: 1.75, power: 1.35, scale: 1.3, walk: 1.1, level: 0.95, filter: 'hue-rotate(165deg) saturate(1.7) contrast(1.2) brightness(0.85)' };
 const BASE_CPU_LEVEL = CONFIG.CPU_LEVEL;
 const Arcade = {
@@ -8682,8 +8666,7 @@ const Arcade = {
     for (let i = others.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [others[i], others[j]] = [others[j], others[i]]; }
     const A = game.arcade;
     A.started = true; A.p1 = p1; A.idx = 0; A.continues = 0; A.won = false;
-    A.ladder = others.map((ch, i) => ({ ch, level: ARCADE_LEVELS[Math.min(i, ARCADE_LEVELS.length - 1)], boss: false })).concat([{ ch: p1, level: BOSS.level, boss: true }]);
-    Arcade.showLadder();
+    A.ladder = others.map((ch, i) => ({ ch, level: ARCADE_LEVELS[Math.min(i, ARCADE_LEVELS.length - 1)], boss: false })).concat([{ ch: p1, level: BOSS.level, boss: true }]);    Arcade.showLadder();
   },
   current() { const A = game.arcade; return A.ladder[A.idx]; },
   showLadder() { setState('ladder'); game.fighters = []; const r = Arcade.current(); Sound.play(r.boss ? 'gong' : 'confirm'); if (r.boss) { announce('Final boss'); Sound.play('st_finish'); } },
@@ -8744,8 +8727,7 @@ function drawLadder(g) {
   txt(g, 'ARCADE', 480, 40, 40, '#ffd23f', 'center', 5);
   txt(g, 'FIGHT ' + (A.idx + 1) + ' OF ' + A.ladder.length + (A.continues ? '   \u2022   CONTINUES USED: ' + A.continues : ''), 480, 76, 16, '#fff', 'center', 3);
   // the tower: first opponent at the bottom, boss on top
-  const n = A.ladder.length, tx = 560, tw = 330, rh = n > 6 ? 50 : n > 4 ? 60 : 84, top = n > 6 ? 92 : 100;
-  for (let i = 0; i < n; i++) {
+  const n = A.ladder.length, tx = 560, tw = 330, rh = n > 6 ? 50 : n > 4 ? 60 : 84, top = n > 6 ? 92 : 100;  for (let i = 0; i < n; i++) {
     const rung = A.ladder[i], y = top + (n - 1 - i) * (rh + 2), done = i < A.idx, cur = i === A.idx;
     g.fillStyle = '#000'; g.fillRect(tx - 3, y - 3, tw + 6, rh + 6);
     g.fillStyle = cur ? (rung.boss ? '#4a0a0a' : '#5a2a10') : done ? '#1a2a1a' : '#241638'; g.fillRect(tx, y, tw, rh);
@@ -8784,8 +8766,7 @@ function drawArcadeEnd(g) {
   if (A.won) {
     txt(g, 'YOU WIN!', 480, 90, 80, '#ffd23f', 'center', 6);
     txt(g, CHARACTERS[A.p1].name + ' DEFEATED THE ' + BOSS.name + '!', 480, 150, 22, '#fff', 'center', 3);
-    txt(g, 'FAMILY KOMBAT CHAMPION', 480, 186, 26, '#ff5252', 'center', 4);
-    drawShadow(g, 480, 50);
+    txt(g, 'FIGHTER SUPREME CHAMPION', 480, 186, 26, '#ff5252', 'center', 4);    drawShadow(g, 480, 50);
     drawCharacter(g, A.p1, 480, CONFIG.GROUND_Y + Math.sin(t * 0.1) * 3, 1, POSES.victory || P({}), { mult: 1.25 });
     txt(g, A.continues ? 'CONTINUES USED: ' + A.continues : 'NO CONTINUES  -  PERFECT RUN!', 480, 500, 16, '#7dff7a', 'center', 3);
   } else {
@@ -8797,8 +8778,7 @@ function drawArcadeEnd(g) {
 
 /* ---------- mode select / lobby / controls screens ---------- */
 const MODE_BTNS = [
-  { id: 'arcade', x: 200, y: 180, w: 560, h: 62, label: 'ARCADE', sub: '1 player: beat all ' + (CHARACTERS.length - 1) + ' fighters, then the BOSS' },
-  { id: 'online', x: 200, y: 250, w: 560, h: 62, label: 'OWN DEVICES', sub: 'Each player on their own phone, tablet or PC' },
+  { id: 'arcade', x: 200, y: 180, w: 560, h: 62, label: 'ARCADE', sub: '1 player: beat all ' + (CHARACTERS.length - 1) + ' fighters, then the BOSS' },  { id: 'online', x: 200, y: 250, w: 560, h: 62, label: 'OWN DEVICES', sub: 'Each player on their own phone, tablet or PC' },
   { id: 'shared', x: 200, y: 320, w: 560, h: 62, label: 'SHARED KEYBOARD', sub: 'Two players, one screen: keyboard or 2 controllers' },
   { id: 'tv', x: 200, y: 390, w: 272, h: 62, label: 'TV MODE', sub: 'Big screen + phone pads' },
   { id: 'pad', x: 488, y: 390, w: 272, h: 62, label: 'JOIN AS CONTROLLER', sub: 'This phone = a TV pad' },
@@ -10016,8 +9996,7 @@ function buildCircusWide() {
   for (const px of [40, mid - 60, mid + 60, FAR_AW - 40]) { F.rect(px - 2, 20, 4, 170, '#7a7660'); F.rect(px - 1, 20, 1, 170, '#a29e80'); }
   // near layer: ring curb, pedestals, banner, bunting, cannon + balloons + ticket booth
   N.rect(80, 52, 800, 22, '#8a1a1a'); N.rect(80, 52, 800, 2, '#ffd23f'); N.rect(80, 72, 800, 2, '#ffd23f');
-  N.text('FAMILY KOMBAT BIG TOP', 480, 59, '#ffd23f', 1, true);
-  for (let x = 84; x < 878; x += 12) N.px(x, 56, (x / 12) % 2 ? '#ffffff' : '#ffd23f');
+  N.text('FIGHTER SUPREME BIG TOP', 480, 59, '#ffd23f', 1, true);  for (let x = 84; x < 878; x += 12) N.px(x, 56, (x / 12) % 2 ? '#ffffff' : '#ffd23f');
   for (let s = 0; s < 3; s++) for (let x = 0; x < NEAR_AW; x += 1) { const y = 90 + s * 28 + Math.round(Math.sin((x - s * 140) / 76) * 10); N.px(x, y, '#2a2a2e'); if (x % 16 === 0) N.poly([[x, y], [x + 10, y], [x + 5, y + 10]], ['#c0392b', '#ffd23f', '#2f6fd0', '#3f8a3a'][(x / 16 + s) % 4]); }
   const ped = (x, w, h, c) => { N.rect(x, GY - h, w, h, c); N.rect(x, GY - h, w, 3, '#ffd23f'); N.rect(x, GY - 4, w, 4, '#2a0f1a'); for (let k = 0; k < 3; k++) N.rect(x + 4 + k * (w - 8) / 3, GY - h + 8, 2, h - 14, '#ffffff'); };
   ped(150, 40, 26, '#2f6fd0'); ped(196, 30, 18, '#c0392b'); ped(720, 44, 30, '#c0392b'); ped(770, 30, 20, '#2f6fd0');
@@ -10407,7 +10386,6 @@ FATALITY_TITLE_AT.monsoon = 200;
 FATALITY_TITLE_AT.flashFlood = 175;
 SFX_META.fatality_title_rainy = { voiceAt: 0.5 };
 SFX_SAMPLES.fatality_title_rainy = "data:audio/mpeg;base64,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CkIUKY7f0tLyqhwpnN0T3cvolnu4VmO5SGBoLEoKUOGuuvpImCrUmTABhYaLnMp2cCSFqhEUMosH0cVvuhjpbuRsJHV6uP/zUMTlGWpWnn7aBrz7cs1uhssfrftnA4p5y7ia7HVr7n3vcVKky0nlrRQqRBgyOGrZH/lAXBZpZ8wABhi/6XQdMHXUqmAGl2aJjtSO8Bscqc0TSLQkJj0jaOakYqstxQtKNItZzNLp51M6hHsSEWDBIPbSdVQEbTy9GtXm9EilDFn/80DE9BhCVpZ+wkQ4/9LpocM0UilVzpX//+voyIRTKzLmoirr1u4PVMzDSr91UQaFVXla3LLwFLHdTCSrMxU/K8bzXxekyKMSiHImBxSMI3qW3Yj0pBMClkzQ/1up3ZjRg2YVBADBhf/zQMTuFUlWkx5ITEDZPRCsXMDU5iiJiWSn/T6rqzht3dVU5k+QzkXWGOqXinqV5AAIZmZ4eyR24COpNqIB9TAtA340HXFkTCWkVSYKvfyPjsCMGRbVQoCRRzT8p7XJiK+tLJnLYGMX//NAxPMXWq6PHkjFGYZIKlnjtUTJuVY6vaYLCYODwmOIgEuODh7rGlHA00ZeukF7b6B9pZIB5qEZZJc8mQAUz5VDN+SlkiZaWb/nIgriKhpqjMNnSlOejMcYgyqAthIBaLhFJAiASwv/80DE8Bc6poceSMTZmtJFGoVlkIZrU/HL7r3HSqr6AsoFA2+1ugCip2IZc6TVfEf/u//88qPI73XBMpNThnI/uSHhl+p0vucy37y/StKNP5n/Py83KFlS/JGoWDDlPKBIj37FT9Niuv/zQMTuFiFmex5JhlQv+2oAFpgSYc7Zf/YV//+XNQlbjyeRSshG8Uhyi960bx2N+XTAjmFvR/t1NPzc2kEOGsyTa7fNC0At1uoAzUXCaEwGR4d///6gIqpVIhBFwecJxBBJTC6HpUKR//MwxPAS4VJuXkgHBMKGQMeWOCrQkkUFWB0g0sYKwosG3zy0rQrNdttoAEhYEWRE8oJBFbf//joTO3D4EkRUoaeUtCqDwsBWT6RC0/Mk//NAxOURulZuXkhGfMSVC7I0VFmdZ1XVakwghoKaFUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/8yDE+Q4xUm3+SAaVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MwxOcO8CJp/lrOAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MwxOwNKDZp/ioGAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MQxPcBOAZEoAgAAVVVVVVVVVVVVVVVVVU=";
-
 window.FK = { GP, GP_BTN, Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown, ZOOM, zoomTarget, zmap, callout, CALLOUT_COL, DIRCTL, setDirMode, toggleDirMode, ARROW_UI, arrowBtnRects, arrowDirsAt, PAUSE_DIRBTN, MENU_DIRBTN, PAD_DIRBTN, PAD_PAUSE_DIRBTN, TOUCH_FADE };
 </script>
 </body>
