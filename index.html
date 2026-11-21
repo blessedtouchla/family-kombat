@@ -119,6 +119,7 @@ const CONFIG = {
     s3: { motion: ['D', 'D'], btn: 'LK' },   // down, down   + Light Kick
     s4: { motion: ['D', 'B'], btn: 'HP' },   // down, back   + Heavy Punch (only fighters that have an s4)
     s5: { motion: ['D', 'F'], btn: 'HP' },   // down, forward + Heavy Punch (only fighters that have an s5: Grok Girl's Prompt Beam)
+    s6: { motion: ['D', 'D'], btn: 'HP' },   // down, down + Heavy Punch (only Rainy's Skyfall Flood)
   },
   // ---- Button-chain combos (v6): the same three strings for everyone; each fighter names and themes them (ch.chains).
   // Each press must follow a connecting hit (it may cancel the previous attack). The 3rd hit is a boosted launcher.
@@ -370,12 +371,15 @@ const CHARACTERS = [
       s5: { name: 'Geyser Uppercut', type: 'twister', startup: 3, active: 0, recovery: 8, pose: 'uppercut', sfxStart: 'rn_geyser', fx: 'geyser',
             vy: -16.5, vx: 4, invuln: 8, hits: 3, dmg: 4.5, lastDmg: 8, hitEvery: 4, hitstun: 30, kb: 8, kbY: -12,
             box: { x: -18, y: -210, w: 108, h: 220 } },
+      // Signature: a slow rising sea, then the whole mass crashes down. Armor so a jab cannot cancel the build-up.
+      s6: { name: 'Skyfall Flood', type: 'rnSkyfall', startup: 52, active: 16, recovery: 18, pose: 'raise', sfxStart: 'rn_rise', armor: true, banner: 100,
+            dmg: 12, crush: 18, range: 250 },
     },
     chains: [{ name: 'Drip Drop Splash', fx: 'splash', sfx: 'rn_splash' }, { name: 'Ripple Kicks', fx: 'wave', sfx: 'rn_wave' }, { name: 'Rain Storm', fx: 'storm', sfx: 'rn_storm' }],
     ult: { name: 'TSUNAMI', type: 'tsunami', startup: 1, active: 50, recovery: 18, pose: 'raise' },
     fatality: { name: 'MONSOON', type: 'monsoon' },
     finisher2: { name: 'FLASH FLOOD', type: 'flashFlood', motion: ['D', 'B'], btn: 'HP' },
-    ai: { far: ['s1', 's1', 's2', 's3'], mid: ['s2', 's1', 's5', 's4', 's2'], close: ['s2', 's4', 's5', 's2'] },
+    ai: { far: ['s1', 's1', 's2', 's6'], mid: ['s2', 's6', 's1', 's5', 's2'], close: ['s2', 's4', 's5', 's2'] },
     antiAir: 's5',  },
 ];
 
@@ -1164,7 +1168,7 @@ class Fighter {
       def = this.ch.specials[a.slot];
       if (!this.grounded && def.air) { def = def.air; this.airAttacked = true; }   // e.g. Cyclone's Sky Dive
       this.crouching = false;
-      callout(this, def.name);
+      callout(this, def.name, def.banner ? { dur: def.banner, size: 48 } : {});
       Sound.play(sfxHook(`sp_${this.ch.id}_${a.slot}`, def.sfxStart || 'whoosh'));
     } else if (a.type === 'ult') {
       def = this.ch.ult; this.meter = 0; this.crouching = false;
@@ -4498,14 +4502,15 @@ function drawMoveColumn(g, side, x, y, w, h) {
   txtC(g, 'BLOCK: HOLD \u2190 (AWAY)    LOW: HOLD \u2193\u2190', X, yy, 15, '#fff', 'left', 0, w - 20); yy += 17;
   if (game.stageIdx === PLAT.stage && game.slab) { txtC(g, 'JUMP UP ONTO THE BALCONY, \u2193\u2193 TO DROP', X, yy - 2, 15, '#9be7ff', 'left', 0, w - 20); yy += 17; }
   head('SPECIAL MOVES', 'NOW FACING ' + (f.facing === 1 ? '\u2192' : '\u2190'));
+  const stepY = L.specials.length > 6 ? 13 : 15;
   for (const s of L.specials) {
     txtC(g, specialInput(s, true), X, yy, 15, '#7ff', 'left', 0, 132);
     txt(g, s.name + (s.air ? ' (IN AIR)' : ''), NX, yy, 15, '#fff', 'left', 0, k ? 200 : w - 162);
     if (k) txtSeg(g, keySegs(s, k, f.facing, '#9ab'), KX, yy, 15, 'right', 0, 100);
-    yy += 15;
+    yy += stepY;
   }
   yy += 1; head('COMBOS  (EACH HIT MUST CONNECT)');
-  for (const c of L.combos) { txtC(g, c.inputs.join(' '), X, yy, 15, '#7ff', 'left', 0, 132); txt(g, c.name, NX, yy, 15, '#fff', 'left', 0, w - 162); yy += 15; }
+  for (const c of L.combos) { txtC(g, c.inputs.join(' '), X, yy, 15, '#7ff', 'left', 0, 132); txt(g, c.name, NX, yy, 15, '#fff', 'left', 0, w - 162); yy += stepY; }
   yy += 1; txt(g, 'ULTIMATE', X, yy, 15, '#ffd23f', 'left', 2, 132); { const uw = k ? w - 200 : w - 180, us = [k ? '  (FULL METER)' : '  (FULL METER, ULT)', '  (FULL METER)', ''].find((q) => textWidth(L.ult.name + q, 15) <= uw) || '';
     txt(g, L.ult.name + us, NX, yy, 15, '#ffd23f', 'left', 0, uw); }
   if (k) txt(g, k.ULT, KX, yy, 15, '#9ab', 'right', 0, 30);
@@ -4515,7 +4520,7 @@ function drawMoveColumn(g, side, x, y, w, h) {
     txtC(g, motionText(fin.motion, fin.btn), X, yy, 15, '#ff8a8a', 'left', 0, 132);
     txt(g, fin.name + (fin.label === 'ANYONE' ? ' (ANYONE)' : ''), NX, yy, 15, '#fff', 'left', 0, k ? 200 : w - 162);
     if (k) txtSeg(g, keySegs(fin, k, f.facing, '#9ab'), KX, yy, 15, 'right', 0, 100);
-    yy += 15;
+    yy += stepY;
   }
 }
 
@@ -4538,9 +4543,13 @@ function drawHelp(g, title, showButtons) {
   for (const [a, b] of lines) { txt(g, a, 40, y, 16, '#7ff', 'left', 0); txtC(g, b, 160, y, 15, a === 'BALCONY' ? '#9be7ff' : a === 'COMBOS' ? '#ffd23f' : a === 'PAD' || a === '' ? '#ffb070' : '#fff', 'left', 0, 780); y += lines.length > 7 ? 15 : lines.length > 6 ? 16 : lines.length > 5 ? 17 : 19; }
   txtC(g, 'SPECIAL MOVES  (\u2192 = toward opponent, \u2190 = away)', 480, 177, 20, '#ffd23f', 'center', 3);   // v8: a bit lower (controller lines above)
   {   // v7: one table for the whole roster - rows = inputs (shared by everyone), columns = fighters
-    const NC = CHARACTERS.length, Ls = CHARACTERS.map((c, i) => moveListFor(i)), x0 = 16, inW = 118, cw = (928 - inW) / NC, top = 189, rowH = 31;
-    const rows = Object.keys(CONFIG.SPECIAL_MOTIONS).map((slot) => ({ input: specialInput(Ls[0].specials.find((q) => q.slot === slot && !q.air), true),
-      names: Ls.map((L) => (L.specials.find((q) => q.slot === slot && !q.air) || {}).name || '') }));
+    const NC = CHARACTERS.length, Ls = CHARACTERS.map((c, i) => moveListFor(i)), x0 = 16, inW = 118, cw = (928 - inW) / NC, top = 189;
+    const rowH = Object.keys(CONFIG.SPECIAL_MOTIONS).length > 5 ? 27 : 31;
+    const rows = Object.keys(CONFIG.SPECIAL_MOTIONS).map((slot) => {
+      const sm = CONFIG.SPECIAL_MOTIONS[slot];
+      return { input: specialInput({ motion: sm.motion, btn: sm.btn }, true),
+        names: Ls.map((L) => (L.specials.find((q) => q.slot === slot && !q.air) || {}).name || '') };
+    });
     rows.push({ input: 'IN THE AIR', names: Ls.map((L) => { const q = L.specials.find((s) => s.air); return q ? q.name : ''; }), sub: Ls.map((L) => { const q = L.specials.find((s) => s.air); return q ? motionText(q.motion, q.btn) : ''; }) });
     rows.push({ input: 'ULT', names: Ls.map((L) => L.ult.name), col: '#ffd23f' });
     g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x0, top, 928, 26 + rows.length * rowH);
@@ -10207,6 +10216,8 @@ function rnSfx(S, name) {
     case 'rn_geyser': S.tone(160, 880, 0.28, 'sine', 0.16); S.noise(0.22, 0.3, 900, 'bandpass', 0, 2400); break;
     case 'rn_storm': S.noise(0.55, 0.22, 2000, 'highpass'); for (let i = 0; i < 6; i++) S.tone(rand(700, 1500), rand(300, 600), 0.05, 'sine', 0.05, i * 0.04); break;
     case 'rn_tsunami': S.tone(90, 40, 0.7, 'sine', 0.28); S.noise(0.8, 0.4, 400, 'lowpass', 0, 120); S.noise(0.35, 0.25, 1400, 'bandpass', 0.05); break;
+    case 'rn_rise': S.tone(140, 620, 0.95, 'sine', 0.16); S.tone(210, 880, 0.95, 'triangle', 0.07); S.noise(0.9, 0.16, 500, 'bandpass', 0, 2400); break;
+    case 'rn_crash': S.tone(70, 36, 0.7, 'sine', 0.36); S.noise(0.55, 0.5, 420, 'lowpass', 0, 70); S.noise(0.28, 0.32, 1800, 'bandpass', 0.04); S.tone(520, 140, 0.22, 'sine', 0.14, 0.05); break;
     default: break;
   }
 }
@@ -10247,6 +10258,7 @@ function rnDrawFatal(g, F) {
 }
 
 const RN_ENT = {
+  rncolumn(e) { if (--e.life <= 0) e.dead = true; },
   rnwave(e, opp) {
     e.t = (e.t || 0) + 1; e.x += e.dir * e.speed; e.life--;
     if (e.t % 2 === 0) rnDrops(e.x + rand(-30, 30), CONFIG.GROUND_Y - rand(10, 80), 2, 3);
@@ -10272,7 +10284,31 @@ const RN_ENT = {
     }
   },
 };
+if (typeof CX_BACK !== 'undefined') CX_BACK.add('rncolumn');
 const RN_DRAW = {
+  rncolumn(g, e) {
+    const k = e.k;
+    const h = 28 + Math.max(0, k) * 340;
+    const w = 54 + Math.max(0, k) * 70;
+    const x = e.x, gy = CONFIG.GROUND_Y;
+    g.save();
+    g.fillStyle = '#1560c8';
+    g.beginPath();
+    g.moveTo(x - 36, gy + 4);
+    g.quadraticCurveTo(x - w * 0.4, gy - h * 0.45, x - w, gy - h);
+    g.quadraticCurveTo(x, gy - h - 36, x + w, gy - h);
+    g.quadraticCurveTo(x + w * 0.4, gy - h * 0.45, x + 36, gy + 4);
+    g.closePath(); g.fill();
+    g.fillStyle = '#3ec8ff';
+    g.beginPath();
+    g.moveTo(x - 16, gy);
+    g.quadraticCurveTo(x - w * 0.25, gy - h * 0.5, x - w * 0.55, gy - h + 8);
+    g.quadraticCurveTo(x, gy - h - 10, x + w * 0.2, gy - h * 0.55);
+    g.lineTo(x + 10, gy); g.fill();
+    ellipse(g, x, gy - h, Math.max(12, w * 0.85), e.phase === 'slam' ? 10 : 18, '#e8fbff', '#7af0ff', 3);
+    if (e.phase === 'slam') ellipse(g, x, gy - 6, 120 + (1 - k) * 40, 16, '#7af0ff', '#e8fbff', 2);
+    g.restore();
+  },
   rnwave(g, e) {
     const dir = e.dir || 1, h = 150, w = 90;
     g.save(); g.translate(e.x, CONFIG.GROUND_Y);
@@ -10313,6 +10349,49 @@ Object.assign(MOVE_HANDLERS, {
           applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 10, kb: d.kb, chip: true, fx: 'splash', noBlood: true });
         }
       } else { f.spinX = 1; if (m.frame > d.startup) f.vx *= 0.7; }
+    },
+  },
+  /** All the water on the stage lifts into one mass, hangs, then crashes down. */
+  rnSkyfall: {
+    update(f, m, opp) {
+      const d = m.def;
+      f.vx = 0;
+      if (m.frame === 1) {
+        m.data.x = clamp(opp.x, 80, 880);
+        m.data.col = { type: 'rncolumn', owner: f, x: m.data.x, k: 0, phase: 'rise', life: 8, threat: true };
+        game.entities.push(m.data.col);
+        game.tint = { r: 6, g: 36, b: 92, a: 0.42, t: d.startup + 28, max: d.startup + 28, label: '' };
+      }
+      const col = m.data.col;
+      if (m.frame < d.startup) {
+        const k = m.frame / d.startup;
+        if (col) { col.k = k; col.phase = 'rise'; col.life = 10; col.x = m.data.x; }
+        if (m.frame % 2 === 0) {
+          for (let i = 0; i < 4; i++) {
+            const sx = rand(30, 930);
+            spawnParticle({ x: sx, y: CONFIG.GROUND_Y - rand(0, 16), vx: (m.data.x - sx) * 0.05, vy: -rand(5, 11), life: 26, size: rand(3, 7), color: pick(['#1560c8', '#3ec8ff', '#7af0ff', '#bff6ff']), grav: -0.08, type: 'blob' });
+          }
+        }
+        if (m.frame % 18 === 0 && m.frame > 1) Sound.play('rn_rise');
+        return;
+      }
+      const fall = Math.min(1, (m.frame - d.startup) / 8);
+      if (col) { col.k = 1 - fall; col.phase = 'slam'; col.life = 12; col.x = m.data.x; }
+      if (m.frame === d.startup) {
+        Sound.play('rn_crash'); game.shake = 20; game.flash = 8;
+        for (let i = 0; i < 46; i++) spawnParticle({ x: m.data.x + rand(-110, 110), y: CONFIG.GROUND_Y - rand(160, 360), vx: rand(-3, 3), vy: rand(10, 18), life: 22, size: rand(4, 10), color: pick(['#1560c8', '#3ec8ff', '#e8fbff', '#7af0ff']), grav: 0.55, type: 'blob' });
+        const near = opp && Math.abs(opp.x - m.data.x) < d.range && opp.y > CONFIG.GROUND_Y - 155 && opp.invuln <= 0 && opp.state !== 'ko';
+        if (near) {
+          applyHit(f, opp, { dmg: d.dmg, hitstun: 18, blockstun: 16, kb: 2, kbY: 4, chip: true, heavy: true, fx: 'wave', noBlood: true });
+          m.data.crush = true;
+          addText('CRASH!', { x: m.data.x, y: 150, size: 40, color: '#7af0ff', dur: 40 });
+        }
+      }
+      if (m.frame === d.startup + 8 && m.data.crush && opp && opp.state !== 'ko') {
+        applyHit(f, opp, { dmg: d.crush, hitstun: 42, blockstun: 18, kb: 4, kbY: -3, chip: true, heavy: true, xray: true, fx: 'wave', noBlood: true });
+        rnDrops(opp.x, CONFIG.GROUND_Y - 20, 28, 9);
+        game.shake = Math.max(game.shake, 16);
+      }
     },
   },
   /** A wall of water crosses the stage. Jump over it, or block the first hit. */
