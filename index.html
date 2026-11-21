@@ -344,6 +344,39 @@ const CHARACTERS = [
     ai: { far: ['s1', 's5', 's3', 's4'], mid: ['s2', 's3', 's5', 's4', 's1'], close: ['s2', 's4', 's3'] },
     antiAir: 's4',
   },
+  {
+    id: 'rainy', name: 'RAINY', tagline: 'Water Fighter - Splashes, Storms & Hearts',
+    // Mid roster: not the fastest (Cyclone), not the tank (Editor), not the hardest hitter.
+    // Slightly smaller body. Hits she lands splash water instead of blood.
+    maxHp: 100, walk: 3.45, backWalk: 2.85, jump: 16.2, power: 0.96, scale: 0.96, girth: 0.94,
+    voice: 'f',
+    colors: { skin: '#e4b48a', cheek: '#f0a0a8', lip: '#c45a6a', eye: '#3a2414',
+              main: '#16161c', main2: '#2c2c36', pants: '#1a3a6e', shoe: '#5ad4ff', sole: '#f4f7fb',
+              hair: '#6a3a22', hairHi: '#a06a3c', hairDark: '#4a2814', accent: '#3ec8ff', glow: '#7af0ff',
+              heart: '#ff6eb4', heart2: '#ff8ad4', drop: '#bff6ff', deep: '#1560c8', foam: '#e8fbff', ink: '#d7f6ff' },
+    specials: {
+      s1: { name: 'Splash Jab', type: 'projectile', startup: 11, active: 1, recovery: 18, pose: 'jab', sfxStart: 'rn_drip',
+            proj: { kind: 'splash', speed: 9.2, dmg: 7, w: 46, h: 38, y: -110, hitstun: 18, kb: 6, sfx: 'rn_splash' },
+            air: { name: 'Rain Drop', type: 'skydive', startup: 5, active: 0, recovery: 12, pose: 'akick', fx: 'splash',
+                   vx: 7.5, vy: 9, dmg: 8, hitstun: 20, kb: 5, kbY: -5, box: { x: -8, y: -110, w: 78, h: 110 } } },
+      s2: { name: 'Tidal Kick', type: 'rush', startup: 8, active: 12, recovery: 16, pose: 'highkick', sfxStart: 'rn_wave',
+            speed: 9, dmg: 9, hitstun: 22, kb: 9, kbY: -4, box: { x: 8, y: -140, w: 96, h: 50 }, fx: 'wave' },
+      s3: { name: 'Bubble Trap', type: 'projectile', startup: 12, active: 1, recovery: 20, pose: 'cast', sfxStart: 'rn_drip',
+            proj: { kind: 'bubble', speed: 7.2, dmg: 4, w: 54, h: 54, y: -120, hitstun: 12, kb: 1, trap: 68,
+                    trapText: 'BUBBLE!', barText: 'BUBBLE', trapSfx: 'rn_bubble', textCol: '#7af0ff', sfx: 'rn_bubble' } },
+      s4: { name: 'Whirlpool Spin', type: 'rnWhirl', startup: 6, active: 40, recovery: 16, pose: 'spin', sfxStart: 'rn_whirl',
+            speed: 2.2, dmg: 2.3, hitEvery: 8, radius: 84, hitstun: 14, kb: 1.5, finalDmg: 5, finalKb: 7, finalKbY: -10 },
+      s5: { name: 'Geyser Uppercut', type: 'twister', startup: 4, active: 0, recovery: 14, pose: 'uppercut', sfxStart: 'rn_geyser', fx: 'geyser',
+            vy: -15.5, vx: 3.2, invuln: 5, hits: 3, dmg: 2.6, lastDmg: 4.5, hitEvery: 5, hitstun: 28, kb: 6, kbY: -10,
+            box: { x: -14, y: -200, w: 82, h: 200 } },
+    },
+    chains: [{ name: 'Drip Drop Splash', fx: 'splash', sfx: 'rn_splash' }, { name: 'Ripple Kicks', fx: 'wave', sfx: 'rn_wave' }, { name: 'Rain Storm', fx: 'storm', sfx: 'rn_storm' }],
+    ult: { name: 'TSUNAMI', type: 'tsunami', startup: 1, active: 50, recovery: 18, pose: 'raise' },
+    fatality: { name: 'MONSOON', type: 'monsoon' },
+    finisher2: { name: 'FLASH FLOOD', type: 'flashFlood', motion: ['D', 'B'], btn: 'HP' },
+    ai: { far: ['s1', 's3', 's1'], mid: ['s2', 's1', 's5', 's3'], close: ['s4', 's5', 's2'] },
+    antiAir: 's5',
+  },
 ];
 
 /* =====================================================================
@@ -452,6 +485,7 @@ const Sound = {
     if (name.startsWith('ed_')) { edSfx(this, name); return; }
     if (name.startsWith('cl_')) { clSfx(this, name); return; }
     if (name.startsWith('tk_')) { tkSfx(this, name); return; }
+    if (name.startsWith('rn_')) { rnSfx(this, name); return; }
     switch (name) {
       case 'lp': case 'lk': this.noise(0.07, 0.25, 2200, 'bandpass'); break;
       case 'hp': case 'hk': this.noise(0.14, 0.35, 900, 'bandpass', 0, 300); break;
@@ -490,13 +524,18 @@ const Sound = {
   },
 };
 /** Announcer voice through the Web Speech API (silently skipped if unsupported). */
-function announce(text, fromNet) {
+function announce(text, fromNet, opts) {
   if (!fromNet && typeof Net !== 'undefined' && Net.role === 'host' && Net.online()) Net.voice.push(text);
   if (!CONFIG.VOICE || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.9; u.pitch = 0.4; u.volume = 1;
+    const fem = !!(opts && opts.female);
+    u.rate = fem ? 0.95 : 0.9; u.pitch = fem ? 1.35 : 0.4; u.volume = 1;
+    if (fem && speechSynthesis.getVoices) {
+      const v = speechSynthesis.getVoices().find((q) => /female|woman|\bzira\b|samantha|victoria|karen|moira|fiona|tessa/i.test(q.name));
+      if (v) u.voice = v;
+    }
     speechSynthesis.speak(u);
   } catch (e) { /* ignore */ }
 }
@@ -977,8 +1016,10 @@ function chainBurst(f, opp, c, res) {
     else if (c.fx === 'flush') spawnParticle({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 3, life: 30, size: rand(4, 8), color: pick(['#7fd4ff', '#d8f4ff', '#3a9ad9']), grav: 0.3, type: 'blob' });
     else if (c.fx === 'data') spawnParticle({ x, y: y + rand(-40, 40), vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 26, size: 14, color: pick(['#39ff88', '#5cd0ff']), type: 'digit' });
     else if (c.fx === 'wind') spawnParticle({ x: x + rand(-40, 40), y: y + rand(-60, 60), vx: f.facing * rand(4, 9), vy: rand(-2, 2), life: 18, size: rand(14, 28), color: 'rgba(220,240,255,0.8)', type: 'streak' });
+    else if (c.fx === 'splash' || c.fx === 'wave' || c.fx === 'storm') spawnParticle({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: 28, size: rand(3, 6), color: pick(['#7af0ff', '#3ec8ff', '#bff6ff', '#e8fbff']), grav: 0.25, type: 'blob' });
     else spawnParticle({ x: x + rand(-30, 30), y: y + rand(-50, 50), vx: f.facing * rand(4, 9), vy: rand(-1, 1), life: 12, size: rand(16, 30), color: pick(['#ffffff', '#ffd23f']), type: 'streak' });
   }
+  if (c.fx === 'storm') for (let i = 0; i < 14; i++) spawnParticle({ x: x + rand(-70, 70), y: y - rand(40, 180), vx: rand(-0.6, 0.6), vy: rand(2, 5), life: 30, size: rand(2.5, 5), color: pick(['#7af0ff', '#bff6ff', '#3ec8ff']), grav: 0.35, type: 'blob' });
   if (c.fx === 'razor') game.entities.push({ type: 'slash', x1: x - 80, y1: y + 60, x2: x + 80, y2: y - 60, life: 18, max: 18 });
 }
 /** The slot holding this fighter's air special. */
@@ -1283,9 +1324,10 @@ const MOVE_HANDLERS = {
       if (inActive(m) && !m.hit) {
         if (overlap(f.worldBox(d.box), opp.hurtbox())) {
           const c = m.chain != null && f.ch.chains ? f.ch.chains[m.chain] : null;
-          const FX = { toot: 'brown', flush: null, data: 'plasma', wind: 'wind', razor: 'slash' };
-          const r = c ? applyHit(f, opp, { dmg: d.dmg * CONFIG.CHAIN_DMG, hitstun: d.hitstun + 10, blockstun: d.blockstun + 4, kb: d.kb + 3, kbY: -8, low: d.low, heavy: true, fx: FX[c.fx], noBlood: !!CX_CHAIN[c.fx], plant: c.fx === 'leaf' })
-                      : applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: d.blockstun, kb: d.kb, kbY: d.kbY, low: d.low, heavy: d.heavy });
+          const FX = { toot: 'brown', flush: null, data: 'plasma', wind: 'wind', razor: 'slash', splash: 'splash', wave: 'wave', storm: 'splash' };
+          const wet = f.ch.id === 'rainy';
+          const r = c ? applyHit(f, opp, { dmg: d.dmg * CONFIG.CHAIN_DMG, hitstun: d.hitstun + 10, blockstun: d.blockstun + 4, kb: d.kb + 3, kbY: -8, low: d.low, heavy: true, fx: FX[c.fx] || (wet ? 'splash' : null), noBlood: !!CX_CHAIN[c.fx] || wet || c.fx === 'splash' || c.fx === 'wave' || c.fx === 'storm', plant: c.fx === 'leaf' })
+                      : applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: d.blockstun, kb: d.kb, kbY: d.kbY, low: d.low, heavy: d.heavy, fx: wet ? 'splash' : null, noBlood: wet });
           if (r) { m.hit = true; if (c) chainBurst(f, opp, c, r); }
         }
       }
@@ -1345,8 +1387,9 @@ const MOVE_HANDLERS = {
         if (d.fx === 'razor') spawnParticle({ x: hx - f.facing * rand(0, 60), y: hy + rand(-30, 40), vx: -f.facing * rand(4, 8), vy: 0, life: 10, size: rand(14, 30), color: pick(['#ffffff', '#ffd23f', '#9be7ff']), type: 'streak' });
         if (d.fx === 'zoom' && m.frame % 2 === 0) spawnParticle({ x: hx, y: hy + rand(-20, 20), vx: f.facing * rand(2, 4), vy: rand(-1, 1), life: 10, size: rand(10, 20), color: '#ffffff', type: 'streak' });
         if (d.fx === 'wind') for (let i = 0; i < 2; i++) spawnParticle({ x: f.x + rand(-30, 30), y: f.y - rand(10, 150) * f.ch.scale, vx: -f.facing * rand(3, 7), vy: rand(-1, 1), life: 16, size: rand(10, 24), color: 'rgba(220,240,255,0.7)', type: 'streak' });
+        if (d.fx === 'wave') { spawnParticle({ x: f.x - f.facing * rand(10, 50), y: f.y - rand(20, 90) * f.ch.scale, vx: -f.facing * rand(2, 5), vy: rand(-1, 1), life: 16, size: rand(4, 7), color: pick(['#7af0ff', '#3ec8ff', '#bff6ff']), grav: 0.2, type: 'blob' }); if (m.frame % 3 === 0) rnDrops(f.x, f.y - 40, 2, 3); }
         if (!m.hit && overlap(f.worldBox(d.box), opp.hurtbox())) {
-          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx });
+          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 14, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx, noBlood: d.fx === 'wave' || d.fx === 'splash' });
           if (r) {
             m.hit = true;
             if (r === 'hit' && d.burst) m.data.burstAt = m.frame + d.burst.delay;
@@ -1415,16 +1458,17 @@ const MOVE_HANDLERS = {
     update(f, m, opp) {
       const d = m.def;
       if (m.frame === d.startup) {
-        f.vy = d.vy; f.vx = f.facing * d.vx; f.invuln = d.invuln; Sound.play('twister');
-        for (let i = 0; i < 12; i++) spawnParticle({ x: f.x + rand(-30, 30), y: f.y, vx: rand(-3, 3), vy: rand(-3, 0), life: 26, size: rand(8, 16), color: 'rgba(230,230,230,0.6)', type: 'smoke' });
+        f.vy = d.vy; f.vx = f.facing * d.vx; f.invuln = d.invuln; Sound.play(d.fx === 'geyser' ? 'rn_geyser' : 'twister');
+        for (let i = 0; i < 12; i++) spawnParticle({ x: f.x + rand(-30, 30), y: f.y, vx: rand(-3, 3), vy: rand(-3, 0), life: 26, size: rand(8, 16), color: d.fx === 'geyser' ? '#7af0ff' : 'rgba(230,230,230,0.6)', type: d.fx === 'geyser' ? 'glow' : 'smoke' });
       }
       if (m.frame > d.startup && !m.data.landedAt) {
         f.spinX = Math.cos(m.frame * 0.9);
-        spawnParticle({ x: f.x + rand(-36, 36), y: f.y - rand(10, 170) * f.ch.scale, vx: rand(-4, 4), vy: rand(-2, 1), life: 14, size: rand(10, 22), color: 'rgba(200,235,255,0.7)', type: 'streak' });
+        if (d.fx === 'geyser') rnDrops(f.x + rand(-16, 16), f.y - rand(20, 160) * f.ch.scale, 1, 2);
+        else spawnParticle({ x: f.x + rand(-36, 36), y: f.y - rand(10, 170) * f.ch.scale, vx: rand(-4, 4), vy: rand(-2, 1), life: 14, size: rand(10, 22), color: 'rgba(200,235,255,0.7)', type: 'streak' });
         if (m.hits < d.hits && m.frame - m.lastHit >= d.hitEvery && overlap(f.worldBox(d.box), opp.hurtbox())) {
           const last = m.hits === d.hits - 1;
           const r = applyHit(f, opp, { dmg: last ? d.lastDmg : d.dmg, hitstun: last ? d.hitstun : 16, blockstun: 10, kb: last ? d.kb : 1,
-                                       kbY: last ? d.kbY : -6, chip: true, heavy: last, fx: 'wind' });
+                                       kbY: last ? d.kbY : -6, chip: true, heavy: last, fx: d.fx === 'geyser' ? 'splash' : 'wind', noBlood: d.fx === 'geyser' });
           if (r) {
             m.hit = true; m.lastHit = m.frame; m.hits = r === 'block' ? d.hits : m.hits + 1;
             if (r === 'hit' && !last) { opp.vy = f.vy; opp.vx = f.vx; }   // swept up with him
@@ -1440,16 +1484,17 @@ const MOVE_HANDLERS = {
     update(f, m, opp) {
       const d = m.def;
       if (m.frame < d.startup) { f.vy = Math.min(f.vy, 0) * 0.4; f.vx *= 0.5; }
-      if (m.frame === d.startup) { f.vx = f.facing * d.vx; f.vy = d.vy; Sound.play(d.fx === 'data' ? 'gk_plasma' : 'whoosh'); }
+      if (m.frame === d.startup) { f.vx = f.facing * d.vx; f.vy = d.vy; Sound.play(d.fx === 'data' ? 'gk_plasma' : d.fx === 'splash' ? 'rn_drop' : 'whoosh'); }
       if (m.frame >= d.startup && !m.data.landedAt) {
         f.spinX = m.hit || d.noSpin ? 1 : Math.cos(m.frame * 0.9);
         if (!m.hit && d.fx === 'data') spawnParticle({ x: f.x + rand(-24, 24), y: f.y - rand(10, 120) * f.ch.scale, vx: -f.vx * 0.4, vy: -f.vy * 0.3, life: 20, size: 14, color: pick(['#39ff88', '#5cd0ff']), type: 'digit' });
+        else if (!m.hit && d.fx === 'splash') rnDrops(f.x, f.y - rand(20, 100) * f.ch.scale, 2, 3);
         else if (!m.hit) for (let i = 0; i < 2; i++) spawnParticle({ x: f.x + rand(-24, 24), y: f.y - rand(10, 120) * f.ch.scale, vx: -f.vx * 0.4 + rand(-1, 1), vy: -f.vy * 0.3, life: 14, size: rand(10, 22), color: 'rgba(220,240,255,0.7)', type: 'streak' });
         if (!m.hit && overlap(f.worldBox(d.box), opp.hurtbox())) {
-          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 12, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx === 'data' ? 'plasma' : 'wind' });
+          const r = applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 12, kb: d.kb, kbY: d.kbY, chip: true, heavy: true, fx: d.fx === 'data' ? 'plasma' : d.fx === 'splash' ? 'splash' : 'wind', noBlood: d.fx === 'splash' });
           if (r) { m.hit = true; f.vx = -f.facing * 3; f.vy = -7; f.spinX = 1; }   // bounce off
         }
-        if (f.grounded && f.vy >= 0 && m.frame > d.startup) { m.data.landedAt = m.frame; f.vx = 0; f.spinX = 1; }
+        if (f.grounded && f.vy >= 0 && m.frame > d.startup) { m.data.landedAt = m.frame; f.vx = 0; f.spinX = 1; if (d.fx === 'splash') rnDrops(f.x, f.y - 8, 12, 5); }
       }
     },
   },
@@ -1642,10 +1687,13 @@ function applyHit(att, def, h) {
   // ---- juice: particles, sound, hit-stop, shake ----
   const hx = def.x - dir * 14, hy = def.centerY() - 20 * def.ch.scale;
   if (!h.noBlood) bloodBurst(hx, hy, Math.round(4 + dmg * 1.6), dir);
-  for (let i = 0; i < 8; i++) spawnParticle({ x: hx, y: hy, vx: dir * rand(1, 7) * (Math.random() < 0.3 ? -1 : 1), vy: rand(-6, 3), life: 12, size: rand(2, 5), color: pick(['#fff', '#ffe066', '#ffb347']), type: 'spark' });
-  if (h.fx === 'plasma') for (let i = 0; i < 10; i++) spawnParticle({ x: hx, y: hy, vx: rand(-6, 6), vy: rand(-6, 6), life: 20, size: rand(4, 8), color: '#38e8ff', type: 'glow' });
-  if (h.fx === 'brown') for (let i = 0; i < 6; i++) spawnParticle({ x: hx, y: hy, vx: rand(-4, 4), vy: rand(-5, 1), life: 30, size: rand(4, 8), color: '#7a4a1a', grav: 0.3, type: 'blob' });
   const big = dmg >= 8 || h.xray;
+  if (h.fx === 'splash' || h.fx === 'wave') rnHitFX(hx, hy, dir, h.fx, big);
+  else {
+    for (let i = 0; i < 8; i++) spawnParticle({ x: hx, y: hy, vx: dir * rand(1, 7) * (Math.random() < 0.3 ? -1 : 1), vy: rand(-6, 3), life: 12, size: rand(2, 5), color: pick(['#fff', '#ffe066', '#ffb347']), type: 'spark' });
+    if (h.fx === 'plasma') for (let i = 0; i < 10; i++) spawnParticle({ x: hx, y: hy, vx: rand(-6, 6), vy: rand(-6, 6), life: 20, size: rand(4, 8), color: '#38e8ff', type: 'glow' });
+    if (h.fx === 'brown') for (let i = 0; i < 6; i++) spawnParticle({ x: hx, y: hy, vx: rand(-4, 4), vy: rand(-5, 1), life: 30, size: rand(4, 8), color: '#7a4a1a', grav: 0.3, type: 'blob' });
+  }
   Sound.play(big ? 'bighit' : 'hit');
   game.hitstop = Math.min(12, Math.round(3 + dmg * 0.5));
   game.shake = Math.max(game.shake, big ? 9 : 4);
@@ -1830,9 +1878,11 @@ function updateWorldObjects() {
   // ---- entities: projectiles, clouds, tornadoes, slashes ----
   for (const e of game.entities) {
     const opp = e.owner ? e.owner.opp : null;
+    if (typeof RN_ENT !== 'undefined' && RN_ENT[e.type]) { if (!e.dead) RN_ENT[e.type](e, opp); continue; }
     if (CX_ENT[e.type]) { if (!e.dead) CX_ENT[e.type](e, opp); continue; }
     if (e.type === 'proj') {
       e.t++; e.x += e.vx; e.life--;
+      if ((e.kind === 'splash' || e.kind === 'bubble') && e.t % 2 === 0) rnDrops(e.x - e.vx * 0.4, e.y, 1, 2);
       if (e.x < -60 || e.x > 1020) e.dead = true;
       const box = { x: e.x - e.w / 2, y: e.y - e.h / 2, w: e.w, h: e.h };
       // projectiles cancel each other out
@@ -1842,7 +1892,8 @@ function updateWorldObjects() {
         }
       }
       if (!e.dead && opp && opp.invuln <= 0 && opp.state !== 'ko' && overlap(box, opp.hurtbox())) {
-        const r = applyHit(e.owner, opp, { dmg: e.p.dmg, hitstun: e.p.hitstun, blockstun: 10, kb: e.p.kb, chip: true, fx: e.kind === 'butt' ? 'brown' : e.kind === 'net' ? 'plasma' : e.kind === 'gust' ? 'wind' : null, noBlood: e.kind === 'mind' || e.kind === 'net' || e.kind === 'frame' || e.kind === 'gust' });
+        const wetShot = e.kind === 'splash' || e.kind === 'bubble';
+        const r = applyHit(e.owner, opp, { dmg: e.p.dmg, hitstun: e.p.hitstun, blockstun: 10, kb: e.p.kb, chip: true, fx: e.kind === 'butt' ? 'brown' : e.kind === 'net' ? 'plasma' : e.kind === 'gust' ? 'wind' : wetShot ? 'splash' : null, noBlood: e.kind === 'mind' || e.kind === 'net' || e.kind === 'frame' || e.kind === 'gust' || wetShot });
         if (r) {
           e.dead = true;
           if (r === 'hit' && e.p.trap) { opp.trapped = e.p.trap; opp.gkBuf = e.p.trapText ? e.p.trap : 0; opp.trapLabel = e.p.barText || 'BUFFERING'; if (e.p.trapText) Sound.play(e.p.trapSfx || 'gk_buffer'); addText(e.p.trapText || 'TRAPPED!', { x: opp.x, y: opp.y - 200, size: 24, color: e.p.textCol || '#38e8ff', dur: 50 }); }
@@ -1898,7 +1949,7 @@ function addText(text, o = {}) {
 }
 /* ---- Move-name CALLOUTS: big, bold, fighter-coloured names for specials / ultimates / finishers ----
  * They live in game.texts (kind 'callout'), so they mirror to the online guest and show on the TV. */
-const CALLOUT_COL = { mierda: '#7dff3a', grok: '#4d9dff', cyclone: '#9be7ff', editor: '#ffd23f', clowny: '#ff3b3b', takata: '#5cffb4' };
+const CALLOUT_COL = { mierda: '#7dff3a', grok: '#4d9dff', cyclone: '#9be7ff', editor: '#ffd23f', clowny: '#ff3b3b', takata: '#5cffb4', rainy: '#3ec8ff' };
 function fighterCol(f) { return (f && f.ch && (CALLOUT_COL[f.ch.id] || f.ch.colors.accent)) || '#ffd23f'; }
 function callout(f, name, o = {}) {
   const T = game.texts;
@@ -1912,7 +1963,7 @@ function callout(f, name, o = {}) {
 function startCinematic(f, name) {
   game.cinematic = { f, name, t: 0, dur: 50 };
   Sound.play(sfxHook(`ult_${f.ch.id}`, 'ult'));
-  announce(name.toLowerCase());
+  announce(name.toLowerCase(), false, f.ch.voice === 'f' ? { female: true } : undefined);
 }
 
 /* =====================================================================
@@ -1923,7 +1974,11 @@ function startCinematic(f, name) {
 function fatalityTitle() {
   addText('FATALITY', { x: 480, y: 250, size: 120, color: '#ff1a1a', dur: 150, kind: 'announce' });
   if (game.fatal && game.fatal.epicVoice) return;   // the winner's own clip is already playing; its FATALITY! lands now
-  if (!playEpic('fatality_title')) { announce('Fatality'); Sound.play('gong'); Sound.play('st_fatality'); }
+  if (!playEpic('fatality_title')) {
+    const fem = game.fatal && game.fatal.w && game.fatal.w.ch.voice === 'f';
+    announce('Fatality', false, fem ? { female: true } : undefined);
+    Sound.play('gong'); Sound.play('st_fatality');
+  }
 }
 const FATALITY_TITLE_AT = {"headChop": 175, "toxicFlush": 250, "hardReboot": 190, "spinCycle": 180, "directorsCut": 200, "downTheToilet": 140, "systemDelete": 150, "goneWithWind": 165, "deletedScene": 140};
 /** Start the winner's recorded FATALITY clip early enough that its voice lands on the title frame. */
@@ -2229,7 +2284,7 @@ function startWinner(result) {
   const w = game.winner;
   w.forcePose = 'victory';
   game.adlibs = []; sayAdlib(w, 'win', 18, 'winner');
-  announce(w.ch.name.toLowerCase() + ' wins'); Sound.play('st_win');
+  announce(w.ch.name.toLowerCase() + ' wins', false, w.ch.voice === 'f' ? { female: true } : undefined); Sound.play('st_win');
 }
 
 /* ---------------- Per-frame update ---------------- */
@@ -2446,7 +2501,7 @@ function handleTap(p) {
     }
   }
 }
-function cardRect(i) { const n = CHARACTERS.length, w = n > 4 ? 142 : 180, gap = n > 4 ? 12 : 20, x0 = (960 - n * w - (n - 1) * gap) / 2; return { x: x0 + i * (w + gap), y: 110, w, h: 300 }; }
+function cardRect(i) { const n = CHARACTERS.length, w = n > 6 ? 120 : n > 4 ? 142 : 180, gap = n > 6 ? 8 : n > 4 ? 12 : 20, x0 = (960 - n * w - (n - 1) * gap) / 2; return { x: x0 + i * (w + gap), y: 110, w, h: 300 }; }
 function cycleStage(d) { game.stageChoice = ((game.stageChoice + 1 + d + STAGES.length + 1) % (STAGES.length + 1)) - 1; Sound.play('select'); }
 /** The guest's taps: pick a card, or "press a button" on other screens. */
 function guestTap(p) {
@@ -2688,6 +2743,15 @@ function drawBody(g, ch, J, d, o) {
       circle(g, xx, yy, r * (0.5 - i * 0.012), i % 2 ? col('hair') : col('hairHi'), '#111', 2);
     }
   }
+  if (id === 'rainy') {   // wide curly mass behind the head, plus a couple of shoulder curls
+    const hc = J.head, r = d.headR, sw = Math.sin(t / 240) * r * 0.08;
+    for (let i = 0; i < 7; i++) {
+      const a = -2.5 + i * 0.55;
+      circle(g, hc.x + Math.cos(a) * r * 0.9 + (i % 2 ? sw : -sw), hc.y + Math.sin(a) * r * 0.7, r * (0.58 + (i % 3) * 0.08), i % 2 ? col('hair') : col('hairHi'), '#111', 2);
+    }
+    circle(g, hc.x - r * 0.15, hc.y + r * 1.55, r * 0.5, col('hair'), '#111', 2);
+    circle(g, hc.x - r * 0.85, hc.y + r * 1.15, r * 0.46, col('hairDark'), '#111', 2);
+  }
 
   // ================= back leg & back arm =================
   const legC = id === 'mierda' ? 'main' : 'pants';
@@ -2699,8 +2763,9 @@ function drawBody(g, ch, J, d, o) {
   if (id === 'clowny') limbDraw(g, [lp(J.bk, J.bf, 0.5), J.bf], d.limbW * 1.45, [dark('shoe')]);   // heavy boots
   ellipse(g, J.bf.x + 6 * S, J.bf.y - 2 * S, (id === 'mierda' ? 13 : id === 'clowny' ? 16 : 11) * S, (id === 'mierda' ? 7 : id === 'clowny' ? 8 : 6) * S, dark('shoe'));
   if (id === 'mierda') circle(g, J.bk.x, J.bk.y, 6 * S, dark('trim'), '#111', 2);
-  const backArm = id === 'grok' || id === 'takata' ? 'main' : 'main2';
+  const backArm = id === 'grok' || id === 'takata' ? 'main' : id === 'rainy' ? 'skin' : 'main2';
   limbDraw(g, [J.sh, J.be, J.bh], d.limbW * (id === 'mierda' ? 1.25 : 1), [dark(backArm), dark(backArm)]);
+  if (!plain && id === 'rainy') limbDraw(g, [J.sh, lp(J.sh, J.be, 0.4)], d.limbW * 1.15, [col('main')]);
   if (!plain && id === 'clowny') { cxStripes(g, J.sh, J.be, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); cxStripes(g, J.be, J.bh, d.limbW, dark('ruff', -0.15), 2, 2.6 * S); }
   if (!plain && id === 'takata') { cxStripes(g, J.sh, J.be, d.limbW, dark('main2', -0.1), 2, 2 * S, 0.5); cxStripes(g, J.be, J.bh, d.limbW, dark('main2', -0.1), 2, 2 * S, 0.5); }
   if (!plain && !moon && id === 'clowny') cxPinShape(g, J.bh.x, J.bh.y - 14 * S, -0.3 + J.lean, S * 0.9);   // a juggling pin in the back hand
@@ -2796,6 +2861,29 @@ function drawBody(g, ch, J, d, o) {
       band(0.15, 0.23, col('bark'), 0.98);
       const shp = lp(J.hip, J.sh, 0.96); ellipse(g, shp.x - 3 * S, shp.y, 11 * S, 5 * S, col('leaf'), '#111', 1.5, -0.35);
       cxFlower(g, shp.x + off, shp.y + 5 * S, 2.6 * S, col('flower'));
+    } else if (id === 'rainy') {   // black tee, LA mark, pink graffiti hearts, aqua hem drip
+      const hx = chest.x + off * 0.15, hy = chest.y - 2 * S;
+      const stamp = (word, x, y, sc, color) => {
+        let cx0 = x;
+        for (const ch of word) {
+          const rows = FONT5[ch]; if (!rows) { cx0 += 3 * sc; continue; }
+          const gw = rows[0].length;
+          g.fillStyle = color;
+          for (let r = 0; r < 7; r++) for (let k = 0; k < gw; k++) if (rows[r][k] === '#') g.fillRect(cx0 + k * sc, y + r * sc, sc, sc);
+          cx0 += (gw + 1) * sc;
+        }
+      };
+      stamp('LA', hx - 9 * S, hy - 18 * S, 2 * S, col('ink'));
+      const heart = (x, y, s, fill) => {
+        circle(g, x - s * 0.32, y - s * 0.12, s * 0.36, fill, '#111', 1.2);
+        circle(g, x + s * 0.32, y - s * 0.12, s * 0.36, fill, '#111', 1.2);
+        poly([[x - s * 0.66, y + s * 0.02], [x + s * 0.66, y + s * 0.02], [x, y + s * 0.82]], fill, '#111', 1.2);
+      };
+      heart(hx - 1 * S, hy + 4 * S, 9 * S, col('heart'));
+      heart(hx + 12 * S, hy + 9 * S, 5 * S, col('heart2'));
+      g.fillStyle = col('heart'); g.fillRect(hx, hy + 12 * S, 1.8 * S, 6 * S);
+      const hem = lp(J.hip, J.sh, 0.12);
+      for (let i = -1; i <= 1; i++) circle(g, hem.x + i * 7 * S, hem.y + (4 + ((t / 180 + i) % 1) * 8) * S, 1.7 * S, col('glow'), null);
     }
   }
 
@@ -2808,6 +2896,7 @@ function drawBody(g, ch, J, d, o) {
   if (id === 'clowny') limbDraw(g, [lp(J.fk, J.ff, 0.5), J.ff], d.limbW * 1.45, [col('shoe')]);
   if (!plain && id === 'cyclone') { const cp = lp(J.hip, J.fk, 0.6); circle(g, cp.x, cp.y, 3.5 * S, col('chest'), '#111', 1.5); }
   ellipse(g, J.ff.x + 6 * S, J.ff.y - 2 * S, (id === 'mierda' ? 13 : id === 'clowny' ? 16 : 11) * S, (id === 'mierda' ? 7 : id === 'clowny' ? 8 : 6) * S, col('shoe'));
+  if (!plain && id === 'rainy') { g.fillStyle = col('sole'); g.fillRect(J.ff.x + 1 * S, J.ff.y - 1 * S, 10 * S, 2 * S); }
   if (!plain && id === 'takata') { cxFlower(g, J.ff.x + 16 * S, J.ff.y - 2 * S, 2.4 * S, col('flower')); cxFlower(g, J.bf.x - 6 * S, J.bf.y, 2 * S, col('flower2')); line({ x: J.ff.x - 4 * S, y: J.ff.y }, { x: J.ff.x - 12 * S, y: J.ff.y + 3 * S }, 2 * S, col('bark')); }
   if (!plain && id === 'editor') { g.fillStyle = col('clipA'); g.fillRect(J.ff.x + 1 * S, J.ff.y - 5 * S, 9 * S, 2 * S); }   // sneaker stripe
   if (id === 'mierda') { circle(g, J.fk.x, J.fk.y, 6.5 * S, col('trim'), '#111', 2); circle(g, J.fk.x, J.fk.y, 2.5 * S, dark('trim'), null); }
@@ -2852,11 +2941,25 @@ function drawBody(g, ch, J, d, o) {
     if (!plain) { cxStripes(g, J.sh, J.fe, d.limbW, col('main2'), 2, 2 * S, 0.5); cxStripes(g, J.fe, J.fh, d.limbW, col('main2'), 2, 2 * S, 0.5); ellipse(g, J.fe.x, J.fe.y, 6 * S, 3 * S, col('leaf'), '#111', 1.2, 0.6); }
     if (!plain) { const wr = lp(J.fe, J.fh, 0.85); circle(g, wr.x, wr.y, 3.6 * S, col('glow'), '#111', 1.5); }
     circle(g, J.fh.x, J.fh.y, 7 * S, col('skin'), '#111', 2.5);
+  } else if (id === 'rainy') {
+    limbDraw(g, [J.sh, J.fe, J.fh], d.limbW, [col('skin'), col('skin')]);
+    limbDraw(g, [J.sh, lp(J.sh, J.fe, 0.42)], d.limbW * 1.2, [col('main')]);
+    if (!plain) { const wr = lp(J.fe, J.fh, 0.72); circle(g, wr.x, wr.y, 3.2 * S, col('glow'), '#111', 1.2); }
+    circle(g, J.fh.x, J.fh.y, 7 * S, col('skin'), '#111', 2.5);
   } else {
     limbDraw(g, [J.sh, J.fe, J.fh], d.limbW, [col('main2'), col('main2')]);
     if (!plain) { const rl = lp(J.sh, J.fe, 0.45); circle(g, rl.x, rl.y, 4 * S, col('accent'), '#111', 1.5); circle(g, rl.x, rl.y, 1.5 * S, col('main'), null);   // film-reel patch
       const cuff = lp(J.fe, J.fh, 0.82); circle(g, cuff.x, cuff.y, 3.5 * S, col('shirt'), null); }
     circle(g, J.fh.x, J.fh.y, 7 * S, col('skin'), '#111', 2.5);
+  }
+  if (!plain && id === 'rainy') {
+    const spots = [[-34, -20], [36, 10], [-16, 50], [28, -55], [-40, 36]];
+    spots.forEach((sp, i) => {
+      const ox = Math.sin(t / 260 + i) * 5 * S, oy = ((t / 30 + i * 11) % 26) * S;
+      const x = J.sh.x + sp[0] * S + ox, y = J.sh.y + sp[1] * S + oy * 0.35;
+      circle(g, x, y, (2.1 + (i % 2)) * S, i % 2 ? col('glow') : col('drop'), '#111', 1);
+      circle(g, x - 0.8 * S, y - 0.8 * S, 0.7 * S, '#ffffff', null);
+    });
   }
 }
 
@@ -2913,6 +3016,16 @@ function drawHead(g, ch, hc, r, o = {}) {
       circle(g, hc.x + r * 0.2, hc.y - r * 0.68, r * 0.16, col('accent'), null);
       circle(g, hc.x + r * 0.78, hc.y - r * 0.64, r * 0.26, col('glove'), '#111', 2);
       circle(g, hc.x + r * 0.78, hc.y - r * 0.64, r * 0.13, col('accent'), null);
+    } else if (id === 'rainy') {   // big round curly halo. The face (wink, cheeks) is drawn after this.
+      for (let i = 0; i < 8; i++) {
+        const a = Math.PI * (1.12 + i * 0.095);
+        circle(g, hc.x + Math.cos(a) * r * 1.08, hc.y + Math.sin(a) * r * 1.02, r * 0.62, i % 2 ? col('hair') : col('hairHi'), '#111', 1.5);
+      }
+      circle(g, hc.x - r * 1.2, hc.y + r * 0.05, r * 0.68, col('hair'), '#111', 1.6);
+      circle(g, hc.x - r * 0.85, hc.y - r * 0.95, r * 0.55, col('hairHi'), '#111', 1.5);
+      circle(g, hc.x + r * 0.05, hc.y - r * 1.15, r * 0.48, col('hair'), '#111', 1.5);
+      circle(g, hc.x + r * 0.55, hc.y - r * 0.95, r * 0.36, col('hairDark'), '#111', 1.3);
+      circle(g, hc.x - r * 0.15, hc.y - r * 0.45, r * 0.18, col('drop'), null);
     } else if (id === 'editor') {
       g.fillStyle = col('hair'); g.strokeStyle = '#111'; g.lineWidth = 2.5;
       g.beginPath(); g.arc(hc.x, hc.y, r * 1.05, Math.PI * 0.9, Math.PI * 1.95);
@@ -2947,6 +3060,15 @@ function drawHead(g, ch, hc, r, o = {}) {
     circle(g, ex + r * 0.05, ey, r * 0.07, '#ffffff', null);
     g.strokeStyle = '#111'; g.lineWidth = 2; g.beginPath(); g.moveTo(ex - r * 0.2, ey - r * 0.3); g.lineTo(ex + r * 0.3, ey - r * 0.24); g.stroke();
     g.beginPath(); g.moveTo(hc.x + r * 0.45, hc.y + r * 0.5); g.lineTo(hc.x + r * 0.8, hc.y + r * 0.45); g.stroke();
+  } else if (id === 'rainy' && !plain) {   // one eye open, one winked, puffed cheeks, a little pout
+    ellipse(g, hc.x + r * 0.05, hc.y + r * 0.22, r * 0.38, r * 0.28, col('cheek'), null);
+    ellipse(g, hc.x + r * 0.62, hc.y + r * 0.18, r * 0.26, r * 0.2, col('cheek'), null);
+    ellipse(g, ex + r * 0.12, ey - r * 0.02, r * 0.16, r * 0.18, '#fff', '#111', 1.4);
+    circle(g, ex + r * 0.16, ey, r * 0.07, col('eye'), null);
+    g.strokeStyle = '#111'; g.lineWidth = 2.2;
+    g.beginPath(); g.arc(ex - r * 0.32, ey + r * 0.02, r * 0.16, Math.PI * 0.12, Math.PI * 0.88); g.stroke();
+    g.beginPath(); g.moveTo(ex - r * 0.08, ey - r * 0.28); g.quadraticCurveTo(ex + r * 0.16, ey - r * 0.4, ex + r * 0.32, ey - r * 0.22); g.stroke();
+    ellipse(g, hc.x + r * 0.58, hc.y + r * 0.5, r * 0.18, r * 0.12, col('lip'), '#111', 1.3);
   } else {
     ellipse(g, ex, ey, r * 0.2, r * 0.22, '#fff', '#111', 1.5);
     circle(g, ex + r * 0.08, ey + r * 0.02, r * 0.09, '#111', null);
@@ -3705,6 +3827,7 @@ function drawFighter(g, f) {
     g.moveTo(x0, y1 - L); g.lineTo(x0, y1); g.lineTo(x0 + L, y1); g.moveTo(x1 - L, y1); g.lineTo(x1, y1); g.lineTo(x1, y1 - L); g.stroke();
     g.fillStyle = '#ffffff'; g.fillRect(x1 + 6, y0 + 4, 6, 18); g.fillRect(x1 + 16, y0 + 4, 6, 18);
     g.restore();
+  } else if (f.trapped > 0 && f.trapLabel === 'BUBBLE') { rnDrawBubble(g, f);
   } else if (f.trapped > 0 && f.trapLabel === 'ROOTED') { cxDrawRooted(g, f);
   } else if (f.trapped > 0) {
     const hb = f.hurtbox(); g.save(); g.strokeStyle = '#38e8ff'; g.shadowColor = '#38e8ff'; g.shadowBlur = 8; g.lineWidth = 2;
@@ -3735,6 +3858,7 @@ function drawShadow(g, x, w, y = CONFIG.GROUND_Y) { g.fillStyle = 'rgba(0,0,0,0.
 function drawEntity(g, e) {
   const t = game.frame;
   if (CX_DRAW[e.type]) { CX_DRAW[e.type](g, e); return; }
+  if (typeof RN_DRAW !== 'undefined' && RN_DRAW[e.type]) { RN_DRAW[e.type](g, e); return; }
   if (e.type === 'proj') {
     g.save(); g.translate(e.x, e.y); g.scale(Math.sign(e.vx) || 1, 1);
     if (e.kind === 'butt') {
@@ -3755,6 +3879,15 @@ function drawEntity(g, e) {
         g.strokeStyle = `rgba(220,240,255,${0.9 - i * 0.18})`; g.lineWidth = 5 - i;
         g.beginPath(); g.arc(-i * 14, 0, 20 + i * 9 + Math.sin(e.t * 0.4 + i) * 3, -1.2 + e.t * 0.2, 1.2 + e.t * 0.2); g.stroke();
       }
+    } else if (e.kind === 'splash') {
+      g.rotate(Math.sin(e.t * 0.3) * 0.2);
+      circle(g, 0, 0, 16, '#3ec8ff', '#111', 2); circle(g, -4, -4, 7, '#7af0ff', null); circle(g, -7, -7, 3, '#e8fbff', null);
+      circle(g, 14, -8, 4, '#bff6ff', '#111', 1); circle(g, 10, 10, 3, '#1560c8', '#111', 1);
+    } else if (e.kind === 'bubble') {
+      const wob = Math.sin(e.t * 0.25) * 2;
+      g.strokeStyle = '#7af0ff'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 22 + wob, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = '#e8fbff'; g.lineWidth = 2; g.beginPath(); g.arc(-6, -6, 6, 0, Math.PI * 1.4); g.stroke();
+      circle(g, 8, 6, 3, '#bff6ff', null);
     } else if (e.kind === 'frame') {   // Editor's Freeze Frame shot: a flying viewfinder frame with a REC dot
       const w = e.w, h = e.h, L = 14; g.shadowColor = '#9be7ff'; g.shadowBlur = 12;
       g.fillStyle = 'rgba(155,231,255,0.22)'; g.fillRect(-w / 2, -h / 2, w, h);
@@ -3898,6 +4031,7 @@ function drawHeads(g) {
 function drawFatalityFX(g) {
   const F = game.fatal; if (!F || game.state !== 'fatality') return;
   cxDrawFatal(g, F);
+  rnDrawFatal(g, F);
   const { w, l, t } = F;
   if (F.laser) {
     const ey = w.y - 151 * w.ch.scale, ex = w.x + w.facing * 10;
@@ -4450,12 +4584,12 @@ function drawTitle(g) {
   g.restore();
   drawParticles(g);
   // the roster lines up
-  const NC = CHARACTERS.length, xs = NC > 4 ? [100, 236, 372, 588, 724, 860] : [190, 370, 590, 770];
+  const NC = CHARACTERS.length, xs = NC > 6 ? Array.from({ length: NC }, (_, i) => 78 + (804 * i) / (NC - 1)) : NC > 4 ? [100, 236, 372, 588, 724, 860] : [190, 370, 590, 770];
   for (let i = 0; i < NC; i++) {
     const bob = Math.sin(t * 0.08 + i) * 1.5;
     const pose = P({ drop: 4 + bob, fa2: 1.9 + Math.sin(t * 0.08 + i) * 0.1 });
     drawShadow(g, xs[i], 40);
-    drawCharacter(g, i, xs[i], CONFIG.GROUND_Y + 40, i < NC / 2 ? 1 : -1, pose, { mult: NC > 4 ? 0.92 : 1 });
+    drawCharacter(g, i, xs[i], CONFIG.GROUND_Y + 40, i < NC / 2 ? 1 : -1, pose, { mult: NC > 6 ? 0.72 : NC > 4 ? 0.92 : 1 });
   }
   const sh = g.createLinearGradient(0, 380, 0, 540); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.6)');
   g.fillStyle = sh; g.fillRect(0, 380, 960, 160);
@@ -4487,7 +4621,7 @@ function drawSelect(g) {
     const hover = (p1Here && !s.p1Done) || (p2Here && (game.mode !== 'cpu' ? !s.p2Done : s.p1Done && !s.p2Done));
     const pose = hover ? P({ fa: 1.57, fa2: 0, lean: 0.12, drop: 4 + Math.sin(t * 0.1) * 2 }) : P({ drop: 4 + Math.sin(t * 0.06 + i) * 1.5 });
     const narrow = c.w < 160;
-    drawCharacter(g, i, c.x + c.w / 2 - 6, c.y + (narrow ? 266 : 262), 1, pose, { mult: narrow ? 0.78 : 1.12 });
+    drawCharacter(g, i, c.x + c.w / 2 - 6, c.y + (c.w < 130 ? 274 : narrow ? 266 : 262), 1, pose, { mult: c.w < 130 ? 0.62 : narrow ? 0.78 : 1.12 });
     g.restore();
     // a name too wide for a narrow card goes on two lines (TAKATA / JACKSON)
     const nl = narrow && textWidth(ch.name, 22) > c.w - 6 && ch.name.includes(' ') ? [ch.name.slice(0, ch.name.indexOf(' ')), ch.name.slice(ch.name.indexOf(' ') + 1)] : [ch.name];
@@ -8046,7 +8180,7 @@ const Pad = {
     TouchPad.stick = null; TouchPad.arrows.clear(); TouchPad.fingers.clear(); for (const k in TouchPad.held) TouchPad.held[k] = false;
     Sound.play('select');
   },
-  selBtns() { const n = CHARACTERS.length, rows = Math.ceil(n / 2), h = rows > 2 ? 92 : 130, step = rows > 2 ? 104 : 150, y0 = rows > 2 ? 124 : 150;
+  selBtns() { const n = CHARACTERS.length, rows = Math.ceil(n / 2), h = rows > 3 ? 76 : rows > 2 ? 92 : 130, step = rows > 3 ? 88 : rows > 2 ? 104 : 150, y0 = rows > 3 ? 124 : rows > 2 ? 124 : 150;
     return CHARACTERS.map((c, i) => ({ id: 'ch' + i, i, x: 60 + (i % 2) * 430, y: y0 + ((i / 2) | 0) * step, w: 410, h, label: c.name })); },
   tap(p) {
     const v = this.view(), T = this.tv;
@@ -8127,7 +8261,7 @@ const Pad = {
         drawButton(g, { x: 330, y: 452, w: 300, h: 60, label: 'CHANGE FIGHTER' }, false);
         return;
       }
-      txt(g, 'PICK YOUR FIGHTER', 480, 122, 26, '#ffd23f', 'center', 3);
+      txt(g, 'PICK YOUR FIGHTER', 480, CHARACTERS.length > 6 ? 108 : 122, CHARACTERS.length > 6 ? 22 : 26, '#ffd23f', 'center', 3);
       for (const b of this.selBtns()) {
         const ch = CHARACTERS[b.i];
         drawButton(g, { ...b, label: '' }, b.i === cur, ch.colors.accent);
@@ -8534,8 +8668,8 @@ function submitJoin() {
  *     three CPU fighters (each one tougher), then the final BOSS.
  *     Lose a fight and you can CONTINUE (retry the same opponent).
  * ===================================================================== */
-const ARCADE_LEVELS = [0.28, 0.42, 0.55, 0.67, 0.8];
-const ARCADE_LABELS = ['EASY', 'EASY+', 'MEDIUM', 'HARD', 'HARDER'];
+const ARCADE_LEVELS = [0.28, 0.42, 0.55, 0.67, 0.8, 0.88];
+const ARCADE_LABELS = ['EASY', 'EASY+', 'MEDIUM', 'HARD', 'HARDER', 'EXPERT'];
 const BOSS_STAGE = 3;   // the boss always fights on the STUDIO BACKLOT
 const BOSS = { name: 'SHADOW KING', hp: 1.75, power: 1.35, scale: 1.3, walk: 1.1, level: 0.95, filter: 'hue-rotate(165deg) saturate(1.7) contrast(1.2) brightness(0.85)' };
 const BASE_CPU_LEVEL = CONFIG.CPU_LEVEL;
@@ -8548,7 +8682,7 @@ const Arcade = {
     for (let i = others.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [others[i], others[j]] = [others[j], others[i]]; }
     const A = game.arcade;
     A.started = true; A.p1 = p1; A.idx = 0; A.continues = 0; A.won = false;
-    A.ladder = others.map((ch, i) => ({ ch, level: ARCADE_LEVELS[i], boss: false })).concat([{ ch: p1, level: BOSS.level, boss: true }]);
+    A.ladder = others.map((ch, i) => ({ ch, level: ARCADE_LEVELS[Math.min(i, ARCADE_LEVELS.length - 1)], boss: false })).concat([{ ch: p1, level: BOSS.level, boss: true }]);
     Arcade.showLadder();
   },
   current() { const A = game.arcade; return A.ladder[A.idx]; },
@@ -8610,7 +8744,7 @@ function drawLadder(g) {
   txt(g, 'ARCADE', 480, 40, 40, '#ffd23f', 'center', 5);
   txt(g, 'FIGHT ' + (A.idx + 1) + ' OF ' + A.ladder.length + (A.continues ? '   \u2022   CONTINUES USED: ' + A.continues : ''), 480, 76, 16, '#fff', 'center', 3);
   // the tower: first opponent at the bottom, boss on top
-  const n = A.ladder.length, tx = 560, tw = 330, rh = n > 4 ? 60 : 84, top = 100;
+  const n = A.ladder.length, tx = 560, tw = 330, rh = n > 6 ? 50 : n > 4 ? 60 : 84, top = n > 6 ? 92 : 100;
   for (let i = 0; i < n; i++) {
     const rung = A.ladder[i], y = top + (n - 1 - i) * (rh + 2), done = i < A.idx, cur = i === A.idx;
     g.fillStyle = '#000'; g.fillRect(tx - 3, y - 3, tw + 6, rh + 6);
@@ -8663,7 +8797,7 @@ function drawArcadeEnd(g) {
 
 /* ---------- mode select / lobby / controls screens ---------- */
 const MODE_BTNS = [
-  { id: 'arcade', x: 200, y: 180, w: 560, h: 62, label: 'ARCADE', sub: '1 player: beat all 5 fighters, then the BOSS' },
+  { id: 'arcade', x: 200, y: 180, w: 560, h: 62, label: 'ARCADE', sub: '1 player: beat all ' + (CHARACTERS.length - 1) + ' fighters, then the BOSS' },
   { id: 'online', x: 200, y: 250, w: 560, h: 62, label: 'OWN DEVICES', sub: 'Each player on their own phone, tablet or PC' },
   { id: 'shared', x: 200, y: 320, w: 560, h: 62, label: 'SHARED KEYBOARD', sub: 'Two players, one screen: keyboard or 2 controllers' },
   { id: 'tv', x: 200, y: 390, w: 272, h: 62, label: 'TV MODE', sub: 'Big screen + phone pads' },
@@ -10040,6 +10174,239 @@ if (typeof window !== 'undefined') {
   });
   window.addEventListener('gamepaddisconnected', () => { GP.say('CONTROLLER DISCONNECTED'); });
 }
+
+/* =====================================================================
+ * 24. RAINY  -  water fighter. Big curly hair, a playful wink, a black
+ *     tee with an LA mark and pink graffiti hearts, aqua droplets.
+ *     Character-only: no real name, no age.
+ *     Motions (same as the rest of the roster):
+ *       Splash Jab       down, toward + LP          (in air: Rain Drop)
+ *       Tidal Kick       away, toward + HK
+ *       Bubble Trap      down, down + LK
+ *       Whirlpool Spin   down, away + HP
+ *       Geyser Uppercut  down, toward + HP
+ *       Drip Drop Splash / Ripple Kicks / Rain Storm   the three chains
+ *       TSUNAMI          ULT (full meter)
+ *       MONSOON          toward, toward + HP during FINISH THEM
+ *       FLASH FLOOD      down, away + HP during FINISH THEM
+ *       HEAD CHOP        the universal finisher
+ * ===================================================================== */
+function rnDrops(x, y, n, spread) {
+  const cols = ['#7af0ff', '#3ec8ff', '#bff6ff', '#e8fbff', '#1560c8'];
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, Math.PI * 2), v = rand(1, spread || 5);
+    spawnParticle({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - rand(1, 3), life: rand(18, 36) | 0, size: rand(2.5, 5.5), color: pick(cols), grav: 0.28, type: 'blob' });
+  }
+}
+function rnHitFX(x, y, dir, kind, big) {
+  const wave = kind === 'wave', n = wave ? 18 : big ? 12 : 7;
+  rnDrops(x, y, n, wave ? 8 : 5);
+  for (let i = 0; i < (wave ? 6 : 3); i++) spawnParticle({ x, y: y + rand(-10, 16), vx: (dir || 1) * rand(1, wave ? 8 : 4), vy: rand(-2, 1), life: wave ? 16 : 12, size: rand(10, wave ? 28 : 16), color: pick(['#7af0ff', '#bff6ff', '#e8fbff']), type: 'streak' });
+  Sound.play(wave ? 'rn_wave' : big ? 'rn_splash' : 'rn_drip');
+}
+function rnSfx(S, name) {
+  const c = S.ctx; if (!c) return;
+  switch (name) {
+    case 'rn_drip': S.tone(rand(880, 1400), rand(420, 700), 0.07, 'sine', 0.12); break;
+    case 'rn_drop': S.tone(720, 180, 0.16, 'sine', 0.16); S.noise(0.12, 0.12, 1800, 'bandpass'); break;
+    case 'rn_splash': S.noise(0.18, 0.32, 1400, 'bandpass', 0, 400); S.tone(520, 180, 0.14, 'sine', 0.16); S.tone(980, 360, 0.08, 'triangle', 0.06, 0.02); break;
+    case 'rn_bubble': S.tone(620, 880, 0.12, 'sine', 0.14); S.tone(880, 440, 0.16, 'sine', 0.08, 0.06); break;
+    case 'rn_wave': S.noise(0.45, 0.28, 500, 'lowpass', 0, 180); S.tone(180, 90, 0.4, 'sine', 0.16); S.noise(0.2, 0.16, 1600, 'bandpass', 0.05); break;
+    case 'rn_whirl': S.noise(0.4, 0.26, 700, 'bandpass', 0, 2200); S.tone(240, 720, 0.32, 'sine', 0.1); S.tone(360, 900, 0.28, 'triangle', 0.05, 0.04); break;
+    case 'rn_geyser': S.tone(160, 880, 0.28, 'sine', 0.16); S.noise(0.22, 0.3, 900, 'bandpass', 0, 2400); break;
+    case 'rn_storm': S.noise(0.55, 0.22, 2000, 'highpass'); for (let i = 0; i < 6; i++) S.tone(rand(700, 1500), rand(300, 600), 0.05, 'sine', 0.05, i * 0.04); break;
+    case 'rn_tsunami': S.tone(90, 40, 0.7, 'sine', 0.28); S.noise(0.8, 0.4, 400, 'lowpass', 0, 120); S.noise(0.35, 0.25, 1400, 'bandpass', 0.05); break;
+    default: break;
+  }
+}
+
+function rnDrawBubble(g, f) {
+  const hb = f.hurtbox(), cx = hb.x + hb.w / 2, cy = hb.y + hb.h / 2, rx = hb.w * 0.72, ry = hb.h * 0.55;
+  const wob = Math.sin(game.frame * 0.2) * 3;
+  g.save();
+  g.globalAlpha = 0.55; ellipse(g, cx, cy, rx + wob, ry, 'rgba(190,246,255,0.35)', null);
+  g.globalAlpha = 1; g.strokeStyle = '#7af0ff'; g.lineWidth = 4;
+  g.beginPath(); g.ellipse(cx, cy, rx + wob, ry, 0, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = '#e8fbff'; g.lineWidth = 2;
+  g.beginPath(); g.ellipse(cx - rx * 0.25, cy - ry * 0.28, rx * 0.22, ry * 0.16, -0.6, 0, Math.PI * 2); g.stroke();
+  g.restore();
+}
+function rnDrawFatal(g, F) {
+  if (F.spout) {
+    const s = F.spout, t = game.frame;
+    g.save(); g.globalAlpha = 0.8;
+    for (let i = 0; i < 10; i++) {
+      const yy = CONFIG.GROUND_Y - i * 18 * (s.h || 1), w = (18 + i * 7) * (s.s || 1), ox = Math.sin(t * 0.25 + i) * 10;
+      ellipse(g, s.x + ox, yy, w, 9, i % 2 ? 'rgba(62,200,255,0.55)' : 'rgba(21,96,200,0.5)', '#bff6ff', 1.5);
+    }
+    g.restore();
+  }
+  if (F.wash) {
+    const W = F.wash, k = Math.min(1, W.t / 10);
+    g.save(); g.globalAlpha = 0.85 * k;
+    g.fillStyle = '#1560c8'; g.beginPath();
+    g.moveTo(W.x - W.dir * 40, CONFIG.GROUND_Y + 20);
+    g.lineTo(W.x + W.dir * W.w, CONFIG.GROUND_Y + 20);
+    g.lineTo(W.x + W.dir * (W.w - 30), CONFIG.GROUND_Y - 210);
+    g.quadraticCurveTo(W.x + W.dir * W.w * 0.55, CONFIG.GROUND_Y - 250, W.x, CONFIG.GROUND_Y - 80);
+    g.closePath(); g.fill();
+    g.fillStyle = '#e8fbff'; g.fillRect(W.x, CONFIG.GROUND_Y - 90, W.dir * 16, 8);
+    g.restore();
+  }
+}
+
+const RN_ENT = {
+  rnwave(e, opp) {
+    e.t = (e.t || 0) + 1; e.x += e.dir * e.speed; e.life--;
+    if (e.t % 2 === 0) rnDrops(e.x + rand(-30, 30), CONFIG.GROUND_Y - rand(10, 80), 2, 3);
+    if (e.life <= 0 || e.x < -100 || e.x > 1060) { e.dead = true; return; }
+    if (!opp || !e.owner || opp.invuln > 0 || opp.state === 'ko' || game.state !== 'fight') return;
+    const low = opp.y > CONFIG.GROUND_Y - 118;
+    if (!low || Math.abs(opp.x - e.x) > 78) return;
+    if (!e.caught) {
+      if (opp.isBlocking()) {
+        applyHit(e.owner, opp, { dmg: 6, blockstun: 18, kb: 7, chip: true, fx: 'wave', noBlood: true });
+        e.dead = true; rnDrops(opp.x, CONFIG.GROUND_Y - 40, 10, 6); return;
+      }
+      e.caught = true; e.hits = 0; e.tick = 0;
+    }
+    e.tick++;
+    opp.x = clamp(e.x + e.dir * 16, CONFIG.STAGE_LEFT, CONFIG.STAGE_RIGHT);
+    opp.hitstun = Math.max(opp.hitstun, 8); opp.vx = e.dir * 3; opp.vy = Math.min(opp.vy, 0);
+    if (e.tick % 8 === 1 && e.hits < 3) {
+      e.hits++;
+      const last = e.hits === 3;
+      applyHit(e.owner, opp, { dmg: last ? 10 : 6, hitstun: last ? 34 : 14, kb: last ? 10 : 2, kbY: last ? -8 : -2, unblockable: true, noBlood: true, fx: 'wave', heavy: last });
+      if (last) { e.dead = true; rnDrops(opp.x, opp.centerY(), 16, 8); }
+    }
+  },
+};
+const RN_DRAW = {
+  rnwave(g, e) {
+    const dir = e.dir || 1, h = 150, w = 90;
+    g.save(); g.translate(e.x, CONFIG.GROUND_Y);
+    g.fillStyle = '#1560c8'; g.beginPath();
+    g.moveTo(-dir * 20, 8); g.lineTo(dir * w, 8); g.lineTo(dir * (w - 10), -h * 0.72);
+    g.quadraticCurveTo(dir * w * 0.4, -h, -dir * 10, -h * 0.35); g.closePath(); g.fill();
+    g.fillStyle = '#3ec8ff'; g.beginPath();
+    g.moveTo(0, 4); g.quadraticCurveTo(dir * w * 0.45, -h * 0.85, dir * (w - 18), -h * 0.55); g.lineTo(dir * (w - 28), -h * 0.4);
+    g.quadraticCurveTo(dir * w * 0.35, -h * 0.6, 0, -8); g.fill();
+    g.fillStyle = '#e8fbff';
+    g.beginPath(); g.moveTo(dir * 16, -h * 0.62); g.quadraticCurveTo(dir * w * 0.55, -h * 0.95, dir * (w - 8), -h * 0.7); g.lineTo(dir * (w - 22), -h * 0.62); g.fill();
+    g.restore();
+    if ((e.t || 0) % 3 === 0) rnDrops(e.x + dir * 40, CONFIG.GROUND_Y - 100, 1, 2);
+  },
+};
+
+Object.assign(MOVE_HANDLERS, {
+  /** Pulls a nearby opponent into a spinning column of water, then launches them. */
+  rnWhirl: {
+    update(f, m, opp) {
+      const d = m.def;
+      if (inActive(m)) {
+        f.spinX = Math.cos(m.frame * 0.85);
+        f.vx = m.hit ? f.vx * 0.7 : f.facing * d.speed;
+        if (m.frame % 8 === 0) Sound.play('rn_whirl');
+        const S = f.ch.scale;
+        for (let i = 0; i < 2; i++) {
+          const a = m.frame * 0.45 + i * 3;
+          spawnParticle({ x: f.x + Math.cos(a) * 36 * S, y: f.y - (40 + (m.frame % 20) * 4) * S, vx: Math.cos(a) * 2, vy: -1, life: 14, size: rand(3, 5), color: pick(['#7af0ff', '#3ec8ff', '#bff6ff']), grav: 0.15, type: 'blob' });
+        }
+        const close = Math.abs(opp.x - f.x) < d.radius * S + 16 && Math.abs(opp.y - f.y) < 130 && opp.invuln <= 0 && opp.state !== 'ko';
+        if (close && (opp.grounded || opp.hitstun > 0) && Math.abs(opp.x - f.x) > 54) opp.x += Math.sign(f.x - opp.x) * 3.2;
+        if (close && d.finalDmg && m.frame === d.startup + d.active) {
+          m.lastHit = m.frame;
+          applyHit(f, opp, { dmg: d.finalDmg, hitstun: 28, blockstun: 12, kb: d.finalKb, kbY: d.finalKbY, chip: true, heavy: true, fx: 'wave', noBlood: true });
+        } else if (close && m.frame - m.lastHit >= d.hitEvery) {
+          m.lastHit = m.frame;
+          applyHit(f, opp, { dmg: d.dmg, hitstun: d.hitstun, blockstun: 10, kb: d.kb, chip: true, fx: 'splash', noBlood: true });
+        }
+      } else { f.spinX = 1; if (m.frame > d.startup) f.vx *= 0.7; }
+    },
+  },
+  /** A wall of water crosses the stage. Jump over it, or block the first hit. */
+  tsunami: {
+    update(f, m) {
+      if (m.frame === 1) {
+        f.invuln = Math.max(f.invuln, 20);
+        game.entities.push({ type: 'rnwave', owner: f, x: f.x + f.facing * 50, dir: f.facing, speed: 7.6, life: 120, t: 0, hits: 0, threat: true });
+        Sound.play('rn_tsunami'); game.shake = Math.max(game.shake, 12);
+        game.tint = { r: 10, g: 40, b: 90, a: 0.28, t: 50, max: 50, label: '' };
+        rnDrops(f.x + f.facing * 40, CONFIG.GROUND_Y - 20, 18, 7);
+      }
+      if (m.frame < 24 && m.frame % 3 === 0) rnDrops(f.x + f.facing * 30, f.y - 80, 3, 3);
+    },
+  },
+});
+
+Object.assign(FATALITIES, {
+  /** A waterspout lifts them, then a monsoon wave washes them off the stage. */
+  monsoon: {
+    name: 'MONSOON',
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1;
+      if (t === 1) {
+        w.facing = dir; w.x = clamp(l.x - dir * 150, 60, 900);
+        game.tint = { r: 8, g: 28, b: 72, a: 0.5, t: 280, max: 280, label: '' };
+        Sound.play('rn_storm');
+      }
+      w.forcePose = t < 130 ? 'raise' : 'victory';
+      if (t < 200 && t % 2 === 0) rnDrops(rand(40, 920), rand(20, 80), 1, 1);
+      if (t === 36) { F.spout = { x: l.x, h: 0.4, s: 0.6 }; Sound.play('rn_whirl'); }
+      if (F.spout && t < 130) {
+        F.spout.h = Math.min(1.3, 0.4 + (t - 36) / 80); F.spout.s = Math.min(1.15, 0.6 + (t - 36) / 140);
+        l.forcePose = 'hit'; l.vy = 0; l.vx = 0;
+        l.y = CONFIG.GROUND_Y - Math.min(150, (t - 36) * 1.8);
+        l.spinX = Math.cos(t * 0.45);
+        if (t % 10 === 0) Sound.play('rn_whirl');
+      }
+      if (t === 132) {
+        F.spout = null; l.spinX = 1; F.wash = { x: dir > 0 ? -40 : 1000, dir, w: 80, t: 0 };
+        Sound.play('rn_tsunami'); game.shake = 16;
+      }
+      if (F.wash && t < 175) {
+        F.wash.t++; F.wash.w = Math.min(520, 80 + F.wash.t * 14); F.wash.x += F.wash.dir * 18;
+        l.hidden = true;
+      }
+      if (t === 168) { addText('WASHED AWAY!', { x: 480, y: 150, size: 32, color: '#7af0ff', dur: 50 }); rnDrops(l.x, CONFIG.GROUND_Y - 40, 24, 8); }
+      if (t === 200) fatalityTitle();
+      return t >= 340;
+    },
+  },
+  /** A geyser fires them up, then a flood sweeps the floor clean. */
+  flashFlood: {
+    name: 'FLASH FLOOD',
+    update(F) {
+      const { w, l, t } = F, dir = l.x >= w.x ? 1 : -1;
+      if (t === 1) { w.facing = dir; w.x = clamp(l.x - dir * 130, 60, 900); Sound.play('rn_geyser'); }
+      w.forcePose = t < 40 ? 'raise' : t < 150 ? 'cast' : 'victory';
+      if (t < 34) l.forcePose = 'dizzy';
+      if (t === 28) {
+        l.vy = -16; l.vx = dir * 1.5; Sound.play('rn_geyser'); game.shake = 10;
+        rnDrops(l.x, CONFIG.GROUND_Y - 10, 20, 6);
+        addText('GEYSER!', { x: l.x, y: l.y - 230, size: 28, color: '#7af0ff', dur: 36, rise: 0.4 });
+      }
+      if (t > 28 && t < 90) { l.forcePose = 'hit'; if (t % 4 === 0) rnDrops(l.x, l.y - 40, 1, 2); }
+      if (t === 96) {
+        F.wash = { x: -60 * dir + (dir > 0 ? 0 : 960), dir, w: 60, t: 0 };
+        Sound.play('rn_tsunami'); game.tint = { r: 8, g: 36, b: 80, a: 0.4, t: 120, max: 120, label: '' };
+      }
+      if (F.wash && t < 150) { F.wash.t++; F.wash.w = Math.min(640, 60 + F.wash.t * 16); F.wash.x += F.wash.dir * 16; l.hidden = true; }
+      if (t === 175) fatalityTitle();
+      return t >= 310;
+    },
+  },
+});
+
+ADLIBS.rainy = {
+  pre: ['Hope you brought a towel.', 'The forecast says you lose.', 'I make a splash. You make a puddle.', 'High tide. Your turn to sink.'],
+  win: ['Dried up already?', 'That was just a light shower.', 'Stay hydrated. I brought the ocean.'],
+};
+
+FATALITY_TITLE_AT.monsoon = 200;
+FATALITY_TITLE_AT.flashFlood = 175;
+SFX_META.fatality_title_rainy = { voiceAt: 0.5 };
+SFX_SAMPLES.fatality_title_rainy = "data:audio/mpeg;base64,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CkIUKY7f0tLyqhwpnN0T3cvolnu4VmO5SGBoLEoKUOGuuvpImCrUmTABhYaLnMp2cCSFqhEUMosH0cVvuhjpbuRsJHV6uP/zUMTlGWpWnn7aBrz7cs1uhssfrftnA4p5y7ia7HVr7n3vcVKky0nlrRQqRBgyOGrZH/lAXBZpZ8wABhi/6XQdMHXUqmAGl2aJjtSO8Bscqc0TSLQkJj0jaOakYqstxQtKNItZzNLp51M6hHsSEWDBIPbSdVQEbTy9GtXm9EilDFn/80DE9BhCVpZ+wkQ4/9LpocM0UilVzpX//+voyIRTKzLmoirr1u4PVMzDSr91UQaFVXla3LLwFLHdTCSrMxU/K8bzXxekyKMSiHImBxSMI3qW3Yj0pBMClkzQ/1up3ZjRg2YVBADBhf/zQMTuFUlWkx5ITEDZPRCsXMDU5iiJiWSn/T6rqzht3dVU5k+QzkXWGOqXinqV5AAIZmZ4eyR24COpNqIB9TAtA340HXFkTCWkVSYKvfyPjsCMGRbVQoCRRzT8p7XJiK+tLJnLYGMX//NAxPMXWq6PHkjFGYZIKlnjtUTJuVY6vaYLCYODwmOIgEuODh7rGlHA00ZeukF7b6B9pZIB5qEZZJc8mQAUz5VDN+SlkiZaWb/nIgriKhpqjMNnSlOejMcYgyqAthIBaLhFJAiASwv/80DE8Bc6poceSMTZmtJFGoVlkIZrU/HL7r3HSqr6AsoFA2+1ugCip2IZc6TVfEf/u//88qPI73XBMpNThnI/uSHhl+p0vucy37y/StKNP5n/Py83KFlS/JGoWDDlPKBIj37FT9Niuv/zQMTuFiFmex5JhlQv+2oAFpgSYc7Zf/YV//+XNQlbjyeRSshG8Uhyi960bx2N+XTAjmFvR/t1NPzc2kEOGsyTa7fNC0At1uoAzUXCaEwGR4d///6gIqpVIhBFwecJxBBJTC6HpUKR//MwxPAS4VJuXkgHBMKGQMeWOCrQkkUFWB0g0sYKwosG3zy0rQrNdttoAEhYEWRE8oJBFbf//joTO3D4EkRUoaeUtCqDwsBWT6RC0/Mk//NAxOURulZuXkhGfMSVC7I0VFmdZ1XVakwghoKaFUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/8yDE+Q4xUm3+SAaVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MwxOcO8CJp/lrOAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MwxOwNKDZp/ioGAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MQxPcBOAZEoAgAAVVVVVVVVVVVVVVVVVU=";
 
 window.FK = { GP, GP_BTN, Arcade, BOSS, game, CONFIG, CHARACTERS, STAGES, step, render, startMatch, startFatality, openSelect, openModeSelect, applyHit, Fighter, Net, Music, Sound, stageCanvasFor, drawCharacter, POSES, P, world, wctx, snapCanvas, CHAR_PAL, SPRITE_SHEETS, startWinner, startFinish, ADLIBS, SFX_SAMPLES, SFX_META, SFX_BUFFERS, moveListFor, openMoves, closeMoves, toggleMoves, movesBtnRect, DPAD, DPAD_PAD, dpadPadPos, TouchPad, TOUCH_UI, scrollWorld, cameraStep, stageLayersFor, CAM_MAX, CAM_START, WORLD_W, TV, Pad, PAD_TOP, PLAT, onPlat, onSlab, breakSlab, platReset, platDrop, platPullDown, ZOOM, zoomTarget, zmap, callout, CALLOUT_COL, DIRCTL, setDirMode, toggleDirMode, ARROW_UI, arrowBtnRects, arrowDirsAt, PAUSE_DIRBTN, MENU_DIRBTN, PAD_DIRBTN, PAD_PAUSE_DIRBTN, TOUCH_FADE };
 </script>
